@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, Message, Channel, ChannelMember
 from app.schemas import MessageCreate, MessageResponse
-from app.utils import get_current_user
+from app.core.utils import get_current_user
 from typing import List
 
 router = APIRouter()

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import user, workspace, channel, message, file
+from app.api.endpoints import user, workspace, channel, message, file
 
 api_router = APIRouter()
 

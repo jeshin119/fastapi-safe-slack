@@ -76,28 +76,28 @@ python run.py
 ## 주요 API 엔드포인트
 
 ### 인증
-- `POST /auth/signup` - 회원가입
-- `POST /auth/login` - 로그인
-- `POST /auth/request-verification` - 이메일 인증 요청
-- `POST /auth/verify-email` - 이메일 인증 확인
+- `POST /api/auth/signup` - 회원가입
+- `POST /api/auth/login` - 로그인
+- `POST /api/auth/request-verification` - 이메일 인증 요청
+- `POST /api/auth/verify-email` - 이메일 인증 확인
 
 ### 워크스페이스
-- `POST /workspaces/{workspace_id}/join-request` - 워크스페이스 참여 요청
-- `POST /workspaces/{workspace_id}/approve/{user_id}` - 참여 요청 승인
-- `GET /workspaces/{workspace_id}/channels` - 워크스페이스 채널 목록
+- `POST /api/workspaces/{workspace_id}/join-request` - 워크스페이스 참여 요청
+- `POST /api/workspaces/{workspace_id}/approve/{user_id}` - 참여 요청 승인
+- `GET /api/workspaces/{workspace_id}/channels` - 워크스페이스 채널 목록
 
 ### 채널
-- `POST /channels` - 채널 생성
-- `POST /channels/{channel_id}/join-request` - 채널 입장 요청
-- `POST /channels/{channel_id}/approve/{user_id}` - 입장 요청 승인
+- `POST /api/channels` - 채널 생성
+- `POST /api/channels/{channel_id}/join-request` - 채널 입장 요청
+- `POST /api/channels/{channel_id}/approve/{user_id}` - 입장 요청 승인
 
 ### 메시지
-- `POST /channels/{channel_id}/messages` - 메시지 전송
-- `GET /channels/{channel_id}/messages` - 메시지 목록 조회
+- `POST /api/channels/{channel_id}/messages` - 메시지 전송
+- `GET /api/channels/{channel_id}/messages` - 메시지 목록 조회
 
 ### 파일
-- `POST /channels/{channel_id}/files` - 파일 업로드
-- `GET /channels/{channel_id}/files` - 파일 목록 조회
+- `POST /api/channels/{channel_id}/files` - 파일 업로드
+- `GET /api/channels/{channel_id}/files` - 파일 목록 조회
 
 ## 프로젝트 구조
 

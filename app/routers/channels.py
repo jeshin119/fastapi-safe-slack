@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.database import get_db
+from app.db.session import get_db
 from app.models import User, Channel, ChannelMember, WorkspaceMember
 from app.schemas import ChannelCreate, ChannelResponse, ChannelJoinRequestResponse
-from app.utils import get_current_user, check_user_permission
+from app.core.utils import get_current_user, check_user_permission
 from datetime import datetime
 
 router = APIRouter()

@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime, date
 from app.models.models import RequestStatus
+import asyncio
+from app.db.session import engine, Base
 
 # Base schemas
 class UserBase(BaseModel):
@@ -152,3 +154,10 @@ class WorkspaceMemberResponse(BaseModel):
 
     class Config:
         from_attributes = True 
+
+async def create_tables():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+if __name__ == "__main__":
+    asyncio.run(create_tables()) 
