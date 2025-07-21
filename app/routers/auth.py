@@ -5,7 +5,9 @@ from app.db.session import get_db
 from app.models.models import User, Workspace, WorkspaceMember, Role
 from app.schemas.user import UserCreate, UserLogin
 from app.schemas.auth import Token, EmailVerificationRequest, EmailVerification
-from app.core.utils import get_password_hash, verify_password, create_access_token, generate_invite_code
+from app.models.invite_code import InviteCode
+from app.schemas.invite_code import InviteCodeCreate, InviteCodeResponse
+from app.core.utils import get_current_user, get_password_hash, verify_password, create_access_token, generate_invite_code
 from datetime import datetime, date
 import secrets
 
@@ -36,6 +38,14 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()
     workspace_id = None
     if user_data.workspace_name:
+        # 워크스페이스 이름 중복 확인
+        result = await db.execute(select(Workspace).where(Workspace.name == user_data.workspace_name))
+        existing_ws = result.scalars().first()
+        if existing_ws:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 존재하는 워크스페이스 이름입니다."
+            )
         workspace = Workspace(name=user_data.workspace_name)
         db.add(workspace)
         await db.flush()
@@ -137,3 +147,22 @@ async def request_email_verification(request: EmailVerificationRequest, db: Asyn
 @router.post("/verify-email")
 async def verify_email(verification: EmailVerification, db: AsyncSession = Depends(get_db)):
     return {"message": "이메일이 성공적으로 인증되었습니다."} 
+
+@router.post("/invite-codes", response_model=InviteCodeResponse)
+async def create_invite_code(
+    invite_data: InviteCodeCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)  # 워크스페이스 관리자 인증 필요
+):
+    # 워크스페이스 관리자인지 검증 로직 필요
+    code = generate_invite_code()
+    invite = InviteCode(
+        code=code,
+        workspace_id=invite_data.workspace_id,
+        expires_at=invite_data.expires_at,
+        created_by=current_user.id
+    )
+    db.add(invite)
+    await db.commit()
+    await db.refresh(invite)
+    return invite 
