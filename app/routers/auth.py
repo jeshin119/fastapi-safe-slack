@@ -13,7 +13,7 @@ import secrets
 
 router = APIRouter()
 
-@router.post("/signup", response_model=Token)
+@router.post("/signup")
 async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     # 이메일 중복 확인
     result = await db.execute(select(User).where(User.email == user_data.email))
@@ -96,10 +96,8 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         "is_contractor": False
     }
     access_token = create_access_token(data=token_data)
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    return {"message": f"{user_data.name}님, 회원가입을 축하합니다!"}
+
 
 @router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin, db: AsyncSession = Depends(get_db)):
