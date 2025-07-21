@@ -4,6 +4,12 @@ from datetime import datetime, date
 from app.models.models import RequestStatus
 import asyncio
 from app.db.session import engine, Base
+from .user import *
+from .workspace import *
+from .channel import *
+from .message import *
+from .file import *
+from .auth import *
 
 # Base schemas
 class UserBase(BaseModel):

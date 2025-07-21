@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel
-from app.schemas import WorkspaceJoinRequestCreate, MessageResponse
+from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel
+from app.schemas.workspace import WorkspaceJoinRequestCreate
+from app.schemas.channel import ChannelResponse
+from app.schemas.message import MessageResponse
 from app.core.utils import get_current_user, check_user_permission
 from datetime import datetime
 from typing import List

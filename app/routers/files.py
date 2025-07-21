@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import User, File as FileModel, Channel, ChannelMember, WorkspaceMember, Role
-from app.schemas import FileResponse
+from app.models.models import User, File as FileModel, Channel, ChannelMember, WorkspaceMember, Role
+from app.schemas.file import FileResponse
 from app.core.utils import get_current_user
 from typing import List, Optional
 from datetime import date

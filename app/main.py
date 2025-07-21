@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routers import api_router
+from app.routers import auth, workspaces, channels, messages, files
 
 app = FastAPI(
     title="Safe Slack API",
@@ -18,7 +18,11 @@ app.add_middleware(
 )
 
 # 라우터 등록
-app.include_router(api_router, prefix="/api")
+app.include_router(auth.router, prefix="/auth", tags=["인증"])
+app.include_router(workspaces.router, prefix="/workspaces", tags=["워크스페이스"])
+app.include_router(channels.router, prefix="/channels", tags=["채널"])
+app.include_router(messages.router, prefix="/channels", tags=["메시지"])
+app.include_router(files.router, prefix="/channels", tags=["파일"])
 
 @app.get("/")
 async def root():

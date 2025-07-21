@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.models import User, Workspace, WorkspaceMember, Role
-from app.schemas import UserCreate, UserLogin, Token, EmailVerificationRequest, EmailVerification
+from app.models.models import User, Workspace, WorkspaceMember, Role
+from app.schemas.user import UserCreate, UserLogin
+from app.schemas.auth import Token, EmailVerificationRequest, EmailVerification
 from app.core.utils import get_password_hash, verify_password, create_access_token, generate_invite_code
 from datetime import datetime, date
 import secrets
