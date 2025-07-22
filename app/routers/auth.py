@@ -87,12 +87,15 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         invite.used_at = datetime.utcnow()
         await db.commit()
         # 워크스페이스 멤버로 바로 추가 (A안)
+        is_contractor = bool(invite.expires_at)
+        end_date = invite.expires_at if invite.expires_at else None
         member = WorkspaceMember(
             user_id=user.id,
             workspace_id=workspace_id,
             role_id=user_data.role_id,
             is_workspace_admin=False,
-            is_contractor=False
+            is_contractor=is_contractor,
+            end_date=end_date
         )
         db.add(member)
         await db.commit()
@@ -164,4 +167,4 @@ async def create_invite_code(
     db.add(invite)
     await db.commit()
     await db.refresh(invite)
-    return invite 
+    return invite
