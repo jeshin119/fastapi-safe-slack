@@ -9,10 +9,12 @@ from app.schemas.message import MessageResponse
 from app.core.utils import get_current_user, check_user_permission
 from datetime import datetime
 from typing import List
+from app.models.workspace import RequestStatus
+from datetime import datetime, timedelta
 
 router = APIRouter()
 
-@router.post("/{workspace_id}/join-request", response_model=MessageResponse)
+@router.post("/{workspace_id}/join-request")
 async def request_workspace_join(
     workspace_id: int,
     request_data: WorkspaceJoinRequestCreate,
@@ -53,9 +55,11 @@ async def request_workspace_join(
     )
     db.add(join_request)
     await db.commit()
-    return {"message": "요청이 전송되었습니다. 관리자의 승인을 기다리세요."}
+    return {
+        "message": f"{workspace.name} 워크스페이스에 대한 {current_user.name}님의 요청이 전송되었습니다. 관리자의 승인을 기다리세요."
+    }
 
-@router.post("/{workspace_id}/approve/{user_id}", response_model=MessageResponse)
+@router.post("/{workspace_id}/approve/{user_id}")
 async def approve_workspace_join(
     workspace_id: int,
     user_id: int,
@@ -98,13 +102,16 @@ async def approve_workspace_join(
             detail="대기 중인 가입 요청을 찾을 수 없습니다."
         )
     join_request.status = "approved"
-    join_request.processed_at = datetime.now()
+    now = datetime.now()
+    join_request.processed_at = now
     member = WorkspaceMember(
         user_id=user_id,
         workspace_id=workspace_id,
         role_id=1,  # 기본 직급 (사원)
         is_workspace_admin=False,
-        is_contractor=False
+        is_contractor=False,
+        start_date=now,                         # datetime 객체
+        end_date=(now + timedelta(days=7))  # date 객체로 변환해서 저장
     )
     db.add(member)
     result = await db.execute(select(Channel).where(
@@ -121,7 +128,9 @@ async def approve_workspace_join(
         )
         db.add(channel_member)
     await db.commit()
-    return {"message": "사용자가 워크스페이스에 추가되었습니다."}
+    return {
+        "message": f"{target_user.name}님이 {workspace.name} 워크스페이스에 추가되었습니다."
+    }
 
 @router.get("/{workspace_id}/channels")
 async def get_workspace_channels(
