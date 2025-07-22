@@ -33,7 +33,11 @@ pip install -r requirements.txt
 
 ```env
 # 데이터베이스 설정
-DATABASE_URL=mysql+pymysql://username:password@localhost/safe_slack
+DB_USER=root
+DB_PASSWORD=password
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=safe_slack
 
 # JWT 설정
 SECRET_KEY=your-secret-key-here
@@ -76,49 +80,43 @@ python run.py
 ## 주요 API 엔드포인트
 
 ### 인증
-- `POST /api/auth/signup` - 회원가입
-- `POST /api/auth/login` - 로그인
-- `POST /api/auth/request-verification` - 이메일 인증 요청
-- `POST /api/auth/verify-email` - 이메일 인증 확인
+- `POST /auth/signup` - 회원가입
+- `POST /auth/login` - 로그인
+- `POST /auth/request-verification` - 이메일 인증 요청
+- `POST /auth/verify-email` - 이메일 인증 확인
 
 ### 워크스페이스
-- `POST /api/workspaces/{workspace_id}/join-request` - 워크스페이스 참여 요청
-- `POST /api/workspaces/{workspace_id}/approve/{user_id}` - 참여 요청 승인
-- `GET /api/workspaces/{workspace_id}/channels` - 워크스페이스 채널 목록
+- `POST /workspaces/{workspace_id}/join-request` - 워크스페이스 참여 요청
+- `POST /workspaces/{workspace_id}/approve/{user_id}` - 참여 요청 승인
+- `GET /workspaces/{workspace_id}/channels` - 워크스페이스 채널 목록
 
 ### 채널
-- `POST /api/channels` - 채널 생성
-- `POST /api/channels/{channel_id}/join-request` - 채널 입장 요청
-- `POST /api/channels/{channel_id}/approve/{user_id}` - 입장 요청 승인
+- `POST /channels` - 채널 생성
+- `POST /channels/{channel_id}/join-request` - 채널 입장 요청
+- `POST /channels/{channel_id}/approve/{user_id}` - 입장 요청 승인
 
 ### 메시지
-- `POST /api/channels/{channel_id}/messages` - 메시지 전송
-- `GET /api/channels/{channel_id}/messages` - 메시지 목록 조회
+- `POST /channels/{channel_id}/messages` - 메시지 전송
+- `GET /channels/{channel_id}/messages` - 메시지 목록 조회
 
 ### 파일
-- `POST /api/channels/{channel_id}/files` - 파일 업로드
-- `GET /api/channels/{channel_id}/files` - 파일 목록 조회
+- `POST /channels/{channel_id}/files` - 파일 업로드
+- `GET /channels/{channel_id}/files` - 파일 목록 조회
 
 ## 프로젝트 구조
 
 ```
 fastapi-safe-slack2/
 ├── app/
-│   ├── __init__.py
 │   ├── main.py              # FastAPI 애플리케이션
-│   ├── config.py            # 설정 관리
-│   ├── database.py          # 데이터베이스 설정
-│   ├── models.py            # SQLAlchemy 모델
-│   ├── schemas.py           # Pydantic 스키마
-│   ├── utils.py             # 유틸리티 함수
-│   ├── init_db.py           # 데이터베이스 초기화
+│   ├── models/              # SQLAlchemy 등 ORM 모델
+│   ├── schemas/             # Pydantic 스키마
+│   ├── crud/                # 데이터 처리 로직
+│   ├── api/                 # (미사용)
+│   ├── core/                # 환경설정, 보안 등 공통 모듈
+│   ├── db/                  # 데이터베이스 관련 파일
+│   ├── tests/               # 테스트 코드
 │   └── routers/             # API 라우터
-│       ├── __init__.py
-│       ├── auth.py          # 인증 관련
-│       ├── workspaces.py    # 워크스페이스 관련
-│       ├── channels.py      # 채널 관련
-│       ├── messages.py      # 메시지 관련
-│       └── files.py         # 파일 관련
 ├── requirements.txt         # 의존성 목록
 ├── run.py                  # 서버 실행 스크립트
 └── README.md               # 프로젝트 문서
@@ -135,6 +133,7 @@ fastapi-safe-slack2/
 - `messages` - 메시지
 - `files` - 파일 정보
 - `roles` - 직급 정보
+- `invite_codes` - 초대코드 정보
 
 ## 보안 기능
 

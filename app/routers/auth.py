@@ -67,36 +67,37 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         )
         db.add(default_channel)
     elif user_data.invite_code:
-        try:
-            workspace_id = int(user_data.invite_code)
-            result = await db.execute(select(Workspace).where(Workspace.id == workspace_id))
-            workspace = result.scalars().first()
-            if not workspace:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="유효하지 않은 초대 코드입니다."
-                )
-        except ValueError:
+        # 초대코드 테이블에서 code로 조회 및 검증
+        result = await db.execute(
+            select(InviteCode).where(InviteCode.code == user_data.invite_code)
+        )
+        invite = result.scalars().first()
+        if (
+            not invite
+            or invite.used
+            or (invite.expires_at and invite.expires_at < datetime.utcnow())
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="유효하지 않은 초대 코드 형식입니다."
+                detail="유효하지 않은 초대 코드입니다."
             )
-        from app.models.models import WorkspaceJoinRequest
-        join_request = WorkspaceJoinRequest(
+        workspace_id = invite.workspace_id
+        # 1회용 코드라면 사용 처리
+        invite.used = True
+        invite.used_at = datetime.utcnow()
+        await db.commit()
+        # 워크스페이스 멤버로 바로 추가 (A안)
+        member = WorkspaceMember(
             user_id=user.id,
-            workspace_id=workspace_id
+            workspace_id=workspace_id,
+            role_id=user_data.role_id,
+            is_workspace_admin=False,
+            is_contractor=False
         )
-        db.add(join_request)
+        db.add(member)
+        await db.commit()
     await db.commit()
-    token_data = {
-        "user_id": user.id,
-        "workspace_id": workspace_id,
-        "role_id": user_data.role_id,
-        "is_workspace_admin": bool(user_data.workspace_name),
-        "is_contractor": False
-    }
-    access_token = create_access_token(data=token_data)
-    return {"message": f"{user_data.name}님, 회원가입을 축하합니다!"}
+    return {"message": "회원가입 성공"}
 
 
 @router.post("/login", response_model=Token)
