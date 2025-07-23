@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 
 class MessageBase(BaseModel):
@@ -9,8 +10,8 @@ class MessageCreate(MessageBase):
 
 class MessageResponse(MessageBase):
     id: int
-    user_id: int
-    channel_id: int
+    user_email: str
+    channel_name: str
     created_at: datetime
 
     class Config:

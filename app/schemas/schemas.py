@@ -20,7 +20,7 @@ class UserCreate(UserBase):
     password: str
     workspace_name: Optional[str] = None
     invite_code: Optional[str] = None
-    role_id: int
+    role_name: str  # role_id → role_name
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -50,7 +50,7 @@ class WorkspaceResponse(WorkspaceBase):
         from_attributes = True
 
 class WorkspaceJoinRequestCreate(BaseModel):
-    role_id: int
+    role_name: str  # role_id → role_name
     is_contractor: bool = False
     start_date: Optional[date] = None
     end_date: Optional[date] = None
@@ -72,7 +72,7 @@ class ChannelBase(BaseModel):
     is_public: bool = True
 
 class ChannelCreate(ChannelBase):
-    workspace_id: int
+    workspace_name: str  # workspace_id → workspace_name
 
 class ChannelResponse(ChannelBase):
     id: int
@@ -106,7 +106,7 @@ class MessageResponse(MessageBase):
 # File schemas
 class FileBase(BaseModel):
     filename: str
-    min_role_id: Optional[int] = None
+    min_role_name: Optional[str] = None  # min_role_id → min_role_name
     valid_from: Optional[date] = None
     valid_to: Optional[date] = None
 
@@ -166,4 +166,4 @@ async def create_tables():
         await conn.run_sync(Base.metadata.create_all)
 
 if __name__ == "__main__":
-    asyncio.run(create_tables()) 
+    asyncio.run(create_tables())

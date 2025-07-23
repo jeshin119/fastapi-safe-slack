@@ -28,6 +28,16 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="workspace_name 또는 invite_code 중 하나만 제공해야 합니다."
         )
+    
+    # role_name으로 role_id 찾기
+    result = await db.execute(select(Role).where(Role.name == user_data.role_name))
+    role = result.scalars().first()
+    if not role:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="유효하지 않은 직급명입니다."
+        )
+    
     hashed_password = get_password_hash(user_data.password)
     user = User(
         name=user_data.name,
@@ -53,7 +63,7 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         member = WorkspaceMember(
             user_id=user.id,
             workspace_id=workspace.id,
-            role_id=user_data.role_id,
+            role_id=role.id,
             is_workspace_admin=True
         )
         db.add(member)
@@ -92,7 +102,7 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         member = WorkspaceMember(
             user_id=user.id,
             workspace_id=workspace_id,
-            role_id=user_data.role_id,
+            role_id=role.id,
             is_workspace_admin=False,
             is_contractor=is_contractor,
             end_date=end_date
@@ -100,7 +110,7 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         db.add(member)
         await db.commit()
     await db.commit()
-    return {"message": "회원가입 성공"}
+    return {"message": f"{user_data.name}님, 회원가입을 축하합니다!"}
 
 
 @router.post("/login", response_model=Token)
@@ -112,17 +122,46 @@ async def login(user_credentials: UserLogin, db: AsyncSession = Depends(get_db))
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="이메일 또는 비밀번호가 올바르지 않습니다."
         )
+    
+    # 워크스페이스 멤버십 정보 조회
     result = await db.execute(select(WorkspaceMember).where(WorkspaceMember.user_id == user.id))
     membership = result.scalars().first()
-    token_data = {
-        "user_id": user.id,
-        "workspace_id": membership.workspace_id if membership else None,
-        "role_id": membership.role_id if membership else None,
-        "is_workspace_admin": membership.is_workspace_admin if membership else False,
-        "is_contractor": membership.is_contractor if membership else False,
-        "start_date": membership.start_date.isoformat() if membership and membership.start_date else None,
-        "end_date": membership.end_date.isoformat() if membership and membership.end_date else None
-    }
+    
+    if membership:
+        # 워크스페이스 정보 조회
+        result = await db.execute(select(Workspace).where(Workspace.id == membership.workspace_id))
+        workspace = result.scalars().first()
+        
+        # 역할 정보 조회
+        result = await db.execute(select(Role).where(Role.id == membership.role_id))
+        role = result.scalars().first()
+        
+        token_data = {
+            "user_id": user.id,
+            "user_email": user.email,
+            "workspace_id": membership.workspace_id,
+            "workspace_name": workspace.name if workspace else None,
+            "role_id": membership.role_id,
+            "role_name": role.name if role else None,
+            "is_workspace_admin": membership.is_workspace_admin,
+            "is_contractor": membership.is_contractor,
+            "start_date": membership.start_date.isoformat() if membership.start_date else None,
+            "end_date": membership.end_date.isoformat() if membership.end_date else None
+        }
+    else:
+        token_data = {
+            "user_id": user.id,
+            "user_email": user.email,
+            "workspace_id": None,
+            "workspace_name": None,
+            "role_id": None,
+            "role_name": None,
+            "is_workspace_admin": False,
+            "is_contractor": False,
+            "start_date": None,
+            "end_date": None
+        }
+    
     access_token = create_access_token(data=token_data)
     return {
         "access_token": access_token,
@@ -156,15 +195,44 @@ async def create_invite_code(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)  # 워크스페이스 관리자 인증 필요
 ):
-    # 워크스페이스 관리자인지 검증 로직 필요
+    # workspace_name으로 workspace_id 찾기
+    result = await db.execute(select(Workspace).where(Workspace.name == invite_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="워크스페이스를 찾을 수 없습니다."
+        )
+    
+    # 워크스페이스 관리자인지 검증
+    result = await db.execute(select(WorkspaceMember).where(
+        WorkspaceMember.user_id == current_user.id,
+        WorkspaceMember.workspace_id == workspace.id,
+        WorkspaceMember.is_workspace_admin == True
+    ))
+    membership = result.scalars().first()
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="워크스페이스 관리자만 초대 코드를 생성할 수 있습니다."
+        )
+    
     code = generate_invite_code()
     invite = InviteCode(
         code=code,
-        workspace_id=invite_data.workspace_id,
+        workspace_id=workspace.id,
         expires_at=invite_data.expires_at,
         created_by=current_user.id
     )
     db.add(invite)
     await db.commit()
     await db.refresh(invite)
-    return invite
+    
+    # 응답에 workspace_name 포함
+    return {
+        "code": invite.code,
+        "workspace_name": workspace.name,
+        "expires_at": invite.expires_at,
+        "used": invite.used,
+        "created_at": invite.created_at
+    }

@@ -18,10 +18,15 @@ class WorkspaceResponse(WorkspaceBase):
         from_attributes = True
 
 class WorkspaceJoinRequestCreate(BaseModel):
-    role_id: int
+    workspace_name: str
+    role_name: str
     is_contractor: bool = False
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+
+class WorkspaceApproveRequest(BaseModel):
+    workspace_name: str
+    user_email: str
 
 class WorkspaceJoinRequestResponse(BaseModel):
     id: int
@@ -47,4 +52,4 @@ class WorkspaceMemberResponse(BaseModel):
     role: dict
 
     class Config:
-        from_attributes = True 
+        from_attributes = True

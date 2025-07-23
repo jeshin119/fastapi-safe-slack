@@ -7,7 +7,7 @@ class ChannelBase(BaseModel):
     is_public: bool = True
 
 class ChannelCreate(ChannelBase):
-    workspace_id: int
+    workspace_name: str
 
 class ChannelResponse(ChannelBase):
     id: int
@@ -19,5 +19,14 @@ class ChannelResponse(ChannelBase):
     class Config:
         from_attributes = True
 
+class ChannelJoinRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+
+class ChannelApproveRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+    user_email: str
+
 class ChannelJoinRequestResponse(BaseModel):
-    message: str 
+    message: str

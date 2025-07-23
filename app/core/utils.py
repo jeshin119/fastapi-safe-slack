@@ -72,6 +72,35 @@ async def get_current_user(
         )
     return user
 
+async def get_current_user_with_context(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> dict:
+    """
+    토큰에서 사용자 정보와 워크스페이스/역할 정보를 모두 가져오는 함수
+    DB 조회 없이 토큰에서 바로 정보 확인 가능
+    """
+    token = credentials.credentials
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return {
+        "user_id": payload.get("user_id"),
+        "user_email": payload.get("user_email"),
+        "workspace_id": payload.get("workspace_id"),
+        "workspace_name": payload.get("workspace_name"),
+        "role_id": payload.get("role_id"),
+        "role_name": payload.get("role_name"),
+        "is_workspace_admin": payload.get("is_workspace_admin", False),
+        "is_contractor": payload.get("is_contractor", False),
+        "start_date": payload.get("start_date"),
+        "end_date": payload.get("end_date")
+    }
+
 def generate_invite_code(length: int = 8) -> str:
     characters = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
@@ -100,6 +129,60 @@ async def check_user_permission(user: User, workspace_id: int, db: AsyncSession,
             return False
         if membership.end_date and today > membership.end_date:
             return False
+    return True
+
+async def check_user_permission_by_name(
+    user_context: dict, 
+    workspace_name: str, 
+    required_role_name: str = None,
+    require_admin: bool = False
+) -> bool:
+    """
+    토큰의 context 정보를 사용해서 권한을 확인하는 함수
+    DB 조회 없이 토큰에서 바로 확인
+    """
+    # 워크스페이스 확인
+    if user_context.get("workspace_name") != workspace_name:
+        return False
+    
+    # 관리자 권한 확인
+    if require_admin and not user_context.get("is_workspace_admin", False):
+        return False
+    
+    # 역할 권한 확인
+    if required_role_name:
+        user_role_name = user_context.get("role_name")
+        if not user_role_name:
+            return False
+        
+        # 역할 레벨 비교 (간단한 구현)
+        role_levels = {
+            "사원": 1, "대리": 2, "과장": 3, 
+            "부장": 4, "이사": 5, "대표": 6
+        }
+        
+        user_level = role_levels.get(user_role_name, 0)
+        required_level = role_levels.get(required_role_name, 0)
+        
+        if user_level < required_level:
+            return False
+    
+    # 계약자 기간 확인
+    if user_context.get("is_contractor", False):
+        today = datetime.now().date()
+        start_date = user_context.get("start_date")
+        end_date = user_context.get("end_date")
+        
+        if start_date:
+            start_date = datetime.fromisoformat(start_date).date()
+            if today < start_date:
+                return False
+        
+        if end_date:
+            end_date = datetime.fromisoformat(end_date).date()
+            if today > end_date:
+                return False
+    
     return True
 
 async def get_user_workspace_info(user: User, workspace_id: int, db: AsyncSession) -> Optional[dict]:

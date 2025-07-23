@@ -1,21 +1,24 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, date
+from datetime import date
+from datetime import datetime
 
 class FileBase(BaseModel):
     filename: str
-    min_role_id: Optional[int] = None
+    s3_url: str
+
+class FileCreate(FileBase):
+    min_role_name: Optional[str] = None
     valid_from: Optional[date] = None
     valid_to: Optional[date] = None
 
-class FileCreate(FileBase):
-    pass
-
 class FileResponse(FileBase):
     id: int
-    s3_url: str
-    uploaded_by: int
-    uploaded_at: datetime
+    uploaded_by: str
+    min_role_name: Optional[str] = None
+    valid_from: Optional[date] = None
+    valid_to: Optional[date] = None
+    created_at: datetime
 
     class Config:
-        from_attributes = True 
+        from_attributes = True
