@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class ChannelBase(BaseModel):
@@ -7,7 +7,7 @@ class ChannelBase(BaseModel):
     is_public: bool = True
 
 class ChannelCreate(ChannelBase):
-    workspace_name: str
+    pass
 
 class ChannelResponse(ChannelBase):
     id: int

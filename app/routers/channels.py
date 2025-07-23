@@ -4,29 +4,64 @@ from sqlalchemy.future import select
 from app.db.session import get_db
 from app.models.models import User, Channel, ChannelMember, WorkspaceMember, Workspace, Role
 from app.schemas.channel import ChannelCreate, ChannelResponse, ChannelJoinRequestResponse, ChannelJoinRequest, ChannelApproveRequest
-from app.core.utils import get_current_user, get_current_user_with_context, check_user_permission_by_name
+from app.core.utils import get_current_user_with_context
 from datetime import datetime
+from typing import List
+from pydantic import BaseModel
 
 router = APIRouter()
 
-@router.post("/", response_model=ChannelResponse)
+class ChannelCreateRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+    is_public: bool = True
+
+class ChannelListRequest(BaseModel):
+    workspace_name: str
+
+class ChannelJoinRequestRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+
+class ChannelRequestListRequest(BaseModel):
+    workspace_name: str
+
+class ChannelApproveRequestRequest(BaseModel):
+    workspace_name: str
+    request_id: int
+    request_user_name: str
+    request_role_name: str
+    channel_name: str
+
+class ChannelMembersListRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+
+class ChannelLeaveRequest(BaseModel):
+    workspace_name: str
+    channel_name: str
+
+class ChannelJoinRequestListItem(BaseModel):
+    request_id: int
+    user_email: str
+    user_name: str
+    role_name: str
+    status: str
+    channel_name: str
+
+class ChannelMemberListItem(BaseModel):
+    user_id: int
+    name: str
+    email: str
+    role_name: str
+    is_admin: bool
+
+@router.post("/create")
 async def create_channel(
-    channel_data: ChannelCreate,
+    channel_data: ChannelCreateRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 토큰에서 워크스페이스 권한 확인 (DB 조회 없이)
-    has_permission = await check_user_permission_by_name(
-        user_context, 
-        channel_data.workspace_name
-    )
-    
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스에 접근할 권한이 없습니다."
-        )
-    
     # workspace_name으로 workspace_id 찾기
     result = await db.execute(select(Workspace).where(Workspace.name == channel_data.workspace_name))
     workspace = result.scalars().first()
@@ -38,7 +73,7 @@ async def create_channel(
     
     # 채널명 중복 확인
     result = await db.execute(select(Channel).where(
-        Channel.name == channel_data.name,
+        Channel.name == channel_data.channel_name,
         Channel.workspace_id == workspace.id
     ))
     existing_channel = result.scalars().first()
@@ -49,49 +84,117 @@ async def create_channel(
         )
     
     channel = Channel(
-        name=channel_data.name,
+        name=channel_data.channel_name,
         workspace_id=workspace.id,
-        created_by=user_context["user_id"],  # 토큰에서 user_id 사용
+        created_by=user_context["user_id"],
         is_public=channel_data.is_public
     )
     db.add(channel)
     await db.flush()
     
-    if channel_data.is_public:
-        member = ChannelMember(
-            user_id=user_context["user_id"],  # 토큰에서 user_id 사용
-            channel_id=channel.id,
-            status="approved"
-        )
-        db.add(member)
+    # 채널 생성자를 멤버로 추가
+    member = ChannelMember(
+        user_id=user_context["user_id"],
+        channel_id=channel.id,
+        status="approved",
+        is_admin=True  # 채널 생성자는 관리자
+    )
+    db.add(member)
     
     await db.commit()
     await db.refresh(channel)
     
     return {
-        "name": channel.name,
-        "workspace_name": channel_data.workspace_name,
-        "is_public": channel.is_public
+        "message": "채널이 생성되었습니다."
     }
 
-@router.post("/join-request", response_model=ChannelJoinRequestResponse)
-async def request_channel_join(
-    request_data: ChannelJoinRequest,
+@router.post("/list")
+async def get_channels(
+    request_data: ChannelListRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 토큰에서 워크스페이스 권한 확인 (DB 조회 없이)
-    has_permission = await check_user_permission_by_name(
-        user_context, 
-        request_data.workspace_name
-    )
-    
-    if not has_permission:
+    # workspace_name으로 workspace_id 찾기
+    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스에 접근할 권한이 없습니다."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="워크스페이스를 찾을 수 없습니다."
         )
     
+    # 사용자가 접근 가능한 채널 조회 (public + 가입된 private)
+    user_id = user_context["user_id"]
+    
+    # 사용자가 멤버인 채널들 조회
+    result = await db.execute(
+        select(Channel)
+        .join(ChannelMember, Channel.id == ChannelMember.channel_id)
+        .where(
+            ChannelMember.user_id == user_id,
+            ChannelMember.status == "approved",
+            Channel.workspace_id == workspace.id
+        )
+    )
+    member_channels = result.scalars().all()
+    
+    # 공개 채널들 조회 (멤버가 아닌 것들)
+    member_channel_ids = [ch.id for ch in member_channels]
+    result = await db.execute(
+        select(Channel)
+        .where(
+            Channel.workspace_id == workspace.id,
+            Channel.is_public == True,
+            ~Channel.id.in_(member_channel_ids)
+        )
+    )
+    public_channels = result.scalars().all()
+    
+    all_channels = list(member_channels) + list(public_channels)
+    
+    return [
+        {
+            "channel_id": channel.id,
+            "name": channel.name,
+            "is_public": channel.is_public
+        }
+        for channel in all_channels
+    ]
+
+@router.delete("/{channel_name}")
+async def delete_channel(
+    channel_name: str,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    # 모든 워크스페이스에서 해당 이름의 채널 찾기
+    result = await db.execute(select(Channel).where(Channel.name == channel_name))
+    channel = result.scalars().first()
+    if not channel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="채널을 찾을 수 없습니다."
+        )
+    
+    # 채널 생성자 확인
+    if channel.created_by != user_context["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="채널 생성자만 삭제할 수 있습니다."
+        )
+    
+    # 채널 삭제
+    await db.delete(channel)
+    await db.commit()
+    
+    return {"message": "채널이 삭제되었습니다."}
+
+@router.post("/join-request")
+async def request_channel_join(
+    request_data: ChannelJoinRequestRequest,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
     # workspace_name으로 workspace_id 찾기
     result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
     workspace = result.scalars().first()
@@ -116,13 +219,13 @@ async def request_channel_join(
     # 공개 채널인 경우 바로 입장
     if channel.is_public:
         result = await db.execute(select(ChannelMember).where(
-            ChannelMember.user_id == user_context["user_id"],  # 토큰에서 user_id 사용
+            ChannelMember.user_id == user_context["user_id"],
             ChannelMember.channel_id == channel.id
         ))
         existing_member = result.scalars().first()
         if not existing_member:
             member = ChannelMember(
-                user_id=user_context["user_id"],  # 토큰에서 user_id 사용
+                user_id=user_context["user_id"],
                 channel_id=channel.id,
                 status="approved"
             )
@@ -132,7 +235,7 @@ async def request_channel_join(
     
     # 비공개 채널인 경우 기존 멤버십 확인
     result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == user_context["user_id"],  # 토큰에서 user_id 사용
+        ChannelMember.user_id == user_context["user_id"],
         ChannelMember.channel_id == channel.id
     ))
     existing_member = result.scalars().first()
@@ -150,7 +253,7 @@ async def request_channel_join(
     
     # 입장 요청 생성
     member = ChannelMember(
-        user_id=user_context["user_id"],  # 토큰에서 user_id 사용
+        user_id=user_context["user_id"],
         channel_id=channel.id,
         status="pending"
     )
@@ -158,24 +261,65 @@ async def request_channel_join(
     await db.commit()
     return {"message": "채널 관리자에게 입장 요청이 전송되었습니다."}
 
-@router.post("/approve", response_model=ChannelJoinRequestResponse)
-async def approve_channel_join(
-    approve_data: ChannelApproveRequest,
+@router.post("/request_list")
+async def get_channel_join_requests(
+    request_data: ChannelRequestListRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 토큰에서 워크스페이스 권한 확인 (DB 조회 없이)
-    has_permission = await check_user_permission_by_name(
-        user_context, 
-        approve_data.workspace_name
-    )
-    
-    if not has_permission:
+    # workspace_name으로 workspace_id 찾기
+    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스에 접근할 권한이 없습니다."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="워크스페이스가 없습니다."
         )
     
+    # 현재 사용자가 관리자인 채널들의 입장 요청 조회
+    result = await db.execute(
+        select(ChannelMember, User, Role, Channel)
+        .join(User, ChannelMember.user_id == User.id)
+        .join(Role, User.role_id == Role.id)
+        .join(Channel, ChannelMember.channel_id == Channel.id)
+        .where(
+            Channel.workspace_id == workspace.id,
+            ChannelMember.status == "pending"
+        )
+    )
+    requests_data = result.all()
+    
+    # 현재 사용자가 관리자인 채널들만 필터링
+    admin_channels = []
+    for member, user, role, channel in requests_data:
+        # 현재 사용자가 이 채널의 관리자인지 확인
+        result = await db.execute(select(ChannelMember).where(
+            ChannelMember.user_id == user_context["user_id"],
+            ChannelMember.channel_id == channel.id,
+            ChannelMember.is_admin == True
+        ))
+        admin_membership = result.scalars().first()
+        if admin_membership:
+            admin_channels.append((member, user, role, channel))
+    
+    return [
+        {
+            "request_id": member.id,
+            "user_email": user.email,
+            "user_name": user.name,
+            "role_name": role.name,
+            "status": member.status,
+            "channel_name": channel.name
+        }
+        for member, user, role, channel in admin_channels
+    ]
+
+@router.post("/approve")
+async def approve_channel_join(
+    approve_data: ChannelApproveRequestRequest,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
     # workspace_name으로 workspace_id 찾기
     result = await db.execute(select(Workspace).where(Workspace.name == approve_data.workspace_name))
     workspace = result.scalars().first()
@@ -197,144 +341,39 @@ async def approve_channel_join(
             detail="채널을 찾을 수 없습니다."
         )
     
-    # 현재 사용자가 채널 멤버인지 확인 (토큰에서 user_id 사용)
-    result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == user_context["user_id"],  # 토큰에서 user_id 사용
-        ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "approved"
-    ))
-    current_membership = result.scalars().first()
-    if not current_membership:
+    # 현재 사용자가 채널 생성자인지 확인
+    if channel.created_by != user_context["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="채널에 접근할 권한이 없습니다."
+            detail="채널 생성자만 입장을 승인할 수 있습니다."
         )
     
-    # user_email로 사용자 찾기
-    result = await db.execute(select(User).where(User.email == approve_data.user_email))
-    target_user = result.scalars().first()
-    if not target_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="사용자를 찾을 수 없습니다."
-        )
-    
-    # 자기 자신을 승인하려는 경우 체크
-    if target_user.email == user_context["user_email"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="자기 자신을 승인할 수 없습니다."
-        )
-    
-    # 대기 중인 입장 요청 확인
+    # 입장 요청 조회
     result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == target_user.id,
+        ChannelMember.id == approve_data.request_id,
         ChannelMember.channel_id == channel.id,
         ChannelMember.status == "pending"
     ))
-    target_membership = result.scalars().first()
-    if not target_membership:
+    request = result.scalars().first()
+    if not request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="대기 중인 입장 요청을 찾을 수 없습니다."
+            detail="입장 요청을 찾을 수 없습니다."
         )
     
     # 입장 승인
-    target_membership.status = "approved"
+    request.status = "approved"
     await db.commit()
     return {"message": "채널 입장이 승인되었습니다."}
 
-@router.get("/{channel_name}/info")
-async def get_channel_info(
-    channel_name: str,
-    workspace_name: str,
-    user_context: dict = Depends(get_current_user_with_context),
-    db: AsyncSession = Depends(get_db)
-):
-    # 토큰에서 워크스페이스 권한 확인 (DB 조회 없이)
-    has_permission = await check_user_permission_by_name(
-        user_context, 
-        workspace_name
-    )
-    
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스에 접근할 권한이 없습니다."
-        )
-    
-    # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="워크스페이스를 찾을 수 없습니다."
-        )
-    
-    # channel_name으로 channel_id 찾기
-    result = await db.execute(select(Channel).where(
-        Channel.name == channel_name,
-        Channel.workspace_id == workspace.id
-    ))
-    channel = result.scalars().first()
-    if not channel:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="채널을 찾을 수 없습니다."
-        )
-    
-    # 현재 사용자가 채널 멤버인지 확인 (토큰에서 user_id 사용)
-    result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == user_context["user_id"],  # 토큰에서 user_id 사용
-        ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "approved"
-    ))
-    membership = result.scalars().first()
-    if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="채널에 접근할 권한이 없습니다."
-        )
-    
-    # 채널 생성자 정보 조회
-    creator_name = "Unknown"
-    if channel.created_by:
-        result = await db.execute(select(User).where(User.id == channel.created_by))
-        creator = result.scalars().first()
-        if creator:
-            creator_name = creator.name
-    
-    return {
-        "name": channel.name,
-        "workspace_name": workspace_name,
-        "is_public": channel.is_public,
-        "is_default": channel.is_default,
-        "created_by": creator_name,
-        "created_at": channel.created_at
-    }
-
-@router.get("/{channel_name}/members")
+@router.post("/members_list")
 async def get_channel_members(
-    channel_name: str,
-    workspace_name: str,
+    request_data: ChannelMembersListRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 토큰에서 워크스페이스 권한 확인 (DB 조회 없이)
-    has_permission = await check_user_permission_by_name(
-        user_context, 
-        workspace_name
-    )
-    
-    if not has_permission:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스에 접근할 권한이 없습니다."
-        )
-    
     # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == workspace_name))
+    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
     workspace = result.scalars().first()
     if not workspace:
         raise HTTPException(
@@ -344,7 +383,7 @@ async def get_channel_members(
     
     # channel_name으로 channel_id 찾기
     result = await db.execute(select(Channel).where(
-        Channel.name == channel_name,
+        Channel.name == request_data.channel_name,
         Channel.workspace_id == workspace.id
     ))
     channel = result.scalars().first()
@@ -354,9 +393,9 @@ async def get_channel_members(
             detail="채널을 찾을 수 없습니다."
         )
     
-    # 현재 사용자가 채널 멤버인지 확인 (토큰에서 user_id 사용)
+    # 현재 사용자가 채널 멤버인지 확인
     result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == user_context["user_id"],  # 토큰에서 user_id 사용
+        ChannelMember.user_id == user_context["user_id"],
         ChannelMember.channel_id == channel.id,
         ChannelMember.status == "approved"
     ))
@@ -364,13 +403,14 @@ async def get_channel_members(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="채널에 접근할 권한이 없습니다."
+            detail="채널 멤버만 멤버 목록을 볼 수 있습니다."
         )
     
     # 채널 멤버 정보 조회 (JOIN으로 한 번에 가져오기)
     result = await db.execute(
-        select(ChannelMember, User)
+        select(ChannelMember, User, Role)
         .join(User, ChannelMember.user_id == User.id)
+        .join(Role, User.role_id == Role.id)
         .where(
             ChannelMember.channel_id == channel.id,
             ChannelMember.status == "approved"
@@ -380,9 +420,64 @@ async def get_channel_members(
     
     return [
         {
-            "user_email": user.email,
-            "user_name": user.name,
-            "joined_at": member.created_at if hasattr(member, 'created_at') else None
+            "user_id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role_name": role.name,
+            "is_admin": member.is_admin
         }
-        for member, user in members_data
-    ] 
+        for member, user, role in members_data
+    ]
+
+@router.post("/leave")
+async def leave_channel(
+    request_data: ChannelLeaveRequest,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    # workspace_name으로 workspace_id 찾기
+    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="워크스페이스를 찾을 수 없습니다."
+        )
+    
+    # channel_name으로 channel_id 찾기
+    result = await db.execute(select(Channel).where(
+        Channel.name == request_data.channel_name,
+        Channel.workspace_id == workspace.id
+    ))
+    channel = result.scalars().first()
+    if not channel:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="채널을 찾을 수 없습니다."
+        )
+    
+    # 현재 사용자의 채널 멤버십 확인
+    result = await db.execute(select(ChannelMember).where(
+        ChannelMember.user_id == user_context["user_id"],
+        ChannelMember.channel_id == channel.id,
+        ChannelMember.status == "approved"
+    ))
+    membership = result.scalars().first()
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="채널 멤버가 아닙니다."
+        )
+    
+    # 채널 생성자는 나갈 수 없음
+    if channel.created_by == user_context["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="채널 생성자는 채널을 나갈 수 없습니다."
+        )
+    
+    # 채널 나가기
+    await db.delete(membership)
+    await db.commit()
+    
+    return {"message": "채널에서 나갔습니다."} 

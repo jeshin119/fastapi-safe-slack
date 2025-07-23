@@ -76,8 +76,8 @@ async def get_current_user_with_context(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """
-    토큰에서 사용자 정보와 워크스페이스/역할 정보를 모두 가져오는 함수
-    DB 조회 없이 토큰에서 바로 정보 확인 가능
+    토큰에서 사용자 정보를 가져오는 함수
+    간소화된 토큰 구조에 맞춤
     """
     token = credentials.credentials
     payload = verify_token(token)
@@ -91,14 +91,7 @@ async def get_current_user_with_context(
     return {
         "user_id": payload.get("user_id"),
         "user_email": payload.get("user_email"),
-        "workspace_id": payload.get("workspace_id"),
-        "workspace_name": payload.get("workspace_name"),
-        "role_id": payload.get("role_id"),
-        "role_name": payload.get("role_name"),
-        "is_workspace_admin": payload.get("is_workspace_admin", False),
-        "is_contractor": payload.get("is_contractor", False),
-        "start_date": payload.get("start_date"),
-        "end_date": payload.get("end_date")
+        "user_name": payload.get("user_name")
     }
 
 def generate_invite_code(length: int = 8) -> str:
