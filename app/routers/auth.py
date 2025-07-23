@@ -87,19 +87,9 @@ async def create_invite_code(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == invite_data.workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="워크스페이스를 찾을 수 없습니다."
-        )
-    
-    # 현재 사용자가 워크스페이스 관리자인지 확인
+    # 현재 사용자가 관리자인 워크스페이스 찾기
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == workspace.id,
         WorkspaceMember.is_workspace_admin == True
     ))
     membership = result.scalars().first()
@@ -108,11 +98,12 @@ async def create_invite_code(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="워크스페이스 관리자만 초대 코드를 생성할 수 있습니다."
         )
-    
+    workspace_id = membership.workspace_id
+
     code = generate_invite_code()
     invite = InviteCode(
         code=code,
-        workspace_id=workspace.id,
+        workspace_id=workspace_id,
         expires_at=invite_data.expires_at,
         created_by=user_context["user_id"]
     )
@@ -120,12 +111,12 @@ async def create_invite_code(
     await db.commit()
     await db.refresh(invite)
     
-    return {
-        "code": invite.code,
-        "expires_at": invite.expires_at,
-        "used": invite.used,
-        "created_at": invite.created_at
-    }
+    return InviteCodeResponse(
+        code=invite.code,
+        expires_at=invite.expires_at,
+        used=invite.used,
+        created_at=invite.created_at
+    )
 
 @router.post("/invite-codes-list")
 async def get_invite_codes(

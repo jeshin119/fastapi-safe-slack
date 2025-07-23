@@ -10,6 +10,13 @@ class WorkspaceBase(BaseModel):
 class WorkspaceCreate(WorkspaceBase):
     pass
 
+class WorkspaceCreateRequest(BaseModel):
+    workspace_name: str
+
+class WorkspaceCreateResponse(BaseModel):
+    message: str
+    workspace_name: str
+
 class WorkspaceResponse(WorkspaceBase):
     id: int
     created_at: datetime
@@ -25,8 +32,11 @@ class WorkspaceJoinRequestCreate(BaseModel):
     end_date: Optional[date] = None
 
 class WorkspaceApproveRequest(BaseModel):
-    workspace_name: str
-    user_email: str
+    request_id: int
+    user_name: str
+    role_name: str
+    is_contractor: bool
+    expires_at: Optional[datetime] = None
 
 class WorkspaceJoinRequestResponse(BaseModel):
     id: int
