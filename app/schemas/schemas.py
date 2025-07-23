@@ -18,9 +18,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    workspace_name: Optional[str] = None
-    invite_code: Optional[str] = None
-    role_name: str  # role_id → role_name
 
 class UserLogin(BaseModel):
     email: EmailStr

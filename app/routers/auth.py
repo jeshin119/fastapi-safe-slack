@@ -7,7 +7,7 @@ from app.schemas.user import UserCreate, UserLogin
 from app.schemas.auth import Token, EmailVerificationRequest, EmailVerification
 from app.models.invite_code import InviteCode
 from app.schemas.invite_code import InviteCodeCreate, InviteCodeResponse
-from app.core.utils import get_current_user, get_password_hash, verify_password, create_access_token, generate_invite_code
+from app.core.utils import get_current_user, get_current_user_with_context, get_password_hash, verify_password, create_access_token, generate_invite_code
 from datetime import datetime, date
 import secrets
 
@@ -23,20 +23,6 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="이미 등록된 이메일입니다."
         )
-    if bool(user_data.workspace_name) == bool(user_data.invite_code):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="workspace_name 또는 invite_code 중 하나만 제공해야 합니다."
-        )
-    
-    # role_name으로 role_id 찾기
-    result = await db.execute(select(Role).where(Role.name == user_data.role_name))
-    role = result.scalars().first()
-    if not role:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 직급명입니다."
-        )
     
     hashed_password = get_password_hash(user_data.password)
     user = User(
@@ -47,68 +33,6 @@ async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     db.add(user)
     await db.flush()
     workspace_id = None
-    if user_data.workspace_name:
-        # 워크스페이스 이름 중복 확인
-        result = await db.execute(select(Workspace).where(Workspace.name == user_data.workspace_name))
-        existing_ws = result.scalars().first()
-        if existing_ws:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="이미 존재하는 워크스페이스 이름입니다."
-            )
-        workspace = Workspace(name=user_data.workspace_name)
-        db.add(workspace)
-        await db.flush()
-        workspace_id = workspace.id
-        member = WorkspaceMember(
-            user_id=user.id,
-            workspace_id=workspace.id,
-            role_id=role.id,
-            is_workspace_admin=True
-        )
-        db.add(member)
-        from app.models.models import Channel
-        default_channel = Channel(
-            name="전체",
-            workspace_id=workspace.id,
-            created_by=user.id,
-            is_default=True,
-            is_public=True
-        )
-        db.add(default_channel)
-    elif user_data.invite_code:
-        # 초대코드 테이블에서 code로 조회 및 검증
-        result = await db.execute(
-            select(InviteCode).where(InviteCode.code == user_data.invite_code)
-        )
-        invite = result.scalars().first()
-        if (
-            not invite
-            or invite.used
-            or (invite.expires_at and invite.expires_at < datetime.utcnow())
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="유효하지 않은 초대 코드입니다."
-            )
-        workspace_id = invite.workspace_id
-        # 1회용 코드라면 사용 처리
-        invite.used = True
-        invite.used_at = datetime.utcnow()
-        await db.commit()
-        # 워크스페이스 멤버로 바로 추가 (A안)
-        is_contractor = bool(invite.expires_at)
-        end_date = invite.expires_at if invite.expires_at else None
-        member = WorkspaceMember(
-            user_id=user.id,
-            workspace_id=workspace_id,
-            role_id=role.id,
-            is_workspace_admin=False,
-            is_contractor=is_contractor,
-            end_date=end_date
-        )
-        db.add(member)
-        await db.commit()
     await db.commit()
     return {"message": f"{user_data.name}님, 회원가입을 축하합니다!"}
 
