@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
 from app.models.workspace import RequestStatus
+from sqlalchemy import Enum as SQLEnum
 
 class Channel(Base):
     __tablename__ = "channels"
@@ -25,7 +26,7 @@ class ChannelMember(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     channel_id = Column(Integer, ForeignKey("channels.id"), nullable=False)
-    status = Column(Enum(RequestStatus), default=RequestStatus.APPROVED)
+    status = Column(SQLEnum(RequestStatus,values_callable=lambda enum_cls: [e.value for e in enum_cls],native_enum=False,name="requeststatus"), default=RequestStatus.APPROVED)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
     # 관계
     user = relationship("User", back_populates="channel_members")

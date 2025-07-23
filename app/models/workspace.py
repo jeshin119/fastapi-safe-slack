@@ -17,7 +17,6 @@ class Workspace(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     # 관계
     members = relationship("WorkspaceMember", back_populates="workspace")
-    join_requests = relationship("WorkspaceJoinRequest", back_populates="workspace")
     channels = relationship("Channel", back_populates="workspace")
 
 class WorkspaceMember(Base):
@@ -39,11 +38,13 @@ class WorkspaceJoinRequest(Base):
     __tablename__ = "workspace_join_requests"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    workspace_id = Column(Integer, ForeignKey("workspaces.id"), nullable=False)
+    invite_code_id = Column(Integer, ForeignKey("invite_codes.id"), nullable=False)
+    role_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     status = Column(SQLEnum(RequestStatus,values_callable=lambda enum_cls: [e.value for e in enum_cls],native_enum=False,name="requeststatus"),
     default=RequestStatus.PENDING, nullable=False)
     requested_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True))
     # 관계
     user = relationship("User", back_populates="workspace_join_requests")
-    workspace = relationship("Workspace", back_populates="join_requests") 
+    invite_code = relationship("InviteCode")
+    role = relationship("Role") 

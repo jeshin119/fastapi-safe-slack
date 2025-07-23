@@ -25,11 +25,8 @@ class WorkspaceResponse(WorkspaceBase):
         from_attributes = True
 
 class WorkspaceJoinRequestCreate(BaseModel):
-    workspace_name: str
+    invite_code: str
     role_name: str
-    is_contractor: bool = False
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
 
 class WorkspaceApproveRequest(BaseModel):
     request_id: int

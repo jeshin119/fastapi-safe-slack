@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
-from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role
+from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode
 from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse
 from app.schemas.channel import ChannelResponse
 from app.schemas.message import MessageResponse
@@ -84,19 +84,33 @@ async def request_workspace_join(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
+    # 초대 코드로 워크스페이스 찾기
+    result = await db.execute(select(InviteCode).where(InviteCode.code == request_data.invite_code))
+    invite_code = result.scalars().first()
+    if not invite_code:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="워크스페이스를 찾을 수 없습니다."
+            detail="유효하지 않은 초대 코드입니다."
+        )
+    
+    # 초대 코드 만료 확인
+    if invite_code.expires_at and invite_code.expires_at < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="만료된 초대 코드입니다."
+        )
+    
+    # 초대 코드 사용 여부 확인
+    if invite_code.used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미 사용된 초대 코드입니다."
         )
     
     # 이미 멤버인지 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == workspace.id
+        WorkspaceMember.workspace_id == invite_code.workspace_id
     ))
     existing_member = result.scalars().first()
     if existing_member:
@@ -117,7 +131,7 @@ async def request_workspace_join(
     # 기존 요청 확인
     result = await db.execute(select(WorkspaceJoinRequest).where(
         WorkspaceJoinRequest.user_id == user_context["user_id"],
-        WorkspaceJoinRequest.workspace_id == workspace.id,
+        WorkspaceJoinRequest.invite_code_id == invite_code.id,
         WorkspaceJoinRequest.status == "pending"
     ))
     existing_request = result.scalars().first()
@@ -129,9 +143,15 @@ async def request_workspace_join(
     
     join_request = WorkspaceJoinRequest(
         user_id=user_context["user_id"],
-        workspace_id=workspace.id
+        invite_code_id=invite_code.id,
+        role_id=role.id
     )
     db.add(join_request)
+    
+    # 초대 코드를 사용됨으로 표시
+    invite_code.used = True
+    invite_code.used_at = datetime.utcnow()
+    
     await db.commit()
     return {
         "message": "워크스페이스 가입 요청이 전송되었습니다."
@@ -139,23 +159,12 @@ async def request_workspace_join(
 
 @router.post("/join-requests-list")
 async def get_workspace_join_requests(
-    workspace_data: WorkspaceRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == workspace_data.workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="워크스페이스를 찾을 수 없습니다."
-        )
-    
-    # 현재 사용자가 워크스페이스 관리자인지 확인
+    # 현재 사용자가 관리자인 워크스페이스 찾기
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == workspace.id,
         WorkspaceMember.is_workspace_admin == True
     ))
     membership = result.scalars().first()
@@ -165,13 +174,21 @@ async def get_workspace_join_requests(
             detail="워크스페이스 관리자만 요청 목록을 볼 수 있습니다."
         )
     
+    # 해당 워크스페이스의 초대 코드들 찾기
+    result = await db.execute(select(InviteCode).where(InviteCode.workspace_id == membership.workspace_id))
+    invite_codes = result.scalars().all()
+    invite_code_ids = [ic.id for ic in invite_codes]
+    
+    if not invite_code_ids:
+        return []
+    
     # 가입 요청 목록 조회
     result = await db.execute(
         select(WorkspaceJoinRequest, User, Role)
         .join(User, WorkspaceJoinRequest.user_id == User.id)
-        .join(Role, User.role_id == Role.id)
+        .join(Role, WorkspaceJoinRequest.role_id == Role.id)
         .where(
-            WorkspaceJoinRequest.workspace_id == workspace.id,
+            WorkspaceJoinRequest.invite_code_id.in_(invite_code_ids),
             WorkspaceJoinRequest.status == "pending"
         )
     )
@@ -184,7 +201,7 @@ async def get_workspace_join_requests(
             "user_name": user.name,
             "role_name": role.name,
             "is_contractor": False,  # 기본값
-            "requested_at": request.created_at
+            "requested_at": request.requested_at
         }
         for request, user, role in requests_data
     ]
@@ -207,10 +224,35 @@ async def approve_workspace_join(
             detail="대기 중인 가입 요청을 찾을 수 없습니다."
         )
     
+    # 요청한 사용자 정보 확인
+    result = await db.execute(select(User).where(User.id == join_request.user_id))
+    request_user = result.scalars().first()
+    if not request_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="요청한 사용자를 찾을 수 없습니다."
+        )
+    
+    # user_name 검증
+    if request_user.name != approve_data.user_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="요청한 사용자 이름이 일치하지 않습니다."
+        )
+    
+    # 초대 코드를 통해 워크스페이스 정보 얻기
+    result = await db.execute(select(InviteCode).where(InviteCode.id == join_request.invite_code_id))
+    invite_code = result.scalars().first()
+    if not invite_code:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="초대 코드를 찾을 수 없습니다."
+        )
+    
     # 워크스페이스 관리자 권한 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == join_request.workspace_id,
+        WorkspaceMember.workspace_id == invite_code.workspace_id,
         WorkspaceMember.is_workspace_admin == True
     ))
     membership = result.scalars().first()
@@ -220,7 +262,7 @@ async def approve_workspace_join(
             detail="워크스페이스 관리자만 승인할 수 있습니다."
         )
     
-    # 역할 찾기
+    # 역할 찾기 (승인 시 설정할 역할)
     result = await db.execute(select(Role).where(Role.name == approve_data.role_name))
     role = result.scalars().first()
     if not role:
@@ -232,7 +274,7 @@ async def approve_workspace_join(
     # 이미 멤버인지 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == join_request.user_id,
-        WorkspaceMember.workspace_id == join_request.workspace_id
+        WorkspaceMember.workspace_id == invite_code.workspace_id
     ))
     existing_member = result.scalars().first()
     if existing_member:
@@ -244,7 +286,7 @@ async def approve_workspace_join(
     # 멤버로 추가
     member = WorkspaceMember(
         user_id=join_request.user_id,
-        workspace_id=join_request.workspace_id,
+        workspace_id=invite_code.workspace_id,
         role_id=role.id,
         is_workspace_admin=False,
         is_contractor=approve_data.is_contractor,
@@ -255,6 +297,10 @@ async def approve_workspace_join(
     # 요청 상태를 승인으로 변경
     join_request.status = "approved"
     join_request.processed_at = datetime.utcnow()
+    
+    # 초대 코드를 사용됨으로 표시
+    invite_code.used = True
+    invite_code.used_at = datetime.utcnow()
     
     await db.commit()
     return {"message": "사용자가 워크스페이스에 추가되었습니다."}

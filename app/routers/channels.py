@@ -8,6 +8,8 @@ from app.core.utils import get_current_user_with_context
 from datetime import datetime
 from typing import List
 from pydantic import BaseModel
+from app.models.models import RequestStatus
+from app.models.models import Message, File
 
 router = APIRouter()
 
@@ -96,8 +98,7 @@ async def create_channel(
     member = ChannelMember(
         user_id=user_context["user_id"],
         channel_id=channel.id,
-        status="approved",
-        is_admin=True  # 채널 생성자는 관리자
+        status="approved"
     )
     db.add(member)
     
@@ -132,7 +133,7 @@ async def get_channels(
         .join(ChannelMember, Channel.id == ChannelMember.channel_id)
         .where(
             ChannelMember.user_id == user_id,
-            ChannelMember.status == "approved",
+            ChannelMember.status == RequestStatus.APPROVED,
             Channel.workspace_id == workspace.id
         )
     )
@@ -183,7 +184,26 @@ async def delete_channel(
             detail="채널 생성자만 삭제할 수 있습니다."
         )
     
-    # 채널 삭제
+    # 연관된 데이터 먼저 삭제
+    # 1. 채널 멤버 삭제
+    result = await db.execute(select(ChannelMember).where(ChannelMember.channel_id == channel.id))
+    channel_members = result.scalars().all()
+    for member in channel_members:
+        await db.delete(member)
+    
+    # 2. 메시지 삭제
+    result = await db.execute(select(Message).where(Message.channel_id == channel.id))
+    messages = result.scalars().all()
+    for message in messages:
+        await db.delete(message)
+    
+    # 3. 파일 삭제
+    result = await db.execute(select(File).where(File.channel_id == channel.id))
+    files = result.scalars().all()
+    for file in files:
+        await db.delete(file)
+    
+    # 4. 채널 삭제
     await db.delete(channel)
     await db.commit()
     
@@ -240,12 +260,12 @@ async def request_channel_join(
     ))
     existing_member = result.scalars().first()
     if existing_member:
-        if existing_member.status == "approved":
+        if existing_member.status == RequestStatus.APPROVED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="이미 채널 멤버입니다."
             )
-        elif existing_member.status == "pending":
+        elif existing_member.status == RequestStatus.PENDING:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="이미 입장 요청이 대기 중입니다."
@@ -255,7 +275,7 @@ async def request_channel_join(
     member = ChannelMember(
         user_id=user_context["user_id"],
         channel_id=channel.id,
-        status="pending"
+        status=RequestStatus.PENDING
     )
     db.add(member)
     await db.commit()
@@ -278,28 +298,23 @@ async def get_channel_join_requests(
     
     # 현재 사용자가 관리자인 채널들의 입장 요청 조회
     result = await db.execute(
-        select(ChannelMember, User, Role, Channel)
+        select(ChannelMember, User, WorkspaceMember, Role, Channel)
         .join(User, ChannelMember.user_id == User.id)
-        .join(Role, User.role_id == Role.id)
+        .join(WorkspaceMember, User.id == WorkspaceMember.user_id)
+        .join(Role, WorkspaceMember.role_id == Role.id)
         .join(Channel, ChannelMember.channel_id == Channel.id)
         .where(
             Channel.workspace_id == workspace.id,
-            ChannelMember.status == "pending"
+            ChannelMember.status == RequestStatus.PENDING
         )
     )
     requests_data = result.all()
     
     # 현재 사용자가 관리자인 채널들만 필터링
     admin_channels = []
-    for member, user, role, channel in requests_data:
-        # 현재 사용자가 이 채널의 관리자인지 확인
-        result = await db.execute(select(ChannelMember).where(
-            ChannelMember.user_id == user_context["user_id"],
-            ChannelMember.channel_id == channel.id,
-            ChannelMember.is_admin == True
-        ))
-        admin_membership = result.scalars().first()
-        if admin_membership:
+    for member, user, workspace_member, role, channel in requests_data:
+        # 현재 사용자가 이 채널의 생성자인지 확인
+        if channel.created_by == user_context["user_id"]:
             admin_channels.append((member, user, role, channel))
     
     return [
@@ -352,7 +367,7 @@ async def approve_channel_join(
     result = await db.execute(select(ChannelMember).where(
         ChannelMember.id == approve_data.request_id,
         ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "pending"
+        ChannelMember.status == RequestStatus.PENDING
     ))
     request = result.scalars().first()
     if not request:
@@ -362,7 +377,7 @@ async def approve_channel_join(
         )
     
     # 입장 승인
-    request.status = "approved"
+    request.status = RequestStatus.APPROVED
     await db.commit()
     return {"message": "채널 입장이 승인되었습니다."}
 
@@ -397,7 +412,7 @@ async def get_channel_members(
     result = await db.execute(select(ChannelMember).where(
         ChannelMember.user_id == user_context["user_id"],
         ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "approved"
+        ChannelMember.status == RequestStatus.APPROVED
     ))
     membership = result.scalars().first()
     if not membership:
@@ -408,12 +423,14 @@ async def get_channel_members(
     
     # 채널 멤버 정보 조회 (JOIN으로 한 번에 가져오기)
     result = await db.execute(
-        select(ChannelMember, User, Role)
+        select(ChannelMember, User, WorkspaceMember, Role)
         .join(User, ChannelMember.user_id == User.id)
-        .join(Role, User.role_id == Role.id)
+        .join(WorkspaceMember, User.id == WorkspaceMember.user_id)
+        .join(Role, WorkspaceMember.role_id == Role.id)
         .where(
             ChannelMember.channel_id == channel.id,
-            ChannelMember.status == "approved"
+            ChannelMember.status == RequestStatus.APPROVED,
+            WorkspaceMember.workspace_id == workspace.id
         )
     )
     members_data = result.all()
@@ -424,9 +441,9 @@ async def get_channel_members(
             "name": user.name,
             "email": user.email,
             "role_name": role.name,
-            "is_admin": member.is_admin
+            "is_admin": channel.created_by == user.id
         }
-        for member, user, role in members_data
+        for member, user, workspace_member, role in members_data
     ]
 
 @router.post("/leave")
@@ -460,7 +477,7 @@ async def leave_channel(
     result = await db.execute(select(ChannelMember).where(
         ChannelMember.user_id == user_context["user_id"],
         ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "approved"
+        ChannelMember.status == RequestStatus.APPROVED
     ))
     membership = result.scalars().first()
     if not membership:
