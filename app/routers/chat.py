@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
-from app.core.utils import get_current_user_with_context
+from app.core.utils import get_current_user_with_context, verify_token
 from app.core.websocket_manager import manager
 from app.models.models import Workspace, Channel, WorkspaceMember, ChannelMember, Message, User
 from app.schemas.chat import WebSocketMessage
@@ -10,6 +10,23 @@ from datetime import datetime
 import json
 
 router = APIRouter()
+
+def verify_websocket_token(token: str) -> dict:
+    """
+    WebSocket용 JWT 토큰 검증 함수
+    """
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+    
+    return {
+        "user_id": payload.get("user_id"),
+        "user_email": payload.get("user_email"),
+        "user_name": payload.get("user_name")
+    }
 
 @router.websocket("/ws/{workspace_name}/{channel_name}")
 async def websocket_endpoint(
@@ -24,10 +41,9 @@ async def websocket_endpoint(
         return
     
     try:
-        # 토큰에서 사용자 정보 추출 (간단한 방식)
-        # 실제로는 JWT 디코딩 로직 필요
-        user_context = await get_current_user_with_context(token)
-    except:
+        # 토큰에서 사용자 정보 추출
+        user_context = verify_websocket_token(token)
+    except Exception as e:
         await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
         return
     
