@@ -331,6 +331,9 @@ async def approve_workspace_join(
     # 요청 상태를 승인으로 변경
     join_request.status = "approved"
     join_request.processed_at = datetime.utcnow()
+    join_request.role_name = approve_data.role_name  # ✅ 관리자 승인값으로 role_name 덮어쓰기
+    join_request.role_id = role.id  # ✅ 이 줄이 핵심입니다
+    db.add(join_request)  # ✅ 세션에 반영
     
     # 초대 코드를 사용됨으로 표시
     invite_code.used = True
