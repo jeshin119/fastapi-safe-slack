@@ -364,7 +364,7 @@ async def get_workspace_members(
         for member, user, role in members_data
     ] 
 
-@router.get("/workspaces_list", response_model=List[dict])
+@router.get("/workspaces_list", response_model=List[dict])  # 본인이 포함된 워크스페이스 목록 조회
 async def get_my_workspace_names_with_roles(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
@@ -372,10 +372,21 @@ async def get_my_workspace_names_with_roles(
     user_id = user_context["user_id"]
 
     result = await db.execute(
-        select(Workspace.name, WorkspaceMember.role_id)
+        select(
+            Workspace.name,
+            WorkspaceMember.role_id,
+            WorkspaceMember.start_date
+        )
         .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
         .where(WorkspaceMember.user_id == user_id)
     )
 
     data = result.all()
-    return [{"name": name, "role_id": role_id} for name, role_id in data]
+    return [
+        {
+            "name": name,
+            "role_id": role_id,
+            "start_date": start_date.isoformat() if start_date else None  # ISO 문자열로 변환
+        }
+        for name, role_id, start_date in data
+    ]
