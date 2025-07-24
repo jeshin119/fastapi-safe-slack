@@ -12,6 +12,7 @@ from typing import List
 from app.models.workspace import RequestStatus
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from datetime import date
 
 router = APIRouter()
 
@@ -31,6 +32,14 @@ class WorkspaceMemberList(BaseModel):
     name: str
     email: str
     role_name: str
+
+class WorkspaceOut(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
 
 @router.post("/create")
 async def create_workspace(
@@ -62,12 +71,15 @@ async def create_workspace(
             detail="시스템에 역할이 설정되지 않았습니다."
         )
     
+    today = date.today()
+
     # 생성자를 워크스페이스 관리자로 추가
     workspace_member = WorkspaceMember(
         user_id=user_context["user_id"],
         workspace_id=new_workspace.id,
         role_id=admin_role.id,
-        is_workspace_admin=True
+        is_workspace_admin=True,
+        start_date=today  # ⬅️ 응답에 포함
     )
     db.add(workspace_member)
     
@@ -75,7 +87,8 @@ async def create_workspace(
     
     return WorkspaceCreateResponse(
         message="워크스페이스가 생성되었습니다.",
-        workspace_name=request_data.workspace_name
+        workspace_name=request_data.workspace_name,
+        start_date=today  # ⬅️ 응답에 포함
     )
 
 @router.post("/join-request")
@@ -350,3 +363,30 @@ async def get_workspace_members(
         }
         for member, user, role in members_data
     ] 
+
+@router.get("/workspaces_list", response_model=List[dict])  # 본인이 포함된 워크스페이스 목록 조회
+async def get_my_workspace_names_with_roles(
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    user_id = user_context["user_id"]
+
+    result = await db.execute(
+        select(
+            Workspace.name,
+            WorkspaceMember.role_id,
+            WorkspaceMember.start_date
+        )
+        .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
+        .where(WorkspaceMember.user_id == user_id)
+    )
+
+    data = result.all()
+    return [
+        {
+            "name": name,
+            "role_id": role_id,
+            "start_date": start_date.isoformat() if start_date else None  # ISO 문자열로 변환
+        }
+        for name, role_id, start_date in data
+    ]

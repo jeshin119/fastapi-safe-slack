@@ -16,6 +16,7 @@ class WorkspaceCreateRequest(BaseModel):
 class WorkspaceCreateResponse(BaseModel):
     message: str
     workspace_name: str
+    start_date: date  # ⬅️ 추가
 
 class WorkspaceResponse(WorkspaceBase):
     id: int
