@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class InviteCodeCreate(BaseModel):
+    workspace_name: str
     expires_at: Optional[datetime] = None
 
 class InviteCodeResponse(BaseModel):

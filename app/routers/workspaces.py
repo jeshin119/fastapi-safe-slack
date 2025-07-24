@@ -172,30 +172,41 @@ async def request_workspace_join(
 
 @router.post("/join-requests-list")
 async def get_workspace_join_requests(
+    workspace_data: WorkspaceCreateRequest,  # ⭐ workspace_name 받기
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 현재 사용자가 관리자인 워크스페이스 찾기
+    # ⭐ 1. workspace_name → workspace_id
+    result = await db.execute(select(Workspace).where(Workspace.name == workspace_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 워크스페이스를 찾을 수 없습니다."
+        )
+
+    # ⭐ 2. 해당 워크스페이스에서 관리자인지 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
+        WorkspaceMember.workspace_id == workspace.id,
         WorkspaceMember.is_workspace_admin == True
     ))
     membership = result.scalars().first()
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="워크스페이스 관리자만 요청 목록을 볼 수 있습니다."
+            detail="해당 워크스페이스의 관리자만 요청 목록을 볼 수 있습니다."
         )
-    
-    # 해당 워크스페이스의 초대 코드들 찾기
-    result = await db.execute(select(InviteCode).where(InviteCode.workspace_id == membership.workspace_id))
+
+    # 3. 해당 워크스페이스의 초대 코드 목록 조회
+    result = await db.execute(select(InviteCode).where(InviteCode.workspace_id == workspace.id))
     invite_codes = result.scalars().all()
     invite_code_ids = [ic.id for ic in invite_codes]
-    
+
     if not invite_code_ids:
         return []
-    
-    # 가입 요청 목록 조회
+
+    # 4. 가입 요청 조회 (JOIN)
     result = await db.execute(
         select(WorkspaceJoinRequest, User, Role)
         .join(User, WorkspaceJoinRequest.user_id == User.id)
@@ -206,18 +217,19 @@ async def get_workspace_join_requests(
         )
     )
     requests_data = result.all()
-    
+
     return [
         {
             "request_id": request.id,
             "user_email": user.email,
             "user_name": user.name,
             "role_name": role.name,
-            "is_contractor": False,  # 기본값
+            "is_contractor": False,
             "requested_at": request.requested_at
         }
         for request, user, role in requests_data
     ]
+
 
 @router.post("/approve")
 async def approve_workspace_join(
