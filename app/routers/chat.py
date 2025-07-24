@@ -2,14 +2,26 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPExce
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
-from app.core.utils import get_current_user_with_context
+from app.core.utils import get_current_user_with_context, verify_token
 from app.core.websocket_manager import manager
-from app.models.models import Workspace, Channel, WorkspaceMember, ChannelMember, Message, User
+from app.models.models import Workspace, Channel, WorkspaceMember, ChannelMember, User
 from app.schemas.chat import WebSocketMessage
 from datetime import datetime
 import json
 
 router = APIRouter()
+
+def verify_websocket_token(token: str) -> dict:
+    """
+    WebSocket용 JWT 토큰 검증 함수
+    """
+    payload = verify_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+    return payload
 
 @router.websocket("/ws/{workspace_name}/{channel_name}")
 async def websocket_endpoint(
@@ -24,10 +36,9 @@ async def websocket_endpoint(
         return
     
     try:
-        # 토큰에서 사용자 정보 추출 (간단한 방식)
-        # 실제로는 JWT 디코딩 로직 필요
-        user_context = await get_current_user_with_context(token)
-    except:
+        # WebSocket용 토큰 검증
+        user_context = verify_websocket_token(token)
+    except Exception as e:
         await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
         return
     
@@ -102,19 +113,30 @@ async def websocket_endpoint(
                     if not content:
                         continue
                     
-                    # 메시지 DB 저장
-                    new_message = Message(
-                        content=content,
-                        user_id=user_context["user_id"],
-                        channel_id=channel.id,
-                        message_type=message_data.get("message_type", "text"),
-                        reply_to=message_data.get("reply_to"),
-                        mentions=json.dumps(message_data.get("mentions", [])) if message_data.get("mentions") else None
-                    )
+                    # message_type 검증
+                    message_type = message_data.get("message_type", "text")
+                    valid_message_types = ["text", "file", "image", "video", "audio"]
+                    if message_type not in valid_message_types:
+                        await manager.send_personal_message(websocket, {
+                            "type": "error",
+                            "message": f"유효하지 않은 메시지 타입입니다. 허용된 타입: {', '.join(valid_message_types)}",
+                            "timestamp": datetime.now().isoformat()
+                        })
+                        continue
                     
-                    db.add(new_message)
-                    await db.commit()
-                    await db.refresh(new_message)
+                    # 메시지 DB 저장 (DynamoDB 전환 전까지 임시 주석)
+                    # new_message = Message(
+                    #     content=content,
+                    #     user_id=user_context["user_id"],
+                    #     channel_id=channel.id,
+                    #     message_type=message_type,
+                    #     reply_to=message_data.get("reply_to"),
+                    #     mentions=json.dumps(message_data.get("mentions", [])) if message_data.get("mentions") else None
+                    # )
+                    # 
+                    # db.add(new_message)
+                    # await db.commit()
+                    # await db.refresh(new_message)
                     
                     # 채널 멤버들에게 메시지 브로드캐스트
                     await manager.broadcast_to_channel(
@@ -122,14 +144,14 @@ async def websocket_endpoint(
                         channel.id,
                         {
                             "type": "message",
-                            "message_id": new_message.id,
+                            "message_id": None,  # DB 저장 안하므로 None
                             "content": content,
                             "user_id": user_context["user_id"],
                             "user_name": user_context["user_name"],
-                            "message_type": message_data.get("message_type", "text"),
+                            "message_type": message_type,
                             "reply_to": message_data.get("reply_to"),
                             "mentions": message_data.get("mentions"),
-                            "timestamp": new_message.created_at.isoformat()
+                            "timestamp": datetime.now().isoformat()
                         }
                     )
                 
