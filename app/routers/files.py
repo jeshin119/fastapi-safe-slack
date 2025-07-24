@@ -38,7 +38,8 @@ def upload_to_s3(file: UploadFile, filename: str) -> str:
             Bucket=settings.S3_BUCKET_NAME,
             Key=unique_filename,
             Body=file_content,
-            ContentType=file.content_type
+            ContentType=file.content_type,
+            ACL='public-read'
         )
         
         # 파일 포인터를 다시 처음으로 되돌림 (다른 곳에서 사용할 수 있도록)
