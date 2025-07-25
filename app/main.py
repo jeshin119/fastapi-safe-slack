@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routers import auth, workspaces, channels, files, chat
 import os
+from pathlib import Path
 
 app = FastAPI(
     title="Safe Slack API",
@@ -20,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 정적 파일 제공 설정
-app.mount("/srcs", StaticFiles(directory="app/srcs"), name="static")
+BASE_DIR = Path(__file__).resolve().parent  # app/
+app.mount("/static", StaticFiles(directory=BASE_DIR / "front", html=True), name="static")
 
 # 라우터 등록
 app.include_router(auth.router, prefix="/auth", tags=["인증"])
@@ -32,9 +33,8 @@ app.include_router(files.router, prefix="/channels", tags=["파일"])
 app.include_router(chat.router, tags=["채팅"])
 
 @app.get("/")
-async def root():
-    """루트 경로에서 index.html 제공"""
-    return FileResponse("app/srcs/index.html")
+async def serve_root():
+    return FileResponse(BASE_DIR / "front" / "index.html")
 
 @app.get("/health")
 async def health_check():
