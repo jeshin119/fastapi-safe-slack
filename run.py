@@ -2,11 +2,14 @@ import uvicorn
 from app.main import app
 
 if __name__ == "__main__":
+    # 최소 보안 개선 버전
     uvicorn.run(
         "app.main:app",
-        host="0.0.0.0",
+        host="0.0.0.0",        # 이건 나중에 호스트 변경해야함 🐰
         port=8000,
-        reload=True,
-        log_level="info",
-        server_header=False
-    ) 
+        reload=True,            # 출시할 때는 False로 변경해야함 🐰
+        log_level="warning",     # info → warning 변경  
+        server_header=False,
+        use_colors=False,        # CVE-2020-7694 대응
+        proxy_headers=True,      # 프록시 환경 대응
+    )
