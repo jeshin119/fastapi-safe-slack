@@ -320,7 +320,7 @@ fastapi-safe-slack2/
 │   │   ├── workspaces.py    # 워크스페이스 관련 라우터
 │   │   ├── channels.py      # 채널 관련 라우터
 │   │   ├── files.py         # 파일 관련 라우터
-│   │   └── messages.py      # 메시지 관련 라우터
+
 │   ├── core/                # 환경설정, 보안 등 공통 모듈
 │   ├── db/                  # 데이터베이스 관련 파일
 │   └── init_db.py           # 데이터베이스 초기화
@@ -339,7 +339,7 @@ fastapi-safe-slack2/
 - `channels` - 채널
 - `channel_members` - 채널 멤버십
 - `channel_join_requests` - 채널 입장 요청
-- `messages` - 메시지
+
 - `files` - 파일 정보
 - `roles` - 직급 정보
 - `invite_codes` - 초대코드 정보

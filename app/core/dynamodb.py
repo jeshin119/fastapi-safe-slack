@@ -70,26 +70,22 @@ class DynamoDBManager:
                         'KeyType': 'HASH'  # Partition key
                     },
                     {
-                        'AttributeName': 'message_id',
+                        'AttributeName': 'timestamp',
                         'KeyType': 'RANGE'  # Sort key
                     }
                 ],
                 AttributeDefinitions=[
                     {
                         'AttributeName': 'channel_id',
-                        'AttributeType': 'S'  # String 타입으로 변경
-                    },
-                    {
-                        'AttributeName': 'message_id',
-                        'AttributeType': 'S'
-                    },
-                    {
-                        'AttributeName': 'user_id',
-                        'AttributeType': 'S'  # String 타입으로 변경
+                        'AttributeType': 'S'  # String 타입
                     },
                     {
                         'AttributeName': 'timestamp',
-                        'AttributeType': 'S'
+                        'AttributeType': 'S'  # String 타입
+                    },
+                    {
+                        'AttributeName': 'user_id',
+                        'AttributeType': 'S'  # String 타입
                     }
                 ],
                 GlobalSecondaryIndexes=[
@@ -123,6 +119,36 @@ class DynamoDBManager:
         except Exception as e:
             print(f"테이블 생성 오류: {e}")
     
+    def recreate_table(self):
+        """테이블을 삭제하고 재생성 (주의: 모든 데이터가 삭제됩니다)"""
+        self._initialize()
+        
+        try:
+            # 테이블 삭제
+            print(f"테이블 '{self.table_name}' 삭제 중...")
+            self.table.delete()
+            
+            # 삭제 완료까지 대기
+            waiter = self.dynamodb.meta.client.get_waiter('table_not_exists')
+            waiter.wait(TableName=self.table_name)
+            print(f"테이블 '{self.table_name}' 삭제 완료")
+            
+            # 테이블 재생성
+            print(f"테이블 '{self.table_name}' 재생성 중...")
+            self._create_table()
+            
+            # 생성 완료까지 대기
+            waiter = self.dynamodb.meta.client.get_waiter('table_exists')
+            waiter.wait(TableName=self.table_name)
+            print(f"테이블 '{self.table_name}' 재생성 완료")
+            
+            # 테이블 객체 재설정
+            self.table = self.dynamodb.Table(self.table_name)
+            
+        except Exception as e:
+            print(f"테이블 재생성 오류: {e}")
+            raise
+    
     async def save_message(self, message_data: Dict) -> str:
         """메시지 저장"""
         self._initialize()
@@ -132,14 +158,17 @@ class DynamoDBManager:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             message_id = f"{message_data['channel_id']}_{timestamp}_{message_data['user_id']}"
             
+            # ISO 형식의 timestamp (Sort Key용)
+            iso_timestamp = datetime.now().isoformat()
+            
             item = {
                 'channel_id': str(message_data['channel_id']),  # 문자열로 변환
-                'message_id': message_id,
+                'timestamp': iso_timestamp,  # Sort Key
+                'message_id': message_id,  # 고유 ID
                 'user_id': str(message_data['user_id']),  # 문자열로 변환
                 'user_name': message_data['user_name'],
                 'content': message_data['content'],
                 'message_type': message_data.get('message_type', 'text'),
-                'timestamp': datetime.now().isoformat(),
                 'reply_to': message_data.get('reply_to'),
                 'mentions': json.dumps(message_data.get('mentions', [])) if message_data.get('mentions') else None
             }
@@ -165,13 +194,13 @@ class DynamoDBManager:
             }
             
             if last_key:
-                query_kwargs['ExclusiveStartKey'] = {'channel_id': str(channel_id), 'message_id': last_key}
+                query_kwargs['ExclusiveStartKey'] = {'channel_id': str(channel_id), 'timestamp': last_key}
             
             response = self.table.query(**query_kwargs)
             messages = response.get('Items', [])
             
-            # 시간순 정렬 (최신순)
-            messages.sort(key=lambda x: x['timestamp'], reverse=True)
+            # 시간순 정렬 (최신순) - timestamp Sort Key로 이미 정렬됨
+            # messages.sort(key=lambda x: x['timestamp'], reverse=True)  # 불필요
             
             print(f"채널 {channel_id}에서 {len(messages)}개 메시지 조회 완료")
             return messages[:limit]
@@ -185,26 +214,24 @@ class DynamoDBManager:
         self._initialize()
         
         try:
-            # 메시지 조회
-            response = self.table.get_item(
-                Key={
-                    'channel_id': str(channel_id),  # 문자열로 변환
-                    'message_id': message_id
-                }
+            # 메시지 조회 (message_id로 검색)
+            response = self.table.scan(
+                FilterExpression=boto3.dynamodb.conditions.Attr('message_id').eq(message_id) & 
+                                boto3.dynamodb.conditions.Attr('channel_id').eq(str(channel_id))
             )
             
-            if 'Item' not in response:
+            if not response.get('Items'):
                 return False
             
-            item = response['Item']
+            item = response['Items'][0]
             if item['user_id'] != str(user_id):  # 문자열로 비교
                 return False  # 작성자가 아님
             
-            # 메시지 삭제
+            # 메시지 삭제 (timestamp Sort Key 사용)
             self.table.delete_item(
                 Key={
                     'channel_id': str(channel_id),  # 문자열로 변환
-                    'message_id': message_id
+                    'timestamp': item['timestamp']
                 }
             )
             print(f"메시지 삭제 완료: {message_id}")
@@ -212,6 +239,52 @@ class DynamoDBManager:
             
         except Exception as e:
             print(f"메시지 삭제 오류: {e}")
+            return False
+
+    async def delete_channel_messages(self, channel_id: int) -> bool:
+        """채널의 모든 메시지 삭제"""
+        self._initialize()
+        
+        try:
+            # 채널의 모든 메시지 조회
+            response = self.table.query(
+                KeyConditionExpression=boto3.dynamodb.conditions.Key('channel_id').eq(str(channel_id)),
+                ProjectionExpression='timestamp'  # timestamp Sort Key만 가져오기
+            )
+            
+            messages = response.get('Items', [])
+            print(f"채널 {channel_id}에서 조회된 메시지 수: {len(messages)}")
+            
+            if not messages:
+                print(f"채널 {channel_id}에 삭제할 메시지가 없습니다.")
+                return True
+            
+            # 조회 결과 로깅 (디버깅용)
+            print(f"조회된 메시지들: {messages[:3]}...")  # 처음 3개만 출력
+            
+            # 모든 메시지 삭제
+            with self.table.batch_writer() as batch:
+                for message in messages:
+                    if 'timestamp' not in message:
+                        print(f"timestamp가 없는 메시지: {message}")
+                        continue
+                    
+                    try:
+                        batch.delete_item(
+                            Key={
+                                'channel_id': str(channel_id),
+                                'timestamp': message['timestamp']
+                            }
+                        )
+                    except Exception as delete_error:
+                        print(f"메시지 삭제 실패 - channel_id: {channel_id}, timestamp: {message.get('timestamp')}, 오류: {delete_error}")
+                        continue
+            
+            print(f"채널 {channel_id}의 {len(messages)}개 메시지 삭제 완료")
+            return True
+            
+        except Exception as e:
+            print(f"채널 메시지 삭제 오류: {e}")
             return False
 
 # 전역 인스턴스

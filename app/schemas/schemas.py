@@ -7,7 +7,7 @@ from app.db.session import engine, Base
 from .user import *
 from .workspace import *
 from .channel import *
-from .message import *
+
 from .file import *
 from .auth import *
 
@@ -84,21 +84,7 @@ class ChannelResponse(ChannelBase):
 class ChannelJoinRequestResponse(BaseModel):
     message: str
 
-# Message schemas
-class MessageBase(BaseModel):
-    content: str
 
-class MessageCreate(MessageBase):
-    pass
-
-class MessageResponse(MessageBase):
-    id: int
-    user_id: int
-    channel_id: int
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
 
 # File schemas
 class FileBase(BaseModel):

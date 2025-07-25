@@ -9,7 +9,8 @@ from datetime import datetime
 from typing import List
 from pydantic import BaseModel
 from app.models.models import RequestStatus
-from app.models.models import Message, File
+from app.models.models import File
+from app.core.dynamodb import dynamodb_manager
 
 router = APIRouter()
 
@@ -192,12 +193,6 @@ async def delete_channel(
         await db.delete(member)
     
     # 2. 메시지 삭제
-    result = await db.execute(select(Message).where(Message.channel_id == channel.id))
-    messages = result.scalars().all()
-    for message in messages:
-        await db.delete(message)
-    
-    # 3. 파일 삭제
     result = await db.execute(select(File).where(File.channel_id == channel.id))
     files = result.scalars().all()
     for file in files:
@@ -486,14 +481,50 @@ async def leave_channel(
             detail="채널 멤버가 아닙니다."
         )
     
-    # 채널 생성자는 나갈 수 없음
+    # 채널 생성자인 경우, 다른 멤버가 있는지 확인
     if channel.created_by == user_context["user_id"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="채널 생성자는 채널을 나갈 수 없습니다."
-        )
+        # 채널의 총 멤버 수 확인
+        result = await db.execute(select(ChannelMember).where(
+            ChannelMember.channel_id == channel.id,
+            ChannelMember.status == RequestStatus.APPROVED
+        ))
+        all_members = result.scalars().all()
+        
+        # 자기밖에 없으면 나갈 수 있음
+        if len(all_members) == 1:
+            # 채널 삭제 (연관된 데이터도 함께 삭제)
+            # 1. 채널 멤버 삭제
+            result = await db.execute(select(ChannelMember).where(ChannelMember.channel_id == channel.id))
+            channel_members = result.scalars().all()
+            for member in channel_members:
+                await db.delete(member)
+            
+            # 2. DynamoDB에서 메시지 삭제
+            try:
+                await dynamodb_manager.delete_channel_messages(channel.id)
+            except Exception as e:
+                # DynamoDB 삭제 실패해도 계속 진행
+                print(f"DynamoDB 메시지 삭제 실패: {e}")
+            
+            # 3. 파일 삭제
+            result = await db.execute(select(File).where(File.channel_id == channel.id))
+            files = result.scalars().all()
+            for file in files:
+                await db.delete(file)
+            
+            # 4. 채널 삭제
+            await db.delete(channel)
+            await db.commit()
+            
+            return {"message": "채널에서 나갔습니다. (마지막 멤버였으므로 채널이 삭제되었습니다.)"}
+        else:
+            # 다른 멤버가 있으면 나갈 수 없음
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="채널 생성자는 다른 멤버가 있을 때는 채널을 나갈 수 없습니다."
+            )
     
-    # 채널 나가기
+    # 일반 멤버는 바로 나가기
     await db.delete(membership)
     await db.commit()
     

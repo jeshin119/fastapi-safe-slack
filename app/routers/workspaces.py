@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode
 from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse
 from app.schemas.channel import ChannelResponse
-from app.schemas.message import MessageResponse
+
 from app.core.utils import get_current_user, get_current_user_with_context
 from datetime import datetime
 from typing import List

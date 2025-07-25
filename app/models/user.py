@@ -16,7 +16,6 @@ class User(Base):
     workspace_members = relationship("WorkspaceMember", back_populates="user")
     workspace_join_requests = relationship("WorkspaceJoinRequest", back_populates="user")
     channel_members = relationship("ChannelMember", back_populates="user")
-    messages = relationship("Message", back_populates="user")
     files = relationship("File", back_populates="uploaded_by_user")
     created_channels = relationship("Channel", back_populates="created_by_user")
 

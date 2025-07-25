@@ -112,18 +112,7 @@ async def init_db():
             )
         """))
         
-        # 9. 메시지 테이블
-        await conn.execute(text("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                channel_id INT NOT NULL,
-                user_id INT NOT NULL,
-                content TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (channel_id) REFERENCES channels(id),
-                FOREIGN KEY (user_id) REFERENCES users(id)
-            )
-        """))
+
         
         # 10. 파일 테이블
         await conn.execute(text("""

@@ -18,7 +18,6 @@ class Channel(Base):
     workspace = relationship("Workspace", back_populates="channels")
     created_by_user = relationship("User", back_populates="created_channels")
     members = relationship("ChannelMember", back_populates="channel")
-    messages = relationship("Message", back_populates="channel")
     files = relationship("File", back_populates="channel")
 
 class ChannelMember(Base):
