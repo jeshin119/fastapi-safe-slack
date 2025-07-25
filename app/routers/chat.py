@@ -31,60 +31,76 @@ async def websocket_endpoint(
     channel_name: str,
     token: str = None
 ):
-    # JWT 토큰 검증
-    if not token:
-        await websocket.close(code=4001, reason="토큰이 필요합니다.")
-        return
+    # 개발 모드 토큰 처리
+    if token == "dev-token":
+        user_context = {
+            "user_id": 1,
+            "user_name": "김개발",
+            "email": "kim@example.com"
+        }
+        # 개발 모드용 더미 데이터
+        workspace = type('Workspace', (), {'id': 1})()
+        channel = type('Channel', (), {'id': 1})()
+        db = None
+    else:
+        # JWT 토큰 검증
+        if not token:
+            await websocket.close(code=4001, reason="토큰이 필요합니다.")
+            return
+        
+        try:
+            # WebSocket용 토큰 검증
+            user_context = verify_websocket_token(token)
+        except Exception as e:
+            await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
+            return
+        
+        # 데이터베이스 연결 (워크스페이스/채널 검증용)
+        db = await get_db().__anext__()
+        
+        try:
+            # 워크스페이스 확인
+            result = await db.execute(select(Workspace).where(Workspace.name == workspace_name))
+            workspace = result.scalars().first()
+            if not workspace:
+                await websocket.close(code=4004, reason="워크스페이스를 찾을 수 없습니다.")
+                return
+            
+            # 채널 확인
+            result = await db.execute(select(Channel).where(
+                Channel.name == channel_name,
+                Channel.workspace_id == workspace.id
+            ))
+            channel = result.scalars().first()
+            if not channel:
+                await websocket.close(code=4004, reason="채널을 찾을 수 없습니다.")
+                return
+            
+            # 워크스페이스 멤버십 확인
+            result = await db.execute(select(WorkspaceMember).where(
+                WorkspaceMember.user_id == user_context["user_id"],
+                WorkspaceMember.workspace_id == workspace.id
+            ))
+            workspace_membership = result.scalars().first()
+            if not workspace_membership:
+                await websocket.close(code=4003, reason="워크스페이스에 접근할 권한이 없습니다.")
+                return
+            
+            # 채널 멤버십 확인
+            result = await db.execute(select(ChannelMember).where(
+                ChannelMember.user_id == user_context["user_id"],
+                ChannelMember.channel_id == channel.id,
+                ChannelMember.status == "approved"
+            ))
+            channel_membership = result.scalars().first()
+            if not channel_membership:
+                await websocket.close(code=4003, reason="채널에 접근할 권한이 없습니다.")
+                return
+        except Exception as e:
+            await websocket.close(code=4005, reason=f"데이터베이스 오류: {str(e)}")
+            return
     
     try:
-        # WebSocket용 토큰 검증
-        user_context = verify_websocket_token(token)
-    except Exception as e:
-        await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
-        return
-    
-    # 데이터베이스 연결 (워크스페이스/채널 검증용)
-    db = await get_db().__anext__()
-    
-    try:
-        # 워크스페이스 확인
-        result = await db.execute(select(Workspace).where(Workspace.name == workspace_name))
-        workspace = result.scalars().first()
-        if not workspace:
-            await websocket.close(code=4004, reason="워크스페이스를 찾을 수 없습니다.")
-            return
-        
-        # 채널 확인
-        result = await db.execute(select(Channel).where(
-            Channel.name == channel_name,
-            Channel.workspace_id == workspace.id
-        ))
-        channel = result.scalars().first()
-        if not channel:
-            await websocket.close(code=4004, reason="채널을 찾을 수 없습니다.")
-            return
-        
-        # 워크스페이스 멤버십 확인
-        result = await db.execute(select(WorkspaceMember).where(
-            WorkspaceMember.user_id == user_context["user_id"],
-            WorkspaceMember.workspace_id == workspace.id
-        ))
-        workspace_membership = result.scalars().first()
-        if not workspace_membership:
-            await websocket.close(code=4003, reason="워크스페이스에 접근할 권한이 없습니다.")
-            return
-        
-        # 채널 멤버십 확인
-        result = await db.execute(select(ChannelMember).where(
-            ChannelMember.user_id == user_context["user_id"],
-            ChannelMember.channel_id == channel.id,
-            ChannelMember.status == "approved"
-        ))
-        channel_membership = result.scalars().first()
-        if not channel_membership:
-            await websocket.close(code=4003, reason="채널에 접근할 권한이 없습니다.")
-            return
-        
         # WebSocket 연결
         await manager.connect(
             websocket, 
@@ -125,24 +141,28 @@ async def websocket_endpoint(
                         })
                         continue
                     
-                    # DynamoDB에 메시지 저장
-                    message_item = {
-                        'channel_id': channel.id,
-                        'user_id': user_context["user_id"],
-                        'user_name': user_context["user_name"],
-                        'content': content,
-                        'message_type': message_type,
-                        'reply_to': message_data.get('reply_to'),
-                        'mentions': message_data.get('mentions', [])
-                    }
-                    
-                    try:
-                        message_id = await dynamodb_manager.save_message(message_item)
-                        print(f"DynamoDB 메시지 저장 성공: {message_id}")
-                    except Exception as e:
-                        print(f"DynamoDB 메시지 저장 실패: {e}")
-                        # DynamoDB 저장 실패해도 실시간 채팅은 계속 진행
-                        message_id = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+                    # DynamoDB에 메시지 저장 (개발 모드에서는 건너뛰기)
+                    if token != "dev-token":
+                        message_item = {
+                            'channel_id': channel.id,
+                            'user_id': user_context["user_id"],
+                            'user_name': user_context["user_name"],
+                            'content': content,
+                            'message_type': message_type,
+                            'reply_to': message_data.get('reply_to'),
+                            'mentions': message_data.get('mentions', [])
+                        }
+                        
+                        try:
+                            message_id = await dynamodb_manager.save_message(message_item)
+                            print(f"DynamoDB 메시지 저장 성공: {message_id}")
+                        except Exception as e:
+                            print(f"DynamoDB 메시지 저장 실패: {e}")
+                            # DynamoDB 저장 실패해도 실시간 채팅은 계속 진행
+                            message_id = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
+                    else:
+                        # 개발 모드에서는 임시 메시지 ID 생성
+                        message_id = f"dev_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
                     
                     # 채널 멤버들에게 메시지 브로드캐스트
                     await manager.broadcast_to_channel(
@@ -198,7 +218,8 @@ async def websocket_endpoint(
             "timestamp": datetime.now().isoformat()
         })
     finally:
-        await db.close()
+        if db:
+            await db.close()
 
 @router.get("/workspaces/{workspace_name}/channels/{channel_name}/messages")
 async def get_message_history(

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅 내용 (WebSocket)</title>
+     <!-- CSS 파일들 임포트 -->
+     <link rel="stylesheet" href="/static/css/common.css">
+     <link rel="stylesheet" href="/static/css/chat.css">
+     <style>
+        /* WebSocket 상태 표시 스타일 */
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+        .status-connected {
+            background: #10b981;
+            color: white;
+        }
+        .status-disconnected {
+            background: #ef4444;
+            color: white;
+        }
+        .typing-indicator {
+            padding: 8px 16px;
+            color: #64748b;
+            font-style: italic;
+            font-size: 14px;
+            display: none;
+        }
+        .connected-users {
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .user-avatar {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 20px;
+            margin-right: 4px;
+            font-size: 10px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+        }
+        .notification-info {
+            background: #3b82f6;
+        }
+        .notification-error {
+            background: #ef4444;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+     </style>
+</head>
+<body>
+    <!-- 연결 상태 표시 -->
+    <div class="connection-status" id="connection-status">🔴 연결 중...</div>
+
+    <div class="chat-content">
+        <!-- 환영 메시지 -->
+        <div class="welcome-section" id="welcome-section">
+            <div class="welcome-icon">🏠</div>
+            <h2 class="welcome-title" id="welcome-title"># 전체 채널에 오신 것을 환영합니다</h2>
+            <p class="welcome-description">
+                모든 멤버가 참여할 수 있는 공개 채널입니다. 자유롭게 소통하고 파일을 공유하세요. ⭐
+            </p>
+        </div>
+
+        <!-- 메시지 영역 -->
+        <div class="messages-container" id="messages-container">
+            <div class="loading" id="loading-state" style="display: none;">
+                <div class="loading-spinner"></div>
+                메시지를 불러오는 중...
+            </div>
+            
+            <div class="messages-list" id="messages-list">
+                <!-- 기본 환영 메시지 -->
+                <div class="message">
+                    <div class="message-avatar">A</div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">admin@example.com</span>
+                            <span class="message-time">오전 09:00</span>
+                        </div>
+                        <div class="message-text">워크스페이스에 오신 것을 환영합니다! 🎉</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 타이핑 표시 -->
+            <div class="typing-indicator" id="typing-indicator"></div>
+        </div>
+
+        <!-- 연결된 사용자 표시 -->
+        <div class="connected-users" id="connected-users">
+            <span>연결된 사용자: </span>
+        </div>
+
+        <!-- 메시지 입력 영역 -->
+        <div class="message-input-container">
+            <!-- 파일 미리보기 -->
+            <div class="file-preview" id="file-preview" style="display: none;">
+                <div id="file-preview-list"></div>
+            </div>
+
+            <!-- 입력 영역 -->
+            <div class="message-input-area">
+                <input type="file" id="file-input" multiple accept="*/*" style="display: none;">
+                
+                <div class="input-actions-left">
+                    <button class="action-btn" onclick="triggerFileUpload()" title="파일 첨부">
+                        📎
+                    </button>
+                    <button class="action-btn" onclick="toggleEmojiPicker()" title="이모지">
+                        😊
+                    </button>
+                    <button class="action-btn" title="멘션">
+                        @
+                    </button>
+                    <button class="action-btn" title="서식">
+                        🖊️
+                    </button>
+                </div>
+                
+                <textarea 
+                    id="message-input" 
+                    class="message-input" 
+                    placeholder="메시지를 입력하세요..."
+                    rows="1"
+                    maxlength="2000"
+                ></textarea>
+                
+                <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled title="전송">
+                    전송
+                </button>
+            </div>
+
+            <!-- 이모지 피커 -->
+            <div class="emoji-picker" id="emoji-picker" style="display: none;">
+                <div class="emoji-grid" id="emoji-grid">
+                    <!-- 기본 이모지들 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // 전역 변수
+        // ============================
+        const WS_BASE_URL = 'ws://localhost:8000';
+        const API_BASE_URL = 'http://localhost:8000';
+        const IS_DEV_MODE = new URLSearchParams(window.location.search).get('dev') === 'true' || 
+                            window.location.hostname === 'localhost';
+
+        let currentUser = { id: 1, name: '신정수', avatar: '신' };
+        let workspace_name = "윤수 웤스"
+        let messages = [];
+        let selectedFiles = [];
+        let isEmojiPickerOpen = false;
+        let websocket = null;
+        let isConnected = false;
+        let reconnectAttempts = 0;
+        let maxReconnectAttempts = 5;
+        let typingTimeout = null;
+        let connectedUsers = [];
+
+        const EMOJI_LIST = ['👍', '❤️', '😊', '🎉', '👏', '🔥', '💯', '✨', '😂', '🤣', '😘', '😍', '🤔', '😎', '👋', '🤝', '💪', '🙏'];
+
+        // ============================
+        // WebSocket 연결 관리
+        // ============================
+        function getWorkspaceAndChannelInfo() {
+            // URL에서 워크스페이스와 채널 정보 추출
+            const urlParams = new URLSearchParams(window.location.search);
+            const workspaceId = urlParams.get('workspace_id') || '1';
+            const channelId = urlParams.get('channel_id') || '1';
+            
+            // 개발 모드에서는 기본값 사용
+            if (IS_DEV_MODE) {
+                return {
+                    workspace_name: 'test-workspace',
+                    channel_name: 'general'
+                };
+            }
+            
+            // 실제 구현에서는 워크스페이스/채널 정보를 가져와야 함
+            return {
+                workspace_name: 'workspace-' + workspaceId,
+                channel_name: 'channel-' + channelId
+            };
+        }
+
+        async function connectWebSocket() {
+            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                console.log('WebSocket이 이미 연결되어 있습니다.');
+                return;
+            }
+
+            const { workspace_name, channel_name } = getWorkspaceAndChannelInfo();
+            const token = localStorage.getItem('access_token');
+            
+            if (!token && !IS_DEV_MODE) {
+                console.error('토큰이 없습니다. 로그인이 필요합니다.');
+                return;
+            }
+
+            // 개발 모드에서는 더미 토큰 사용
+            const wsUrl = IS_DEV_MODE 
+                ? `${WS_BASE_URL}/ws/${workspace_name}/${channel_name}?token=dev-token`
+                : `${WS_BASE_URL}/ws/${workspace_name}/${channel_name}?token=${token}`;
+            
+            try {
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    console.log('✅ WebSocket 연결 성공');
+                    isConnected = true;
+                    reconnectAttempts = 0;
+                    updateConnectionStatus();
+                    
+                    // 연결 성공 시 메시지 히스토리 로드
+                    loadMessageHistory();
+                };
+                
+                websocket.onmessage = function(event) {
+                    handleWebSocketMessage(JSON.parse(event.data));
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+                    isConnected = false;
+                    updateConnectionStatus();
+                    
+                    // 자동 재연결 시도
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        console.log(`재연결 시도 ${reconnectAttempts}/${maxReconnectAttempts}`);
+                        setTimeout(connectWebSocket, 2000 * reconnectAttempts);
+                    }
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('WebSocket 오류:', error);
+                };
+                
+            } catch (error) {
+                console.error('WebSocket 연결 실패:', error);
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            console.log('📨 WebSocket 메시지 수신:', data);
+            
+            switch (data.type) {
+                case 'message':
+                    addMessageToUI({
+                        message_id: data.message_id,
+                        content: data.content,
+                        user_id: data.user_id,
+                        user_name: data.user_name,
+                        message_type: data.message_type || 'text',
+                        timestamp: data.timestamp,
+                        reply_to: data.reply_to,
+                        mentions: data.mentions || []
+                    });
+                    break;
+                    
+                case 'typing':
+                    showTypingIndicator(data.user_name);
+                    break;
+                    
+                case 'connected_users':
+                    connectedUsers = data.connected_users || [];
+                    updateConnectedUsersDisplay();
+                    break;
+                    
+                case 'error':
+                    console.error('서버 오류:', data.message);
+                    showNotification(data.message, 'error');
+                    break;
+                    
+                default:
+                    console.log('알 수 없는 메시지 타입:', data.type);
+            }
+        }
+
+        function sendWebSocketMessage(type, data) {
+            if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                console.error('WebSocket이 연결되지 않았습니다.');
+                return false;
+            }
+            
+            const message = {
+                type: type,
+                ...data
+            };
+            
+            try {
+                websocket.send(JSON.stringify(message));
+                return true;
+            } catch (error) {
+                console.error('메시지 전송 실패:', error);
+                return false;
+            }
+        }
+
+        function updateConnectionStatus() {
+            const statusElement = document.getElementById('connection-status');
+            if (statusElement) {
+                if (isConnected) {
+                    statusElement.textContent = '🟢 연결됨';
+                    statusElement.className = 'connection-status status-connected';
+                } else {
+                    statusElement.textContent = '🔴 연결 끊김';
+                    statusElement.className = 'connection-status status-disconnected';
+                }
+            }
+        }
+
+        function updateConnectedUsersDisplay() {
+            const usersElement = document.getElementById('connected-users');
+            if (usersElement) {
+                usersElement.innerHTML = `<span>연결된 사용자: </span>` + 
+                    connectedUsers.map(user => 
+                        `<span class="user-avatar">${user.avatar || user.name.charAt(0)}</span>`
+                    ).join('');
+            }
+        }
+
+        function showTypingIndicator(userName) {
+            const typingElement = document.getElementById('typing-indicator');
+            if (typingElement) {
+                typingElement.textContent = `${userName}님이 입력 중...`;
+                typingElement.style.display = 'block';
+                
+                setTimeout(() => {
+                    typingElement.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // ============================
+        // 메시지 히스토리 로드
+        // ============================
+        async function loadMessageHistory() {
+            const loadingState = document.getElementById('loading-state');
+            loadingState.style.display = 'block';
+            
+            try {
+                const { workspace_name, channel_name } = getWorkspaceAndChannelInfo();
+                const token = localStorage.getItem('access_token');
+                
+                const response = await fetch(`${API_BASE_URL}/workspaces/${workspace_name}/channels/${channel_name}/messages`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const messageHistory = await response.json();
+                    messages = messageHistory;
+                    
+                    // 메시지 목록 렌더링
+                    const messagesList = document.getElementById('messages-list');
+                    messagesList.innerHTML = '';
+                    
+                    messageHistory.forEach(message => {
+                        addMessageToUI(message);
+                    });
+                }
+            } catch (error) {
+                console.error('메시지 히스토리 로드 실패:', error);
+                if (IS_DEV_MODE) {
+                    // 개발 모드에서는 더미 메시지 표시
+                    showNotification('개발 모드: 메시지 히스토리를 불러올 수 없습니다.', 'info');
+                }
+            } finally {
+                loadingState.style.display = 'none';
+            }
+        }
+
+        // ============================
+        // 메시지 전송
+        // ============================
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const content = messageInput.value.trim();
+            
+            if (!content && selectedFiles.length === 0) return;
+            
+            try {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = true;
+                sendBtn.textContent = '전송 중...';
+                
+                // WebSocket으로 메시지 전송
+                const success = sendWebSocketMessage('message', {
+                    content: content,
+                    message_type: 'text',
+                    mentions: []
+                });
+                
+                if (success) {
+                    // 입력 초기화
+                    messageInput.value = '';
+                    selectedFiles = [];
+                    updateFilePreview();
+                    updateSendButton();
+                    
+                    // 타이핑 상태 초기화
+                    if (typingTimeout) {
+                        clearTimeout(typingTimeout);
+                        typingTimeout = null;
+                    }
+                } else {
+                    showNotification('메시지 전송에 실패했습니다.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('메시지 전송 실패:', error);
+                showNotification('메시지 전송에 실패했습니다.', 'error');
+            } finally {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = false;
+                sendBtn.textContent = '전송';
+            }
+        }
+
+        // ============================
+        // UI 업데이트
+        // ============================
+        function addMessageToUI(message) {
+            const messagesList = document.getElementById('messages-list');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            
+            const time = new Date(message.timestamp).toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            messageElement.innerHTML = `
+                <div class="message-avatar">${message.user_avatar || message.user_name.charAt(0)}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${message.user_name}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(message.content)}</div>
+                </div>
+            `;
+            
+            messagesList.appendChild(messageElement);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        // ============================
+        // 파일 업로드
+        // ============================
+        function triggerFileUpload() {
+            document.getElementById('file-input').click();
+        }
+
+        function updateFilePreview() {
+            const preview = document.getElementById('file-preview');
+            const previewList = document.getElementById('file-preview-list');
+            
+            if (selectedFiles.length === 0) {
+                preview.style.display = 'none';
+                return;
+            }
+            
+            preview.style.display = 'block';
+            previewList.innerHTML = selectedFiles.map(file => `
+                <div class="file-item">
+                    <span>📎 ${file.name}</span>
+                    <button onclick="removeFile('${file.name}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(fileName) {
+            selectedFiles = selectedFiles.filter(file => file.name !== fileName);
+            updateFilePreview();
+        }
+
+        // ============================
+        // 이모지 피커
+        // ============================
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('emoji-picker');
+            isEmojiPickerOpen = !isEmojiPickerOpen;
+            
+            if (isEmojiPickerOpen) {
+                picker.style.display = 'block';
+                loadEmojis();
+            } else {
+                picker.style.display = 'none';
+            }
+        }
+
+        function loadEmojis() {
+            const grid = document.getElementById('emoji-grid');
+            grid.innerHTML = EMOJI_LIST.map(emoji => 
+                `<span class="emoji-item" onclick="insertEmoji('${emoji}')">${emoji}</span>`
+            ).join('');
+        }
+
+        function insertEmoji(emoji) {
+            const input = document.getElementById('message-input');
+            const cursorPos = input.selectionStart;
+            const textBefore = input.value.substring(0, cursorPos);
+            const textAfter = input.value.substring(cursorPos);
+            
+            input.value = textBefore + emoji + textAfter;
+            input.setSelectionRange(cursorPos + emoji.length, cursorPos + emoji.length);
+            input.focus();
+            
+            toggleEmojiPicker();
+            updateSendButton();
+        }
+
+        // ============================
+        // 타이핑 상태 관리
+        // ============================
+        function handleTyping() {
+            if (typingTimeout) {
+                clearTimeout(typingTimeout);
+            }
+            
+            // 타이핑 상태 전송
+            sendWebSocketMessage('typing', {});
+            
+            // 3초 후 타이핑 상태 해제
+            typingTimeout = setTimeout(() => {
+                typingTimeout = null;
+            }, 3000);
+        }
+
+        // ============================
+        // 유틸리티 함수들
+        // ============================
+        function updateSendButton() {
+            const input = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const hasContent = input.value.trim().length > 0 || selectedFiles.length > 0;
+            sendBtn.disabled = !hasContent;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================
+        // 이벤트 리스너
+        // ============================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('💬 WebSocket 채팅 페이지 로드됨');
+            
+            // WebSocket 연결
+            connectWebSocket();
+            
+            // 메시지 입력 이벤트
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('input', function() {
+                updateSendButton();
+                handleTyping();
+                
+                // 자동 높이 조절
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+            
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!document.getElementById('send-btn').disabled) {
+                        sendMessage();
+                    }
+                }
+            });
+            
+            // 파일 입력 이벤트
+            document.getElementById('file-input').addEventListener('change', function(e) {
+                selectedFiles = Array.from(e.target.files);
+                updateFilePreview();
+                updateSendButton();
+            });
+            
+            // 이모지 피커 외부 클릭 시 닫기
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.emoji-picker') && !e.target.closest('.action-btn')) {
+                    document.getElementById('emoji-picker').style.display = 'none';
+                    isEmojiPickerOpen = false;
+                }
+            });
+            
+            // 초기 상태 설정
+            updateSendButton();
+            
+            console.log('✅ WebSocket 채팅 페이지 초기화 완료');
+        });
+
+        // ============================
+        // 개발자 도구
+        // ============================
+        window.chatDebug = {
+            connectWebSocket,
+            sendWebSocketMessage,
+            loadMessageHistory,
+            currentUser,
+            messages,
+            isConnected: () => isConnected,
+            websocket: () => websocket
+        };
+        
+        console.log('🔧 개발자 도구에서 chatDebug 객체를 사용하여 디버깅할 수 있습니다.');
+    </script>
+</body>
+</html> 

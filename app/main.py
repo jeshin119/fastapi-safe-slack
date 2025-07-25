@@ -39,3 +39,13 @@ async def serve_root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+@app.get("/test-chat")
+async def test_chat():
+    """채팅 테스트 페이지 제공"""
+    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"chat2.html")
+
+@app.get("/test-websocket")
+async def test_websocket():
+    """WebSocket 테스트 페이지 제공"""
+    return FileResponse(BASE_DIR / "front" / "test-websocket.html")

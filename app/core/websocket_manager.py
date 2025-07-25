@@ -103,7 +103,12 @@ class ConnectionManager:
             for websocket in self.active_connections[workspace_id][channel_id]:
                 if websocket in self.connection_info:
                     _, _, user_id, user_name = self.connection_info[websocket]
-                    users.append({"user_id": user_id, "user_name": user_name})
+                    users.append({
+                        "user_id": user_id, 
+                        "user_name": user_name,
+                        "name": user_name,  # 클라이언트 호환성을 위해 추가
+                        "avatar": user_name[0] if user_name else "?"
+                    })
         return users
 
 # 전역 인스턴스

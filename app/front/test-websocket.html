@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .connecting {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        input[type="text"] {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket 연결 테스트</h1>
+    
+    <div id="status" class="status disconnected">🔴 연결되지 않음</div>
+    
+    <div class="controls">
+        <input type="text" id="workspace" placeholder="워크스페이스 이름" value="test-workspace">
+        <input type="text" id="channel" placeholder="채널 이름" value="general">
+        <button class="btn-primary" onclick="connect()">연결</button>
+        <button class="btn-danger" onclick="disconnect()">연결 해제</button>
+    </div>
+    
+    <div class="controls">
+        <input type="text" id="message" placeholder="메시지 입력" value="안녕하세요!">
+        <button class="btn-primary" onclick="sendMessage()">메시지 전송</button>
+        <button onclick="clearLog()">로그 지우기</button>
+    </div>
+    
+    <h3>연결 로그:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        let websocket = null;
+        let isConnected = false;
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(status, message) {
+            const statusElement = document.getElementById('status');
+            statusElement.className = `status ${status}`;
+            statusElement.textContent = message;
+        }
+
+        function connect() {
+            const workspace = document.getElementById('workspace').value;
+            const channel = document.getElementById('channel').value;
+            
+            if (!workspace || !channel) {
+                alert('워크스페이스와 채널 이름을 입력해주세요.');
+                return;
+            }
+
+            const wsUrl = `ws://localhost:8000/ws/${workspace}/${channel}?token=dev-token`;
+            
+            log(`연결 시도: ${wsUrl}`);
+            updateStatus('connecting', '🟡 연결 중...');
+
+            try {
+                websocket = new WebSocket(wsUrl);
+                
+                websocket.onopen = function(event) {
+                    log('✅ WebSocket 연결 성공');
+                    updateStatus('connected', '🟢 연결됨');
+                    isConnected = true;
+                };
+                
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    log(`📨 메시지 수신: ${JSON.stringify(data, null, 2)}`);
+                };
+                
+                websocket.onclose = function(event) {
+                    log(`❌ WebSocket 연결 종료: ${event.code} - ${event.reason}`);
+                    updateStatus('disconnected', '🔴 연결 끊김');
+                    isConnected = false;
+                };
+                
+                websocket.onerror = function(error) {
+                    log(`❌ WebSocket 오류: ${error}`);
+                    updateStatus('disconnected', '🔴 연결 오류');
+                    isConnected = false;
+                };
+                
+            } catch (error) {
+                log(`❌ 연결 실패: ${error.message}`);
+                updateStatus('disconnected', '🔴 연결 실패');
+            }
+        }
+
+        function disconnect() {
+            if (websocket) {
+                websocket.close();
+                websocket = null;
+                isConnected = false;
+                log('연결 해제됨');
+            }
+        }
+
+        function sendMessage() {
+            if (!websocket || !isConnected) {
+                alert('WebSocket이 연결되지 않았습니다.');
+                return;
+            }
+
+            const messageText = document.getElementById('message').value;
+            if (!messageText.trim()) {
+                alert('메시지를 입력해주세요.');
+                return;
+            }
+
+            const message = {
+                type: 'message',
+                content: messageText,
+                message_type: 'text',
+                mentions: []
+            };
+
+            try {
+                websocket.send(JSON.stringify(message));
+                log(`📤 메시지 전송: ${JSON.stringify(message, null, 2)}`);
+            } catch (error) {
+                log(`❌ 메시지 전송 실패: ${error.message}`);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            log('WebSocket 테스트 페이지 로드됨');
+            log('서버가 실행 중인지 확인하세요: python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000');
+        });
+
+        // Enter 키로 메시지 전송
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html> 
