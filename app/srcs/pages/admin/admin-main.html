@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 대시보드 - WorkSpace</title>
+    
+    <!-- CSS 파일들 임포트 -->
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/admin-main.css">
+    
+</head>
+<body>
+    <!-- 배경 장식 -->
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+
+    <div class="dashboard-container">
+        <!-- 뒤로가기 버튼 -->
+        <button class="back-button" onclick="goBackToWorkspace()" title="워크스페이스로 돌아가기">←</button>
+
+        <!-- 헤더 -->
+        <div class="dashboard-header">
+            <div class="admin-badge">👑 관리자</div>
+            <div class="logo">🌊</div>
+            <h1 class="dashboard-title">관리자 대시보드</h1>
+            <p class="dashboard-subtitle">워크스페이스의 모든 관리 기능을<br>한 곳에서 편리하게 이용하세요</p>
+        </div>
+
+        <!-- 탭 네비게이션 -->
+        <div class="tab-navigation">
+            <button class="tab-button active" onclick="switchTab('members')" id="members-tab">
+                👥 멤버 관리
+                <span class="badge" id="members-badge">3</span>
+            </button>
+            <button class="tab-button" onclick="switchTab('channels')" id="channels-tab">
+                💬 채널 관리
+            </button>
+            <button class="tab-button" onclick="switchTab('settings')" id="settings-tab">
+                ⚙️ 워크스페이스 설정
+            </button>
+        </div>
+
+        <!-- 탭 콘텐츠들 -->
+        <div class="tab-content active" id="members-content">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div>멤버 관리 페이지를 불러오는 중...</div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="channels-content">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div>채널 관리 페이지를 불러오는 중...</div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="settings-content">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div>워크스페이스 설정 페이지를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // 전역 변수
+        // ============================
+        let currentTab = 'members';
+        let loadedTabs = new Set(); // 이미 로드된 탭들을 추적
+        
+        // 탭별 파일 경로 매핑
+        const tabFiles = {
+            'members': 'admin-members.html',
+            'channels': 'admin-channels.html', 
+            'settings': 'admin-ws-settings.html'
+        };
+
+        // ============================
+        // 탭 전환 함수
+        // ============================
+        async function switchTab(tabName) {
+            // 이전 탭 비활성화
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // 새 탭 활성화
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            document.getElementById(`${tabName}-content`).classList.add('active');
+            
+            currentTab = tabName;
+            
+            // 탭이 이미 로드되지 않았다면 로드
+            if (!loadedTabs.has(tabName)) {
+                await loadTabContent(tabName);
+            }
+        }
+
+        // ============================
+        // AJAX로 탭 콘텐츠 로드
+        // ============================
+        async function loadTabContent(tabName) {
+            const contentContainer = document.getElementById(`${tabName}-content`);
+            const fileName = tabFiles[tabName];
+            
+            if (!fileName) {
+                showError(contentContainer, `알 수 없는 탭: ${tabName}`);
+                return;
+            }
+
+            try {
+                console.log(`📥 로딩 시작: ${fileName}`);
+                
+                const response = await fetch(fileName);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const htmlContent = await response.text();
+                
+                // HTML 파싱하여 body 내용만 추출
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                
+                // body 내용 추출 (스크립트 포함)
+                const bodyContent = doc.body.innerHTML;
+                
+                // 콘텐츠 삽입
+                contentContainer.innerHTML = bodyContent;
+                
+                // 삽입된 스크립트 실행
+                executeScripts(contentContainer);
+                
+                // 로드 완료 표시
+                loadedTabs.add(tabName);
+                
+                console.log(`✅ 로딩 완료: ${fileName}`);
+                
+                // 특정 탭 로드 후 추가 작업
+                handleTabLoaded(tabName);
+                
+            } catch (error) {
+                console.error(`❌ 로딩 실패 (${fileName}):`, error);
+                showError(contentContainer, `페이지 로딩에 실패했습니다: ${error.message}`, tabName);
+            }
+        }
+
+        // ============================
+        // 삽입된 스크립트 실행
+        // ============================
+        function executeScripts(container) {
+            const scripts = container.querySelectorAll('script');
+            scripts.forEach(script => {
+                const newScript = document.createElement('script');
+                
+                if (script.src) {
+                    newScript.src = script.src;
+                } else {
+                    newScript.textContent = script.textContent;
+                }
+                
+                // 기존 스크립트 제거하고 새 스크립트 추가
+                script.parentNode.replaceChild(newScript, script);
+            });
+        }
+
+        // ============================
+        // 에러 표시
+        // ============================
+        function showError(container, message, tabName = null) {
+            container.innerHTML = `
+                <div class="error-content">
+                    <div class="error-icon">❌</div>
+                    <h3>로딩 실패</h3>
+                    <p>${message}</p>
+                    ${tabName ? `<button class="retry-button" onclick="retryLoad('${tabName}')">다시 시도</button>` : ''}
+                </div>
+            `;
+        }
+
+        // ============================
+        // 재시도
+        // ============================
+        async function retryLoad(tabName) {
+            const contentContainer = document.getElementById(`${tabName}-content`);
+            
+            // 로딩 상태로 변경
+            contentContainer.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div>다시 로딩 중...</div>
+                </div>
+            `;
+            
+            // 로드된 탭 목록에서 제거하고 다시 로드
+            loadedTabs.delete(tabName);
+            await loadTabContent(tabName);
+        }
+
+        // ============================
+        // 탭 로드 완료 후 처리
+        // ============================
+        function handleTabLoaded(tabName) {
+            switch (tabName) {
+                case 'members':
+                    // 멤버 관리 페이지 로드 완료 시
+                    console.log('👥 멤버 관리 페이지 로드 완료');
+                    break;
+                    
+                case 'channels':
+                    // 채널 관리 페이지 로드 완료 시
+                    console.log('💬 채널 관리 페이지 로드 완료');
+                    break;
+                    
+                case 'settings':
+                    // 워크스페이스 설정 페이지 로드 완료 시
+                    console.log('⚙️ 워크스페이스 설정 페이지 로드 완료');
+                    break;
+            }
+            
+            // 공통 처리: CSS 스타일 재적용, 이벤트 리스너 재설정 등
+            reinitializeLoadedContent(tabName);
+        }
+
+        // ============================
+        // 로드된 콘텐츠 재초기화
+        // ============================
+        function reinitializeLoadedContent(tabName) {
+            const container = document.getElementById(`${tabName}-content`);
+            
+            // 상대 경로를 절대 경로로 수정 (필요한 경우)
+            const images = container.querySelectorAll('img[src^="../../"]');
+            images.forEach(img => {
+                if (!img.src.startsWith('http')) {
+                    img.src = img.getAttribute('src');
+                }
+            });
+            
+            // 링크들의 상대 경로 수정 (필요한 경우)
+            const links = container.querySelectorAll('link[href^="../../"]');
+            links.forEach(link => {
+                if (!link.href.startsWith('http')) {
+                    link.href = link.getAttribute('href');
+                }
+            });
+        }
+
+        // ============================
+        // 기타 함수들
+        // ============================
+        
+        // 워크스페이스로 돌아가기
+        function goBackToWorkspace() {
+            if (confirm('관리자 대시보드를 나가고 워크스페이스로 돌아가시겠습니까?')) {
+                // 개발 모드 파라미터 유지
+                const urlParams = new URLSearchParams(window.location.search);
+                const devParam = urlParams.get('dev') === 'true' ? '?dev=true' : '';
+                window.location.href = `../workspace/workspace-main.html${devParam}`;
+            }
+        }
+
+        // URL 파라미터로 특정 탭 열기
+        function openTabFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            
+            if (tab && tabFiles[tab]) {
+                switchTab(tab);
+            }
+        }
+
+        // 알림 배지 업데이트
+        function updateNotificationBadges() {
+            // 실제로는 API에서 데이터를 가져와야 함
+            const pendingMembers = 3; // 예시 데이터
+            
+            const membersBadge = document.getElementById('members-badge');
+            if (pendingMembers > 0) {
+                membersBadge.textContent = pendingMembers;
+                membersBadge.style.display = 'block';
+            } else {
+                membersBadge.style.display = 'none';
+            }
+        }
+
+        // ============================
+        // 초기화
+        // ============================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 관리자 대시보드 초기화');
+            
+            // URL 파라미터 확인
+            openTabFromURL();
+            
+            // 알림 배지 업데이트
+            updateNotificationBadges();
+            
+            // 첫 번째 탭 로드
+            loadTabContent(currentTab);
+            
+            // 개발 모드 체크
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('dev') === 'true') {
+                console.log('🔧 개발 모드로 실행 중');
+                
+                // 개발 모드 표시
+                document.body.style.borderTop = '4px solid #f59e0b';
+                const devBadge = document.createElement('div');
+                devBadge.innerHTML = '🔧 개발 모드';
+                devBadge.style.cssText = `
+                    position: fixed;
+                    top: 4px;
+                    right: 20px;
+                    background: #f59e0b;
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 0 0 8px 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    z-index: 1000;
+                `;
+                document.body.appendChild(devBadge);
+            }
+            
+            console.log('✅ 관리자 대시보드 초기화 완료');
+        });
+
+        // 키보드 단축키
+        document.addEventListener('keydown', function(e) {
+            // ESC: 워크스페이스로 돌아가기
+            if (e.key === 'Escape') {
+                goBackToWorkspace();
+            }
+            
+            // Ctrl + 1,2,3: 탭 전환
+            if (e.ctrlKey) {
+                switch (e.key) {
+                    case '1':
+                        e.preventDefault();
+                        switchTab('members');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        switchTab('channels');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        switchTab('settings');
+                        break;
+                }
+            }
+            
+            // F5: 현재 탭 새로고침
+            if (e.key === 'F5') {
+                e.preventDefault();
+                loadedTabs.delete(currentTab);
+                loadTabContent(currentTab);
+            }
+        });
+
+        // 전역 함수로 노출 (디버깅용)
+        window.adminDashboard = {
+            switchTab: switchTab,
+            loadTabContent: loadTabContent,
+            currentTab: () => currentTab,
+            loadedTabs: () => Array.from(loadedTabs),
+            retryLoad: retryLoad,
+            updateNotificationBadges: updateNotificationBadges
+        };
+        
+        console.log('🔧 개발자 도구에서 adminDashboard 객체를 사용하여 테스트할 수 있습니다.');
+    </script>
+</body>
+</html>

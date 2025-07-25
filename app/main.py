@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.routers import auth, workspaces, channels, files, chat
+import os
 
 app = FastAPI(
     title="Safe Slack API",
@@ -17,6 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 정적 파일 제공 설정
+app.mount("/srcs", StaticFiles(directory="app/srcs"), name="static")
+
 # 라우터 등록
 app.include_router(auth.router, prefix="/auth", tags=["인증"])
 app.include_router(workspaces.router, prefix="/workspaces", tags=["워크스페이스"])
@@ -27,8 +33,14 @@ app.include_router(chat.router, tags=["채팅"])
 
 @app.get("/")
 async def root():
-    return {"message": "Safe Slack API에 오신 것을 환영합니다!"}
+    """루트 경로에서 index.html 제공"""
+    return FileResponse("app/srcs/index.html")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"} 
+    return {"status": "healthy"}
+
+@app.get("/test_chat.html")
+async def test_chat():
+    """채팅 테스트 페이지 제공"""
+    return FileResponse("app/static/test_chat.html") 

@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 완료 - WorkSpace</title>
+    
+    <!-- CSS 파일들 임포트 -->
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/team-workspace.css">
+</head>
+<body>
+    <!-- 좌측 기능 툴바 -->
+    <div class="left-toolbar">
+        <div class="toolbar-item active" data-function="files">
+            📁
+            <div class="toolbar-tooltip">파일</div>
+        </div>
+        <div class="toolbar-item" data-function="chat">
+            💬
+            <div class="toolbar-tooltip">대화</div>
+            <div class="notification-badge">3</div>
+        </div>
+        <div class="toolbar-item" data-function="notifications">
+            🔔
+            <div class="toolbar-tooltip">알림</div>
+            <div class="notification-badge">7</div>
+        </div>
+        <div class="toolbar-item" data-function="calendar">
+            📅
+            <div class="toolbar-tooltip">일정</div>
+        </div>
+        <div class="toolbar-item" data-function="tasks">
+            ✅
+            <div class="toolbar-tooltip">할일</div>
+        </div>
+    </div>
+
+    <!-- 사이드바 -->
+    <div class="sidebar">
+        <div class="team-header">
+            <div class="team-name">
+                🚀 개발팀
+            </div>
+            <div class="team-info">12명의 팀원 • 활성</div>
+        </div>
+        
+        <div class="content-section" id="sidebar-content">
+            <!-- 파일 섹션 -->
+            <div class="file-section">
+                <div class="section-title">최근 파일</div>
+                <ul class="item-list">
+                           
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 콘텐츠 -->
+    <div class="main-content">
+        <div class="content-header">
+            <div class="header-left">
+                <h1 id="content-title">팀 파일</h1>
+                <p id="content-subtitle">팀에서 공유하는 모든 파일을 관리하세요</p>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn">
+                    🔍 검색
+                </button>
+                <button class="action-btn primary">
+                    📤 파일 업로드
+                </button>
+            </div>
+        </div>
+
+        <div class="content-area" id="main-content">
+            <!-- 파일 업로드 영역 -->
+            <div class="upload-area" id="upload-area">
+                <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+                <h3>파일을 드래그하여 업로드</h3>
+                <p>또는 클릭하여 파일 선택</p>
+            </div>
+
+            <!-- 파일 카드들 -->
+            <div class="content-grid" style="margin-top: 20px;">
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// =====================================
+// 기존 기능들 (툴바 및 콘텐츠 전환)
+// =====================================
+
+// 툴바 아이템 클릭 이벤트
+document.querySelectorAll('.toolbar-item').forEach(item => {
+    item.addEventListener('click', function() {
+        // 활성화 상태 변경
+        document.querySelectorAll('.toolbar-item').forEach(i => i.classList.remove('active'));
+        this.classList.add('active');
+
+        const func = this.dataset.function;
+        updateContent(func);
+    });
+});
+
+// 콘텐츠 업데이트 함수
+function updateContent(func) {
+    const title = document.getElementById('content-title');
+    const subtitle = document.getElementById('content-subtitle');
+    const content = document.getElementById('main-content');
+
+    switch(func) {
+        case 'files':
+            title.textContent = '팀 파일';
+            subtitle.textContent = '팀에서 공유하는 모든 파일을 관리하세요';
+            content.innerHTML = getFilesContent();
+            break;
+        case 'chat':
+            title.textContent = '팀 대화';
+            subtitle.textContent = '팀원들과 실시간으로 소통하세요';
+            content.innerHTML = getChatContent();
+            break;
+        case 'notifications':
+            title.textContent = '알림';
+            subtitle.textContent = '중요한 업데이트와 알림을 확인하세요';
+            content.innerHTML = getNotificationsContent();
+            break;
+        case 'calendar':
+            title.textContent = '팀 일정';
+            subtitle.textContent = '팀의 모든 일정을 한눈에 확인하세요';
+            content.innerHTML = getCalendarContent();
+            break;
+        case 'tasks':
+            title.textContent = '할일 관리';
+            subtitle.textContent = '팀의 작업과 할일을 관리하세요';
+            content.innerHTML = getTasksContent();
+            break;
+    }
+}
+
+// =====================================
+// 개선된 파일 업로드 기능
+// =====================================
+
+// 파일 입력 요소 생성 (숨겨진 input)
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.multiple = true;
+fileInput.style.display = 'none';
+fileInput.accept = '*/*'; // 모든 파일 타입 허용
+document.body.appendChild(fileInput);
+
+// 업로드 영역 클릭 이벤트
+function setupUploadArea() {
+    const uploadArea = document.getElementById('upload-area');
+    if (uploadArea) {
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+    }
+}
+
+// 파일 선택 이벤트
+fileInput.addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        handleFileUpload(files);
+    }
+});
+
+// 드래그 앤 드롭 이벤트 개선
+let dragCounter = 0;
+
+document.addEventListener('dragenter', function(e) {
+    e.preventDefault();
+    dragCounter++;
+    const uploadArea = document.getElementById('upload-area');
+    if (uploadArea) {
+        uploadArea.classList.add('dragover');
+        uploadArea.style.borderColor = '#0ea5e9';
+        uploadArea.style.backgroundColor = '#e0f2fe';
+    }
+});
+
+document.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter === 0) {
+        const uploadArea = document.getElementById('upload-area');
+        if (uploadArea) {
+            uploadArea.classList.remove('dragover');
+            uploadArea.style.borderColor = '#cbd5e1';
+            uploadArea.style.backgroundColor = '';
+        }
+    }
+});
+
+document.addEventListener('dragover', function(e) {
+    e.preventDefault();
+});
+
+document.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dragCounter = 0;
+    
+    const uploadArea = document.getElementById('upload-area');
+    if (uploadArea) {
+        uploadArea.classList.remove('dragover');
+        uploadArea.style.borderColor = '#cbd5e1';
+        uploadArea.style.backgroundColor = '';
+    }
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+        handleFileUpload(files);
+    }
+});
+
+// 파일 업로드 처리 함수
+function handleFileUpload(files) {
+    const uploadArea = document.getElementById('upload-area');
+    if (!uploadArea) return;
+
+    // 업로드 중 상태 표시
+    uploadArea.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px; color: #0ea5e9;">⏳</div>
+        <h3 style="color: #0ea5e9;">파일 업로드 중...</h3>
+        <p>잠시만 기다려주세요.</p>
+        <div style="margin-top: 16px;">
+            <div style="background: #e2e8f0; border-radius: 10px; height: 8px; overflow: hidden;">
+                <div id="upload-progress" style="background: #0ea5e9; height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+        </div>
+    `;
+
+    // 가짜 업로드 진행률 애니메이션
+    const progressBar = document.getElementById('upload-progress');
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 30;
+        if (progress > 100) progress = 100;
+        
+        if (progressBar) {
+            progressBar.style.width = progress + '%';
+        }
+        
+        if (progress >= 100) {
+            clearInterval(progressInterval);
+            showUploadSuccess(files);
+        }
+    }, 100);
+}
+
+// 업로드 성공 상태 표시
+function showUploadSuccess(files) {
+    const uploadArea = document.getElementById('upload-area');
+    if (!uploadArea) return;
+
+    const fileCount = files.length;
+    const fileNames = files.slice(0, 3).map(file => file.name).join(', ');
+    const moreFiles = fileCount > 3 ? ` 외 ${fileCount - 3}개` : '';
+
+    uploadArea.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 16px; color: #10b981;">✅</div>
+        <h3 style="color: #10b981;">파일 업로드 완료!</h3>
+        <p style="margin-bottom: 16px;">${fileCount}개 파일이 성공적으로 업로드되었습니다.</p>
+        <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 12px; font-size: 14px; color: #166534;">
+            <strong>업로드된 파일:</strong><br>
+            ${fileNames}${moreFiles}
+        </div>
+        <button onclick="resetUploadArea()" style="margin-top: 16px; padding: 8px 16px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            더 업로드하기
+        </button>
+    `;
+
+    // 새 파일 카드 추가
+    addNewFileCards(files);
+}
+
+// 업로드 영역 초기화
+function resetUploadArea() {
+    const uploadArea = document.getElementById('upload-area');
+    if (uploadArea) {
+        uploadArea.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+            <h3>파일을 드래그하여 업로드</h3>
+            <p>또는 클릭하여 파일 선택</p>
+        `;
+        setupUploadArea(); // 클릭 이벤트 다시 설정
+    }
+}
+
+// 새 파일 카드 추가
+function addNewFileCards(files) {
+    const contentGrid = document.querySelector('.content-grid');
+    if (!contentGrid) return;
+
+    files.forEach(file => {
+        const fileIcon = getFileIcon(file.name);
+        const fileSize = formatFileSize(file.size);
+        const now = new Date().toLocaleString('ko-KR');
+
+        const cardHTML = `
+            <div class="content-card" style="border: 2px solid #10b981; background: #f0fdf4;">
+                <div class="card-header">
+                    <div class="card-icon">${fileIcon}</div>
+                    <div class="card-title">${file.name}</div>
+                </div>
+                <div class="card-description">
+                    방금 업로드된 파일입니다. 크기: ${fileSize}
+                </div>
+                <div class="card-footer">
+                    <span>나 • 방금 전</span>
+                    <span class="status-badge status-new">새로 업로드</span>
+                </div>
+            </div>
+        `;
+        
+        contentGrid.insertAdjacentHTML('afterbegin', cardHTML);
+    });
+}
+
+// 파일 확장자에 따른 아이콘 반환
+function getFileIcon(fileName) {
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    const iconMap = {
+        // 문서
+        'pdf': '📄', 'doc': '📄', 'docx': '📄', 'txt': '📄',
+        // 스프레드시트
+        'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+        // 프레젠테이션
+        'ppt': '📊', 'pptx': '📊',
+        // 이미지
+        'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
+        // 디자인
+        'fig': '🎨', 'sketch': '🎨', 'ai': '🎨', 'psd': '🎨',
+        // 코드
+        'js': '💻', 'html': '💻', 'css': '💻', 'py': '💻', 'java': '💻',
+        // 압축
+        'zip': '📦', 'rar': '📦', '7z': '📦',
+        // 비디오
+        'mp4': '🎥', 'avi': '🎥', 'mov': '🎥',
+        // 오디오
+        'mp3': '🎵', 'wav': '🎵', 'flac': '🎵'
+    };
+    
+    return iconMap[extension] || '📄';
+}
+
+// 파일 크기 포맷팅
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// =====================================
+// 콘텐츠 생성 함수들 (개선된 getFilesContent 포함)
+// =====================================
+
+function getFilesContent() {
+    setTimeout(() => {
+        setupUploadArea(); // 새로 생성된 업로드 영역에 이벤트 설정
+    }, 100);
+    
+    return `
+        <div class="upload-area" id="upload-area">
+            <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+            <h3>파일을 드래그하여 업로드</h3>
+            <p>또는 클릭하여 파일 선택</p>
+        </div>
+        <div class="content-grid" style="margin-top: 20px;">
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">📄</div>
+                    <div class="card-title">프로젝트 기획서</div>
+                </div>
+                <div class="card-description">새로운 프로젝트의 전체적인 기획과 일정이 담긴 문서입니다.</div>
+                <div class="card-footer">
+                    <span>김개발 • 2시간 전</span>
+                    <span class="status-badge status-new">새로운</span>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">월간 진행 보고서</div>
+                </div>
+                <div class="card-description">이번 달 프로젝트 진행 상황과 주요 성과를 정리한 보고서입니다.</div>
+                <div class="card-footer">
+                    <span>이팀장 • 1일 전</span>
+                    <span class="status-badge status-progress">진행중</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getChatContent() {
+    return `
+        <div style="background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); border-radius: 12px; padding: 30px; color: white; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">💬</div>
+            <h3>팀 대화방</h3>
+            <p>실시간으로 팀원들과 소통하고 협업하세요</p>
+        </div>
+        <div class="content-grid">
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">👥</div>
+                    <div class="card-title">일반 대화</div>
+                </div>
+                <div class="card-description">팀 전체가 참여하는 일반적인 대화방입니다.</div>
+                <div class="card-footer">
+                    <span>활성 멤버 12명</span>
+                    <span class="status-badge status-new">새 메시지 3</span>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">🚀</div>
+                    <div class="card-title">프로젝트 논의</div>
+                </div>
+                <div class="card-description">현재 진행중인 프로젝트에 대한 논의방입니다.</div>
+                <div class="card-footer">
+                    <span>활성 멤버 8명</span>
+                    <span class="status-badge status-urgent">긴급</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getNotificationsContent() {
+    return `
+        <div style="background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); border-radius: 12px; padding: 30px; color: white; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔔</div>
+            <h3>팀 알림</h3>
+            <p>중요한 업데이트와 알림을 놓치지 마세요</p>
+        </div>
+        <div class="content-grid">
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">📢</div>
+                    <div class="card-title">프로젝트 마감 알림</div>
+                </div>
+                <div class="card-description">현재 프로젝트의 마감일이 3일 남았습니다.</div>
+                <div class="card-footer">
+                    <span>방금 전</span>
+                    <span class="status-badge status-urgent">긴급</span>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">📝</div>
+                    <div class="card-title">새 문서 업로드</div>
+                </div>
+                <div class="card-description">김개발님이 새로운 기획서를 업로드했습니다.</div>
+                <div class="card-footer">
+                    <span>2시간 전</span>
+                    <span class="status-badge status-new">새로운</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getCalendarContent() {
+    return `
+        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 30px; color: white; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📅</div>
+            <h3>팀 일정 관리</h3>
+            <p>모든 팀 일정을 한눈에 확인하고 관리하세요</p>
+        </div>
+        <div class="content-grid">
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">프로젝트 킥오프</div>
+                </div>
+                <div class="card-description">새 프로젝트 시작을 위한 팀 미팅입니다.</div>
+                <div class="card-footer">
+                    <span>오늘 오후 2시</span>
+                    <span class="status-badge status-urgent">오늘</span>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">주간 리뷰</div>
+                </div>
+                <div class="card-description">이번 주 진행사항과 다음 주 계획을 점검합니다.</div>
+                <div class="card-footer">
+                    <span>내일 오전 10시</span>
+                    <span class="status-badge status-progress">예정</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getTasksContent() {
+    return `
+        <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border-radius: 12px; padding: 30px; color: white; text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+            <h3>할일 관리</h3>
+            <p>팀의 모든 작업을 체계적으로 관리하세요</p>
+        </div>
+        <div class="content-grid">
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">🔥</div>
+                    <div class="card-title">UI 개발 완료</div>
+                </div>
+                <div class="card-description">메인 페이지 UI 컴포넌트 개발을 완료해야 합니다.</div>
+                <div class="card-footer">
+                    <span>김개발</span>
+                    <span class="status-badge status-urgent">급함</span>
+                </div>
+            </div>
+            <div class="content-card">
+                <div class="card-header">
+                    <div class="card-icon">🎨</div>
+                    <div class="card-title">디자인 리뷰</div>
+                </div>
+                <div class="card-description">새로운 디자인 시안에 대한 팀 리뷰가 필요합니다.</div>
+                <div class="card-footer">
+                    <span>박디자인</span>
+                    <span class="status-badge status-progress">진행중</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 페이지 로드 후 초기화
+document.addEventListener('DOMContentLoaded', function() {
+    setupUploadArea();
+});
+</script>
+</body>
+</html>

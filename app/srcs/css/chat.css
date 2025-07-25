@@ -1,0 +1,364 @@
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #ffffff;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 채팅 영역 */
+.chat-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 환영 메시지 */
+.welcome-section {
+    text-align: center;
+    padding: 60px 40px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    margin: 20px;
+    border-radius: 12px;
+}
+
+.welcome-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.welcome-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 12px;
+}
+
+.welcome-description {
+    font-size: 16px;
+    color: #718096;
+    line-height: 1.6;
+}
+
+/* 메시지 영역 */
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.messages-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 3px;
+}
+
+.messages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px 0;
+}
+
+/* 메시지 아이템 */
+.message {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.message-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: #3b82f6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.message-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.message-author {
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 15px;
+}
+
+.message-time {
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.message-text {
+    color: #374151;
+    line-height: 1.5;
+    font-size: 15px;
+}
+
+/* 메시지 입력 영역 */
+.message-input-container {
+    padding: 20px;
+    border-top: 1px solid #e5e7eb;
+    background: #ffffff;
+}
+
+.message-input-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.input-actions-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #6b7280;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.action-btn:hover {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.message-input {
+    flex: 1;
+    min-height: 24px;
+    max-height: 120px;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: none;
+    background: transparent;
+    font-family: inherit;
+    color: #374151;
+    padding: 4px 8px;
+}
+
+.message-input::placeholder {
+    color: #9ca3af;
+}
+
+.send-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: #9ca3af;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.send-btn:hover:not(:disabled) {
+    background: #6b7280;
+}
+
+.send-btn.active {
+    background: #3b82f6;
+}
+
+.send-btn.active:hover {
+    background: #2563eb;
+}
+
+.send-btn:disabled {
+    background: #e5e7eb;
+    cursor: not-allowed;
+}
+
+/* 로딩 상태 */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 파일 미리보기 */
+.file-preview {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.file-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.file-preview-item:last-child {
+    margin-bottom: 0;
+}
+
+.file-icon {
+    font-size: 20px;
+}
+
+.file-info {
+    flex: 1;
+}
+
+.file-name {
+    font-weight: 500;
+    color: #374151;
+    font-size: 14px;
+}
+
+.file-size {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.file-remove-btn {
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: #fee2e2;
+    color: #dc2626;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+/* 이모지 피커 */
+.emoji-picker {
+    position: absolute;
+    bottom: 100%;
+    left: 50px;
+    width: 300px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px;
+    z-index: 1000;
+    margin-bottom: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.emoji-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.emoji-btn:hover {
+    background: #f3f4f6;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .welcome-section {
+        padding: 40px 20px;
+        margin: 16px;
+    }
+
+    .welcome-title {
+        font-size: 24px;
+    }
+
+    .messages-container {
+        padding: 0 16px;
+    }
+
+    .message-input-container {
+        padding: 16px;
+    }
+}

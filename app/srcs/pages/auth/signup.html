@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkSpace - 회원가입</title>
+    
+    <!-- CSS 파일들 임포트 -->
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/signup.css">
+</head>
+<body>
+    <!-- 배경 장식 -->
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+
+    <div class="signup-container">
+        <!-- 헤더 섹션 -->
+        <div class="header-section">
+            <div class="logo">🌊</div>
+            <h1 class="welcome-text">회원가입</h1>
+            <p class="subtitle">워크스페이스에 참여하여<br>팀과 함께 성장하세요</p>
+        </div>
+
+        <!-- 에러 메시지 -->
+        <div class="error-message" id="error-message" style="display: none; background-color: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px; border-radius: 8px; font-size: 14px; margin-bottom: 20px;">
+            에러가 발생했습니다.
+        </div>
+
+        <!-- 회원가입 폼 -->
+        <form class="signup-form" id="signup-form">
+            <!-- 1단계: 기본 정보 -->
+            <div class="form-step" id="form-step-1">
+                <div class="form-group">
+                    <label class="form-label" for="name">
+                        이름 <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="name" 
+                        class="form-input" 
+                        placeholder="홍길동"
+                        required
+                    >
+                    <div class="validation-message" id="name-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">
+                        이메일 <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        class="form-input" 
+                        placeholder="name@company.com"
+                        required
+                    >
+                    <div class="validation-message" id="email-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        비밀번호 <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="8자 이상의 안전한 비밀번호"
+                        required
+                    >
+                    <div class="validation-message" id="password-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">
+                        비밀번호 확인 <span class="required">*</span>
+                    </label>
+                    <input 
+                        type="password" 
+                        id="confirmPassword" 
+                        class="form-input" 
+                        placeholder="비밀번호를 다시 입력하세요"
+                        required
+                    >
+                    <div class="validation-message" id="confirmPassword-error"></div>
+                </div>
+
+
+                <div class="terms-section">
+                    <div class="terms-item">
+                        <input type="checkbox" class="checkbox" id="terms-service" required>
+                        <label class="terms-text terms-required" for="terms-service">
+                            <a href="#" class="terms-link">서비스 이용약관</a>에 동의합니다 <span class="required">*</span>
+                        </label>
+                    </div>
+                    <div class="terms-item">
+                        <input type="checkbox" class="checkbox" id="terms-privacy" required>
+                        <label class="terms-text terms-required" for="terms-privacy">
+                            <a href="#" class="terms-link">개인정보 처리방침</a>에 동의합니다 <span class="required">*</span>
+                        </label>
+                    </div>
+                    <div class="terms-item">
+                        <input type="checkbox" class="checkbox" id="terms-marketing">
+                        <label class="terms-text" for="terms-marketing">
+                            마케팅 정보 수신에 동의합니다 (선택)
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="signup-button" id="signup-btn" disabled>
+                <div class="loading-spinner" id="loading-spinner"></div>
+                <span id="btn-text">다음 단계</span>
+            </button>
+        </form>
+
+        <!-- 로그인 링크 -->
+        <div class="login-link">
+            이미 계정이 있으신가요? <a href="#" onclick="goToLogin()">로그인</a>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // 변수 설정
+        // ============================
+        const API_BASE_URL = 'http://localhost:8080';
+        let currentStep = 1;
+        let workspaceOption = 'create';
+
+        // ============================
+        // API 호출 함수들 (주석처리 - 나중에 사용)
+        // ============================
+        
+        async function signupUser(userData) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    return { success: true, data };
+                } else {
+                    return { success: false, error: data.detail || '회원가입에 실패했습니다.' };
+                }
+            } catch (error) {
+                console.error('Signup API Error:', error);
+                return { success: false, error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+
+                // 개발모드에서는 성공으로 처리
+                //alert('🎉 회원가입 완료!\n개발모드에서 가입되었습니다.');
+                //window.location.href = '../index.html';
+            }
+        }
+
+        async function requestEmailVerification(email) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/request-verification`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email })
+                });
+                return response.ok;
+            } catch (error) {
+                console.error('Email verification request failed:', error);
+                return false;
+            }
+        }
+        
+
+        // ============================
+        // 빠른 테스트용 함수 (개발모드)
+        // ============================
+        async function processSignup() {
+            const spinner = document.getElementById('loading-spinner');
+            const btnText = document.getElementById('btn-text');
+            const signupBtn = document.getElementById('signup-btn');
+            const errorBox = document.getElementById('error-message');
+
+            // 로딩 UI 표시
+            signupBtn.disabled = true;
+            btnText.textContent = '처리중...';
+            spinner.style.display = 'inline-block';
+            errorBox.style.display = 'none';
+
+            // 입력값 수집
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // 비밀번호 일치 검사
+            if (password !== confirmPassword) {
+                errorBox.textContent = '비밀번호가 일치하지 않습니다.';
+                errorBox.style.display = 'block';
+                btnText.textContent = '회원가입';
+                spinner.style.display = 'none';
+                signupBtn.disabled = false;
+                return;
+            }
+
+            // API에 전달할 JSON
+            const payload = { name, email, password };
+
+            // API 호출
+            const result = await signupUser(payload);
+
+            if (result.success) {
+                alert('🎉 회원가입 완료!\n' + result.data.message);
+                window.location.href = '../index.html'; // 다음 페이지로 이동
+            } else {
+                errorBox.textContent = result.error;
+                errorBox.style.display = 'block';
+                btnText.textContent = '회원가입';
+                spinner.style.display = 'none';
+                signupBtn.disabled = false;
+            }
+        }
+
+        // ============================
+        // 유효성 검사 함수들
+        // ============================
+        function validateName() {
+            const name = document.getElementById('name');
+            const error = document.getElementById('name-error');
+            
+            if (name.value.length < 2) {
+                name.classList.add('error');
+                error.textContent = '이름은 2자 이상이어야 합니다.';
+                return false;
+            } else {
+                name.classList.remove('error');
+                name.classList.add('success');
+                error.textContent = '';
+                return true;
+            }
+        }
+
+        function validateEmail() {
+            const email = document.getElementById('email');
+            const error = document.getElementById('email-error');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!emailRegex.test(email.value)) {
+                email.classList.add('error');
+                error.textContent = '유효한 이메일 주소를 입력하세요.';
+                return false;
+            } else {
+                email.classList.remove('error');
+                email.classList.add('success');
+                error.textContent = '';
+                return true;
+            }
+        }
+
+        function validatePassword() {
+            const password = document.getElementById('password');
+            const error = document.getElementById('password-error');
+            
+            if (password.value.length < 4) {
+                password.classList.add('error');
+                error.textContent = '비밀번호는 8자 이상이어야 합니다.';
+                return false;
+            } else {
+                password.classList.remove('error');
+                password.classList.add('success');
+                error.textContent = '';
+                return true;
+            }
+        }
+
+        function validatePasswordConfirm() {
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const error = document.getElementById('confirmPassword-error');
+            
+            if (confirmPassword.value && confirmPassword.value !== password.value) {
+                confirmPassword.classList.add('error');
+                error.textContent = '비밀번호가 일치하지 않습니다.';
+                return false;
+            } else if (confirmPassword.value) {
+                confirmPassword.classList.remove('error');
+                confirmPassword.classList.add('success');
+                error.textContent = '';
+                return true;
+            }
+            return false;
+        }
+
+        function checkStep1Validity() {
+            const name = validateName();
+            const email = validateEmail();
+            const password = validatePassword();
+            const confirmPassword = validatePasswordConfirm();
+            // const role = document.getElementById('role_id').value !== '';
+            const termsService = document.getElementById('terms-service').checked;
+            const termsPrivacy = document.getElementById('terms-privacy').checked;
+            
+            // const isValid = name && email && password && confirmPassword && role && termsService && termsPrivacy;
+            const isValid = name && email && password && confirmPassword && termsService && termsPrivacy;
+            document.getElementById('signup-btn').disabled = !isValid;
+            return isValid;
+        }
+
+        function checkStep2Validity() {
+            let isValid = false;
+            
+            if (workspaceOption === 'create') {
+                const workspaceName = document.getElementById('workspace_name').value.trim();
+                isValid = workspaceName.length >= 2;
+            } else if (workspaceOption === 'join') {
+                const inviteCode = document.getElementById('invite_code').value.trim();
+                isValid = inviteCode.length >= 3;
+            }
+            
+            document.getElementById('signup-btn').disabled = !isValid;
+            return isValid;
+        }
+
+        // ============================
+        // 워크스페이스 옵션 선택
+        // ============================
+        function selectWorkspaceOption(option) {
+            workspaceOption = option;
+            
+            // 모든 옵션 비활성화
+            document.querySelectorAll('.workspace-option').forEach(opt => {
+                opt.style.borderColor = '#e5e7eb';
+                opt.style.backgroundColor = 'white';
+            });
+            
+            // 선택된 옵션 활성화
+            event.target.closest('.workspace-option').style.borderColor = '#0ea5e9';
+            event.target.closest('.workspace-option').style.backgroundColor = '#f0f9ff';
+            
+            // 필드 표시/숨김
+            const workspaceGroup = document.getElementById('workspace-name-group');
+            const inviteGroup = document.getElementById('invite-code-group');
+            
+            if (option === 'create') {
+                workspaceGroup.style.display = 'block';
+                inviteGroup.style.display = 'none';
+            } else {
+                workspaceGroup.style.display = 'none';
+                inviteGroup.style.display = 'block';
+            }
+            
+            checkStep2Validity();
+        }
+
+        // ============================
+        // 폼 단계 관리
+        // ============================
+        function nextStep() {
+            currentStep = 2;
+            
+            // UI 업데이트
+            document.getElementById('form-step-1').style.display = 'none';
+            document.getElementById('form-step-2').style.display = 'block';
+            
+            document.getElementById('progress-fill').style.width = '66%';
+            
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('completed');
+            document.getElementById('step2').classList.add('active');
+            
+            document.getElementById('btn-text').textContent = '회원가입 완료';
+            document.getElementById('signup-btn').disabled = true;
+            
+            // 기본값으로 새 워크스페이스 생성 선택
+            selectWorkspaceOption('create');
+        }
+
+        // ============================
+        // 기타 함수들
+        // ============================
+
+        // ============================
+        // 워크스페이스 초대 요청 함수
+        // ============================
+
+        function goToLogin() {
+            window.location.href = 'login.html';
+        }
+
+        // ============================
+        // 이벤트 리스너들
+        // ============================
+        document.getElementById('name').addEventListener('input', checkStep1Validity);
+        document.getElementById('email').addEventListener('input', checkStep1Validity);
+        document.getElementById('password').addEventListener('input', checkStep1Validity);
+        document.getElementById('confirmPassword').addEventListener('input', checkStep1Validity);
+        // document.getElementById('role_id').addEventListener('change', checkStep1Validity);
+        document.getElementById('terms-service').addEventListener('change', checkStep1Validity);
+        document.getElementById('terms-privacy').addEventListener('change', checkStep1Validity);
+        // document.getElementById('workspace_name').addEventListener('input', checkStep2Validity);
+        // document.getElementById('invite_code').addEventListener('input', checkStep2Validity);
+
+        // 폼 제출 처리
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (checkStep1Validity()) {
+                    processSignup();
+                }
+        });
+
+        // 초기 상태 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStep1Validity();
+        });
+
+    </script>
+</body>
+</html>

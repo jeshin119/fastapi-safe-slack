@@ -1,0 +1,304 @@
+/* ======================
+   VERIFICATION.CSS - 인증 완료 전용 스타일
+====================== */
+
+/* 배경 애니메이션 */
+.bg-animation {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.floating-element {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: float-up 8s infinite linear;
+}
+
+.floating-element:nth-child(1) {
+    width: 80px;
+    height: 80px;
+    left: 10%;
+    animation-delay: 0s;
+    animation-duration: 6s;
+}
+
+.floating-element:nth-child(2) {
+    width: 60px;
+    height: 60px;
+    left: 20%;
+    animation-delay: 2s;
+    animation-duration: 8s;
+}
+
+.floating-element:nth-child(3) {
+    width: 100px;
+    height: 100px;
+    left: 80%;
+    animation-delay: 1s;
+    animation-duration: 7s;
+}
+
+.floating-element:nth-child(4) {
+    width: 40px;
+    height: 40px;
+    left: 70%;
+    animation-delay: 3s;
+    animation-duration: 9s;
+}
+
+.floating-element:nth-child(5) {
+    width: 120px;
+    height: 120px;
+    left: 50%;
+    animation-delay: 4s;
+    animation-duration: 10s;
+}
+
+/* 메인 컨테이너 */
+.complete-container {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+    padding: 50px 40px;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    backdrop-filter: blur(10px);
+}
+
+/* 성공 아이콘 */
+.success-icon {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 50%;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    color: white;
+    position: relative;
+    animation: bounce-in 0.8s ease-out;
+    box-shadow: 0 20px 40px rgba(16, 185, 129, 0.3);
+}
+
+.success-icon::before {
+    content: '';
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    border: 3px solid rgba(16, 185, 129, 0.3);
+    border-radius: 50%;
+    animation: pulse-ring 2s infinite;
+}
+
+/* 텍스트 */
+.title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #1e293b;
+    margin-bottom: 15px;
+    animation: slide-up 0.6s ease-out 0.2s both;
+}
+
+.subtitle {
+    font-size: 18px;
+    color: #64748b;
+    line-height: 1.6;
+    margin-bottom: 35px;
+    animation: slide-up 0.6s ease-out 0.4s both;
+}
+
+/* 이메일 정보 */
+.email-info {
+    background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+    border: 2px solid #bae6fd;
+    border-radius: 16px;
+    padding: 25px;
+    margin-bottom: 30px;
+    animation: slide-up 0.6s ease-out 0.6s both;
+}
+
+.email-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.email-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0369a1;
+    margin-bottom: 8px;
+}
+
+.email-address {
+    font-size: 16px;
+    color: #0284c7;
+    font-weight: 600;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #bae6fd;
+}
+
+.email-note {
+    font-size: 14px;
+    color: #64748b;
+    line-height: 1.5;
+}
+
+/* 단계 안내 */
+.steps-guide {
+    text-align: left;
+    margin-bottom: 30px;
+    animation: slide-up 0.6s ease-out 0.8s both;
+}
+
+.steps-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e293b;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+}
+
+.step-number {
+    width: 24px;
+    height: 24px;
+    background: #0ea5e9;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.step-text {
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.4;
+}
+
+/* 액션 버튼들 */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    animation: slide-up 0.6s ease-out 1.0s both;
+}
+
+.btn {
+    padding: 16px 24px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0ea5e9, #2563eb);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(14, 165, 233, 0.4);
+}
+
+.btn-secondary {
+    background: white;
+    color: #64748b;
+    border: 2px solid #e5e7eb;
+}
+
+.btn-secondary:hover {
+    border-color: #0ea5e9;
+    color: #0ea5e9;
+    background: #f0f9ff;
+}
+
+/* 도움말 섹션 */
+.help-section {
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid #e5e7eb;
+    animation: slide-up 0.6s ease-out 1.2s both;
+}
+
+.help-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 12px;
+}
+
+.help-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.help-link {
+    color: #0ea5e9;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.help-link:hover {
+    color: #0284c7;
+    text-decoration: underline;
+}
+
+/* 타이머 */
+.resend-timer {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #64748b;
+}
+
+.timer-text {
+    font-weight: 600;
+    color: #0ea5e9;
+}
+
+/* 로딩 스피너 */
+.loading-spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}

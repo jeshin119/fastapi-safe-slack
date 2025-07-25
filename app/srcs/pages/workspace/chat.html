@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>채팅 내용</title>
+     <!-- CSS 파일들 임포트 -->
+     <link rel="stylesheet" href="../../css/common.css">
+     <link rel="stylesheet" href="../../css/chat.css">
+
+</head>
+<body>
+    <div class="chat-content">
+        <!-- 환영 메시지 -->
+        <div class="welcome-section" id="welcome-section">
+            <div class="welcome-icon">🏠</div>
+            <h2 class="welcome-title" id="welcome-title"># 전체 채널에 오신 것을 환영합니다</h2>
+            <p class="welcome-description">
+                모든 멤버가 참여할 수 있는 공개 채널입니다. 자유롭게 소통하고 파일을 공유하세요. ⭐
+            </p>
+        </div>
+
+        <!-- 메시지 영역 -->
+        <div class="messages-container" id="messages-container">
+            <div class="loading" id="loading-state" style="display: none;">
+                <div class="loading-spinner"></div>
+                메시지를 불러오는 중...
+            </div>
+            
+            <div class="messages-list" id="messages-list">
+                <!-- 기본 환영 메시지 -->
+                <div class="message">
+                    <div class="message-avatar">A</div>
+                    <div class="message-content">
+                        <div class="message-header">
+                            <span class="message-author">admin@example.com</span>
+                            <span class="message-time">오전 09:00</span>
+                        </div>
+                        <div class="message-text">워크스페이스에 오신 것을 환영합니다! 🎉</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메시지 입력 영역 -->
+        <div class="message-input-container">
+            <!-- 파일 미리보기 -->
+            <div class="file-preview" id="file-preview" style="display: none;">
+                <div id="file-preview-list"></div>
+            </div>
+
+            <!-- 입력 영역 -->
+            <div class="message-input-area">
+                <input type="file" id="file-input" multiple accept="*/*" style="display: none;">
+                
+                <div class="input-actions-left">
+                    <button class="action-btn" onclick="triggerFileUpload()" title="파일 첨부">
+                        📎
+                    </button>
+                    <button class="action-btn" onclick="toggleEmojiPicker()" title="이모지">
+                        😊
+                    </button>
+                    <button class="action-btn" title="멘션">
+                        @
+                    </button>
+                    <button class="action-btn" title="서식">
+                        🖊️
+                    </button>
+                </div>
+                
+                <textarea 
+                    id="message-input" 
+                    class="message-input" 
+                    placeholder="메시지를 입력하세요..."
+                    rows="1"
+                    maxlength="2000"
+                ></textarea>
+                
+                <button class="send-btn" id="send-btn" onclick="sendMessage()" disabled title="전송">
+                    전송
+                </button>
+            </div>
+
+            <!-- 이모지 피커 -->
+            <div class="emoji-picker" id="emoji-picker" style="display: none;">
+                <div class="emoji-grid" id="emoji-grid">
+                    <!-- 기본 이모지들 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // 전역 변수
+        // ============================
+        const API_BASE_URL = 'http://localhost:8000';
+        const IS_DEV_MODE = new URLSearchParams(window.location.search).get('dev') === 'true' || 
+                            window.location.hostname === 'localhost';
+
+        let currentUser = { id: 1, name: '김개발', avatar: '김' };
+        let messages = [];
+        let selectedFiles = [];
+        let isEmojiPickerOpen = false;
+
+        const EMOJI_LIST = ['👍', '❤️', '😊', '🎉', '👏', '🔥', '💯', '✨', '😂', '🤣', '😘', '😍', '🤔', '😎', '👋', '🤝', '💪', '🙏'];
+
+        // ============================
+        // API 호출
+        // ============================
+        async function apiCall(endpoint, options = {}) {
+            if (IS_DEV_MODE) {
+                return await devApiCall(endpoint, options);
+            }
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) throw new Error('API 호출 실패');
+                return await response.json();
+            } catch (error) {
+                console.error('API 오류:', error);
+                throw error;
+            }
+        }
+
+        async function devApiCall(endpoint, options = {}) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            if (endpoint.includes('/messages') && options.method === 'POST') {
+                const messageData = JSON.parse(options.body);
+                const newMessage = {
+                    id: Date.now(),
+                    user_id: currentUser.id,
+                    username: currentUser.name,
+                    user_avatar: currentUser.avatar,
+                    content: messageData.content,
+                    timestamp: new Date().toISOString(),
+                    files: []
+                };
+                messages.push(newMessage);
+                return newMessage;
+            }
+            
+            return { messages: [] };
+        }
+
+        // ============================
+        // 메시지 전송
+        // ============================
+        async function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const content = messageInput.value.trim();
+            
+            if (!content && selectedFiles.length === 0) return;
+            
+            try {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = true;
+                sendBtn.textContent = '전송 중...';
+                
+                // 메시지 전송 API 호출
+                await apiCall('/messages', {
+                    method: 'POST',
+                    body: JSON.stringify({ content })
+                });
+                
+                // UI에 즉시 반영 (개발 모드에서)
+                if (IS_DEV_MODE) {
+                    addMessageToUI({
+                        id: Date.now(),
+                        user_id: currentUser.id,
+                        username: currentUser.name,
+                        user_avatar: currentUser.avatar,
+                        content: content,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+                
+                // 입력 초기화
+                messageInput.value = '';
+                selectedFiles = [];
+                updateFilePreview();
+                updateSendButton();
+                
+            } catch (error) {
+                console.error('메시지 전송 실패:', error);
+                alert('메시지 전송에 실패했습니다.');
+            } finally {
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = false;
+                sendBtn.textContent = '전송';
+            }
+        }
+
+        function addMessageToUI(message) {
+            const messagesList = document.getElementById('messages-list');
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message';
+            messageEl.innerHTML = `
+                <div class="message-avatar">${message.user_avatar}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-author">${message.username}</span>
+                        <span class="message-time">${formatTime(message.timestamp)}</span>
+                    </div>
+                    <div class="message-text">${escapeHtml(message.content)}</div>
+                </div>
+            `;
+            messagesList.appendChild(messageEl);
+            
+            // 스크롤을 맨 아래로
+            document.getElementById('messages-container').scrollTop = 
+                document.getElementById('messages-container').scrollHeight;
+        }
+
+        // ============================
+        // 파일 첨부
+        // ============================
+        function triggerFileUpload() {
+            document.getElementById('file-input').click();
+        }
+
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            selectedFiles.push(...files);
+            updateFilePreview();
+            updateSendButton();
+            this.value = '';
+        });
+
+        function updateFilePreview() {
+            const filePreview = document.getElementById('file-preview');
+            const filePreviewList = document.getElementById('file-preview-list');
+            
+            if (selectedFiles.length === 0) {
+                filePreview.style.display = 'none';
+                return;
+            }
+            
+            filePreview.style.display = 'block';
+            filePreviewList.innerHTML = selectedFiles.map((file, index) => `
+                <div class="file-preview-item">
+                    <div class="file-icon">📄</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-size">${formatFileSize(file.size)}</div>
+                    </div>
+                    <button class="file-remove-btn" onclick="removeFile(${index})">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFilePreview();
+            updateSendButton();
+        }
+
+        // ============================
+        // 이모지 피커
+        // ============================
+        function toggleEmojiPicker() {
+            const emojiPicker = document.getElementById('emoji-picker');
+            const emojiGrid = document.getElementById('emoji-grid');
+            
+            isEmojiPickerOpen = !isEmojiPickerOpen;
+            
+            if (isEmojiPickerOpen) {
+                emojiPicker.style.display = 'block';
+                emojiGrid.innerHTML = EMOJI_LIST.map(emoji => 
+                    `<button class="emoji-btn" onclick="insertEmoji('${emoji}')">${emoji}</button>`
+                ).join('');
+            } else {
+                emojiPicker.style.display = 'none';
+            }
+        }
+
+        function insertEmoji(emoji) {
+            const messageInput = document.getElementById('message-input');
+            const cursorPos = messageInput.selectionStart;
+            const textBefore = messageInput.value.substring(0, cursorPos);
+            const textAfter = messageInput.value.substring(cursorPos);
+            
+            messageInput.value = textBefore + emoji + textAfter;
+            messageInput.focus();
+            messageInput.selectionStart = messageInput.selectionEnd = cursorPos + emoji.length;
+            
+            updateSendButton();
+            toggleEmojiPicker();
+        }
+
+        // ============================
+        // 유틸리티 함수들
+        // ============================
+        function updateSendButton() {
+            const messageInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const hasContent = messageInput.value.trim().length > 0;
+            const hasFiles = selectedFiles.length > 0;
+            
+            sendBtn.disabled = !hasContent && !hasFiles;
+            if (hasContent || hasFiles) {
+                sendBtn.classList.add('active');
+            } else {
+                sendBtn.classList.remove('active');
+            }
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('ko-KR', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            });
+        }
+
+        function formatFileSize(bytes) {
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================
+        // 이벤트 리스너
+        // ============================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('💬 채팅 탭 로드됨');
+            
+            // 메시지 입력 이벤트
+            const messageInput = document.getElementById('message-input');
+            
+            messageInput.addEventListener('input', function() {
+                updateSendButton();
+                
+                // 자동 높이 조절
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+            
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!document.getElementById('send-btn').disabled) {
+                        sendMessage();
+                    }
+                }
+            });
+
+            // 외부 클릭시 이모지 피커 닫기
+            document.addEventListener('click', function(e) {
+                if (isEmojiPickerOpen && !e.target.closest('.emoji-picker') && !e.target.closest('[onclick*="toggleEmojiPicker"]')) {
+                    toggleEmojiPicker();
+                }
+            });
+
+            console.log('✅ 채팅 탭 초기화 완료');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>파일 관리</title>
+      <!-- CSS 파일들 임포트 -->
+      <link rel="stylesheet" href="../../css/common.css">
+      <link rel="stylesheet" href="../../css/file.css">
+</head>
+<body>
+    <div class="files-container">
+        <!-- 파일 입력 (숨김) -->
+        <input type="file" id="file-input" multiple accept="*/*">
+
+        <!-- 알림 메시지 -->
+        <div id="alert-container"></div>
+
+        <!-- 업로드 섹션 -->
+        <div class="upload-section">
+            <div class="upload-area" id="upload-area" onclick="triggerFileUpload()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-title">파일 업로드</div>
+                <div class="upload-description">
+                    파일을 드래그하여 놓거나 클릭하여 선택하세요<br>
+                    최대 50MB까지 업로드 가능합니다
+                </div>
+                <button class="upload-button" type="button">📤 파일 선택</button>
+            </div>
+
+            <!-- 권한 설정 옵션 -->
+            <div class="upload-options" id="upload-options" style="display: none;">
+                <div class="options-title">📋 파일 접근 권한 설정</div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="min-role">최소 접근 직급 (선택)</label>
+                    <select class="form-select" id="min-role">
+                        <option value="">모든 직급</option>
+                        <option value="사원">사원 이상</option>
+                        <option value="대리">대리 이상</option>
+                        <option value="과장">과장 이상</option>
+                        <option value="팀장">팀장 이상</option>
+                        <option value="부장">부장 이상</option>
+                        <option value="이사">이사 이상</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="valid-from">접근 시작일 (선택)</label>
+                        <input type="date" class="form-input" id="valid-from">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="valid-to">접근 종료일 (선택)</label>
+                        <input type="date" class="form-input" id="valid-to">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="description">파일 설명 (선택)</label>
+                    <input type="text" class="form-input" id="description" placeholder="파일에 대한 간단한 설명을 입력하세요">
+                </div>
+            </div>
+
+            <!-- 업로드 진행률 -->
+            <div class="upload-progress" id="upload-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <div class="progress-text" id="progress-text">업로드 중...</div>
+            </div>
+        </div>
+
+        <!-- 파일 목록 섹션 -->
+        <div class="files-section">
+            <div class="files-header">
+                <div>
+                    <div class="files-title">📁 채널 파일</div>
+                    <div class="files-count" id="files-count">파일을 불러오는 중...</div>
+                </div>
+                <button class="upload-button" onclick="triggerFileUpload()">+ 파일 추가</button>
+            </div>
+
+            <!-- 로딩 상태 -->
+            <div class="loading" id="loading-state">
+                <div class="loading-spinner"></div>
+                파일 목록을 불러오는 중...
+            </div>
+
+            <!-- 파일 목록 -->
+            <div class="files-list" id="files-list">
+                <!-- 파일 아이템들이 여기에 동적으로 추가됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // 전역 변수 및 설정
+        // ============================
+        
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        // URL 파라미터에서 채널 정보 추출
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelName = urlParams.get('channel') || 'default';
+        const workspaceName = urlParams.get('workspace') || 'default';
+        const workspaceId = urlParams.get('workspace_id') || localStorage.getItem('current_workspace_id');
+        const channelId = urlParams.get('channel_id');
+        const IS_DEV_MODE = urlParams.get('dev') === 'true' || 
+                            window.location.hostname === 'localhost' ||
+                            window.location.protocol === 'file:';
+
+        // Mock 데이터 (개발 모드용)
+        const MOCK_FILES = {
+            '전체': [
+                {
+                    file_id: 1,
+                    filename: '2025년 사업계획서.pdf',
+                    file_size: 2048576,
+                    mime_type: 'application/pdf',
+                    description: '2025년도 전체 사업 계획',
+                    min_role_name: '과장',
+                    valid_from: '2025-01-01',
+                    valid_to: '2025-12-31',
+                    uploaded_by: '홍길동',
+                    uploaded_at: '2025-01-15T09:30:00',
+                    download_url: '#'
+                },
+                {
+                    file_id: 2,
+                    filename: '팀빌딩 사진모음.zip',
+                    file_size: 15728640,
+                    mime_type: 'application/zip',
+                    description: '2024년 하반기 팀빌딩 사진',
+                    min_role_name: null,
+                    valid_from: null,
+                    valid_to: null,
+                    uploaded_by: '김대리',
+                    uploaded_at: '2025-01-10T14:20:00',
+                    download_url: '#'
+                }
+            ],
+            '개발팀': [
+                {
+                    file_id: 3,
+                    filename: 'API_Document_v2.pdf',
+                    file_size: 1024000,
+                    mime_type: 'application/pdf',
+                    description: 'API 명세서 버전 2.0',
+                    min_role_name: '대리',
+                    valid_from: '2025-01-01',
+                    valid_to: null,
+                    uploaded_by: '개발자A',
+                    uploaded_at: '2025-01-20T11:00:00',
+                    download_url: '#'
+                }
+            ],
+            '디자인': []
+        };
+
+        let currentFiles = [];
+        let selectedFiles = [];
+
+        // ============================
+        // 공통 API 호출 함수
+        // ============================
+        
+        // 개발 모드용 API 시뮬레이션
+        async function devApiCall(url, options = {}) {
+            console.log(`🔧 DEV MODE: API 호출 시뮬레이션 - ${options.method || 'GET'} ${url}`);
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            if (url.includes('/files') && options.method === 'POST') {
+                // 파일 업로드 시뮬레이션
+                const newFile = {
+                    file_id: Date.now(),
+                    filename: `업로드된_파일_${Date.now()}.pdf`,
+                    file_size: 1024000,
+                    mime_type: 'application/pdf',
+                    description: '새로 업로드된 파일',
+                    min_role_name: null,
+                    valid_from: null,
+                    valid_to: null,
+                    uploaded_by: '현재사용자',
+                    uploaded_at: new Date().toISOString(),
+                    download_url: '#'
+                };
+                
+                // Mock 데이터에 추가
+                if (!MOCK_FILES[channelName]) {
+                    MOCK_FILES[channelName] = [];
+                }
+                MOCK_FILES[channelName].push(newFile);
+                
+                return newFile;
+            }
+            
+            if (url.includes('/files') && options.method === 'DELETE') {
+                // 파일 삭제 시뮬레이션
+                const fileId = parseInt(url.split('/files/')[1]);
+                if (MOCK_FILES[channelName]) {
+                    const index = MOCK_FILES[channelName].findIndex(f => f.file_id === fileId);
+                    if (index !== -1) {
+                        MOCK_FILES[channelName].splice(index, 1);
+                    }
+                }
+                return { message: '파일이 삭제되었습니다.' };
+            }
+            
+            if (url.includes('/files')) {
+                // 파일 목록 조회 시뮬레이션
+                return { files: MOCK_FILES[channelName] || [] };
+            }
+            
+            return {};
+        }
+        
+        async function apiCall(endpoint, options = {}) {
+            if (IS_DEV_MODE) {
+                return await devApiCall(endpoint, options);
+            }
+            
+            try {
+                const token = localStorage.getItem('access_token');
+                const defaultHeaders = {
+                    'Authorization': `Bearer ${token}`
+                };
+
+                // FormData인 경우 Content-Type을 자동 설정하도록 함
+                if (!(options.body instanceof FormData)) {
+                    defaultHeaders['Content-Type'] = 'application/json';
+                }
+
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        ...defaultHeaders,
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error(`API 호출 오류 (${endpoint}):`, error);
+                throw error;
+            }
+        }
+
+        // ============================
+        // 파일 목록 로드
+        // ============================
+        async function loadFiles() {
+            try {
+                showLoading(true);
+                
+                // 워크스페이스와 채널 정보를 포함한 파일 목록 요청
+                let endpoint;
+                if (channelId) {
+                    endpoint = `/channels/${channelId}/files`;
+                } else {
+                    endpoint = `/workspaces/${workspaceId}/channels/${channelName}/files`;
+                }
+
+                const data = await apiCall(endpoint);
+                currentFiles = data.files || data || [];
+                
+                renderFiles();
+                updateFilesCount();
+                
+            } catch (error) {
+                console.error('파일 로딩 실패:', error);
+                showAlert('파일 목록을 불러오는데 실패했습니다: ' + error.message, 'error');
+                
+                // 에러 시 빈 목록으로 표시
+                currentFiles = [];
+                renderFiles();
+                updateFilesCount();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ============================
+        // UI 렌더링
+        // ============================
+
+        // 파일 목록 렌더링
+        function renderFiles() {
+            const filesList = document.getElementById('files-list');
+            
+            if (currentFiles.length === 0) {
+                filesList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📁</div>
+                        <div class="empty-state-title">아직 업로드된 파일이 없습니다</div>
+                        <div class="empty-state-description">
+                            첫 번째 파일을 업로드하여 팀원들과 공유해보세요!<br>
+                            드래그앤드롭 또는 위의 업로드 버튼을 사용하세요.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            filesList.innerHTML = currentFiles.map(file => {
+                const fileIcon = getFileIcon(file.filename);
+                const fileSize = formatFileSize(file.file_size);
+                const uploadTime = formatDate(file.uploaded_at || file.created_at);
+                const canDelete = canUserDeleteFile(file);
+
+                return `
+                    <div class="file-item" data-file-id="${file.file_id || file.id}">
+                        <div class="file-icon">${fileIcon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${file.filename}</div>
+                            <div class="file-meta">
+                                ${fileSize} • ${file.uploaded_by || file.uploader_name || '알 수 없음'} • ${uploadTime}
+                                ${file.description ? `<br>${file.description}` : ''}
+                            </div>
+                            <div class="file-tags">
+                                ${file.min_role_name ? `<span class="file-tag role">🔒 ${file.min_role_name} 이상</span>` : ''}
+                                ${file.valid_from && file.valid_to ? `<span class="file-tag period">📅 ${file.valid_from} ~ ${file.valid_to}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="file-actions">
+                            <button class="file-action-btn download" onclick="downloadFile(${file.file_id || file.id}, '${file.filename}')" title="다운로드">
+                                📥
+                            </button>
+                            <button class="file-action-btn" onclick="shareFile('${file.filename}')" title="공유">
+                                🔗
+                            </button>
+                            ${canDelete ? `
+                                <button class="file-action-btn delete" onclick="deleteFile(${file.file_id || file.id})" title="삭제">
+                                    🗑️
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 파일 아이콘 반환
+        function getFileIcon(fileName) {
+            const extension = fileName.split('.').pop().toLowerCase();
+            const iconMap = {
+                'pdf': '📄', 'doc': '📄', 'docx': '📄', 'txt': '📄',
+                'xls': '📊', 'xlsx': '📊', 'csv': '📊',
+                'ppt': '📊', 'pptx': '📊',
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'svg': '🖼️',
+                'fig': '🎨', 'sketch': '🎨', 'ai': '🎨', 'psd': '🎨',
+                'js': '💻', 'html': '💻', 'css': '💻', 'py': '💻', 'java': '💻',
+                'zip': '📦', 'rar': '📦', '7z': '📦',
+                'mp4': '🎥', 'avi': '🎥', 'mov': '🎥',
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵'
+            };
+            return iconMap[extension] || '📄';
+        }
+
+        // 파일 크기 포맷팅
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 날짜 포맷팅
+        function formatDate(dateString) {
+            if (!dateString) return '알 수 없음';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ko-KR', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // 파일 삭제 권한 확인
+        function canUserDeleteFile(file) {
+            // 실제로는 서버에서 권한을 체크하지만, 
+            // 프론트엔드에서 기본적인 체크
+            return true; // 서버에서 최종 권한 체크
+        }
+
+        // 파일 카운트 업데이트
+        function updateFilesCount() {
+            const count = currentFiles.length;
+            const countElement = document.getElementById('files-count');
+            countElement.textContent = `총 ${count}개의 파일`;
+        }
+
+        // 로딩 상태 표시
+        function showLoading(show) {
+            const loadingElement = document.getElementById('loading-state');
+            const filesListElement = document.getElementById('files-list');
+            
+            if (show) {
+                loadingElement.style.display = 'flex';
+                filesListElement.style.display = 'none';
+            } else {
+                loadingElement.style.display = 'none';
+                filesListElement.style.display = 'block';
+            }
+        }
+
+        // 알림 메시지 표시
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alert-container');
+            const alertId = 'alert-' + Date.now();
+            
+            const alertHTML = `
+                <div id="${alertId}" class="alert ${type}">
+                    ${message}
+                </div>
+            `;
+            
+            alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+            
+            // 3초 후 자동 제거
+            setTimeout(() => {
+                const alertElement = document.getElementById(alertId);
+                if (alertElement) {
+                    alertElement.remove();
+                }
+            }, 3000);
+        }
+
+        // ============================
+        // 파일 업로드
+        // ============================
+
+        const fileInput = document.getElementById('file-input');
+        const uploadArea = document.getElementById('upload-area');
+        const uploadOptions = document.getElementById('upload-options');
+        const uploadProgress = document.getElementById('upload-progress');
+
+        // 파일 선택 트리거
+        function triggerFileUpload() {
+            fileInput.click();
+        }
+
+        // 파일 선택 이벤트
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                selectedFiles = files;
+                showUploadOptions();
+            }
+        });
+
+        // 업로드 옵션 표시
+        function showUploadOptions() {
+            uploadOptions.style.display = 'block';
+            uploadOptions.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 파일 업로드 처리
+        async function handleFileUpload() {
+            if (selectedFiles.length === 0) return;
+
+            const minRole = document.getElementById('min-role').value;
+            const validFrom = document.getElementById('valid-from').value;
+            const validTo = document.getElementById('valid-to').value;
+            const description = document.getElementById('description').value;
+
+            // 진행률 표시
+            uploadProgress.style.display = 'block';
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+
+            try {
+                let completedFiles = 0;
+
+                for (const file of selectedFiles) {
+                    // 파일 크기 체크 (50MB)
+                    if (file.size > 50 * 1024 * 1024) {
+                        showAlert(`"${file.name}" 파일이 50MB를 초과합니다.`, 'error');
+                        continue;
+                    }
+
+                    progressText.textContent = `"${file.name}" 업로드 중...`;
+
+                    try {
+                        // 실제 파일 업로드
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        if (minRole) formData.append('min_role_name', minRole);
+                        if (validFrom) formData.append('valid_from', validFrom);
+                        if (validTo) formData.append('valid_to', validTo);
+                        if (description) formData.append('description', description);
+
+                        // 워크스페이스와 채널 정보 추가
+                        if (workspaceId) formData.append('workspace_id', workspaceId);
+                        if (channelId) formData.append('channel_id', channelId);
+
+                        let endpoint;
+                        if (channelId) {
+                            endpoint = `/channels/${channelId}/files`;
+                        } else {
+                            endpoint = `/workspaces/${workspaceId}/channels/${channelName}/files`;
+                        }
+
+                        await apiCall(endpoint, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        completedFiles++;
+                        const progress = (completedFiles / selectedFiles.length) * 100;
+                        progressFill.style.width = progress + '%';
+
+                    } catch (error) {
+                        console.error(`파일 "${file.name}" 업로드 실패:`, error);
+                        showAlert(`"${file.name}" 업로드에 실패했습니다: ${error.message}`, 'error');
+                    }
+                }
+
+                // 업로드 완료
+                progressText.textContent = `✅ ${completedFiles}개 파일이 업로드되었습니다!`;
+                
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                    uploadOptions.style.display = 'none';
+                    resetUploadForm();
+                    loadFiles(); // 파일 목록 새로고침
+                }, 2000);
+
+                if (completedFiles > 0) {
+                    showAlert(`${completedFiles}개 파일이 성공적으로 업로드되었습니다!`);
+                }
+
+            } catch (error) {
+                console.error('파일 업로드 오류:', error);
+                progressText.textContent = '❌ 업로드 중 오류가 발생했습니다.';
+                showAlert('파일 업로드에 실패했습니다: ' + error.message, 'error');
+                
+                setTimeout(() => {
+                    uploadProgress.style.display = 'none';
+                }, 2000);
+            }
+
+            // 파일 입력 초기화
+            fileInput.value = '';
+            selectedFiles = [];
+        }
+
+        // 업로드 폼 초기화
+        function resetUploadForm() {
+            document.getElementById('min-role').value = '';
+            document.getElementById('valid-from').value = '';
+            document.getElementById('valid-to').value = '';
+            document.getElementById('description').value = '';
+        }
+
+        // 드래그 앤 드롭 이벤트
+        let dragCounter = 0;
+
+        document.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            dragCounter++;
+            uploadArea.classList.add('dragover');
+        });
+
+        document.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter === 0) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dragCounter = 0;
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) {
+                selectedFiles = files;
+                showUploadOptions();
+            }
+        });
+
+        // ============================
+        // 파일 액션
+        // ============================
+
+        // 파일 다운로드
+        async function downloadFile(fileId, filename) {
+            try {
+                if (IS_DEV_MODE) {
+                    // 개발 모드에서는 다운로드 시뮬레이션
+                    showAlert(`"${filename}" 다운로드를 시작합니다.`);
+                    return;
+                }
+
+                // 다운로드 API 호출
+                const response = await fetch(`${API_BASE_URL}/files/${fileId}/download`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('다운로드 실패');
+                }
+
+                // 파일 다운로드 처리
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showAlert(`"${filename}" 다운로드가 완료되었습니다.`);
+
+            } catch (error) {
+                console.error('다운로드 오류:', error);
+                showAlert('파일 다운로드에 실패했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // 파일 공유
+        function shareFile(filename) {
+            const shareText = `📎 파일 공유: ${filename}\n채널: #${channelName}\n워크스페이스: ${workspaceName}`;
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareText).then(() => {
+                    showAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
+                }).catch(() => {
+                    fallbackCopyText(shareText, filename);
+                });
+            } else {
+                fallbackCopyText(shareText, filename);
+            }
+        }
+
+        // 클립보드 대체 방법
+        function fallbackCopyText(text, filename) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
+        }
+
+        // 파일 삭제
+        async function deleteFile(fileId) {
+            const file = currentFiles.find(f => (f.file_id || f.id) === fileId);
+            if (!file) return;
+
+            if (!confirm(`"${file.filename}" 파일을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
+                return;
+            }
+
+            try {
+                await apiCall(`/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+
+                showAlert(`"${file.filename}" 파일이 삭제되었습니다.`);
+                loadFiles(); // 파일 목록 새로고침
+
+            } catch (error) {
+                console.error('파일 삭제 오류:', error);
+                showAlert('파일 삭제에 실패했습니다: ' + error.message, 'error');
+            }
+        }
+
+        // ============================
+        // 초기화 및 이벤트 리스너
+        // ============================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log(`📁 Files 페이지 로드됨`);
+            console.log(`- 채널: ${channelName} (ID: ${channelId})`);
+            console.log(`- 워크스페이스: ${workspaceName} (ID: ${workspaceId})`);
+            console.log(`🔧 개발 모드: ${IS_DEV_MODE}`);
+
+            // 개발 모드가 아닌 경우에만 인증 확인
+            if (!IS_DEV_MODE) {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    alert('로그인이 필요합니다.');
+                    window.location.href = '/login.html';
+                    return;
+                }
+            }
+
+            // 파일 목록 로드
+            loadFiles();
+
+            // 업로드 옵션에 업로드 버튼 추가
+            const uploadOptionsDiv = document.getElementById('upload-options');
+            const uploadButton = document.createElement('button');
+            uploadButton.className = 'upload-button';
+            uploadButton.style.width = '100%';
+            uploadButton.style.marginTop = '16px';
+            uploadButton.textContent = '📤 선택된 파일 업로드';
+            uploadButton.onclick = handleFileUpload;
+            uploadOptionsDiv.appendChild(uploadButton);
+
+            // 날짜 입력 기본값 설정
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('valid-from').min = today;
+            document.getElementById('valid-to').min = today;
+
+            // 종료일은 시작일 이후로 제한
+            document.getElementById('valid-from').addEventListener('change', function() {
+                document.getElementById('valid-to').min = this.value;
+            });
+
+            // 개발 모드 표시
+            if (IS_DEV_MODE) {
+                document.body.style.borderTop = '4px solid #f59e0b';
+                const devBadge = document.createElement('div');
+                devBadge.innerHTML = '🔧 개발 모드';
+                devBadge.style.cssText = `
+                    position: fixed;
+                    top: 4px;
+                    right: 20px;
+                    background: #f59e0b;
+                    color: white;
+                    padding: 4px 12px;
+                    border-radius: 0 0 8px 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    z-index: 1000;
+                `;
+                document.body.appendChild(devBadge);
+            }
+
+            // 키보드 단축키
+            document.addEventListener('keydown', function(e) {
+                // Ctrl/Cmd + U: 파일 업로드
+                if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+                    e.preventDefault();
+                    triggerFileUpload();
+                }
+                
+                // Escape: 업로드 옵션 닫기
+                if (e.key === 'Escape' && uploadOptions.style.display === 'block') {
+                    uploadOptions.style.display = 'none';
+                    resetUploadForm();
+                }
+
+                // Enter: 업로드 실행
+                if (e.key === 'Enter' && uploadOptions.style.display === 'block') {
+                    handleFileUpload();
+                }
+            });
+
+            console.log('📁 Files 페이지 초기화 완료');
+        });
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', function() {
+            // 업로드 중인 작업 정리
+            if (uploadProgress.style.display === 'block') {
+                // 업로드 중인 경우 경고 메시지
+                return '파일 업로드가 진행 중입니다. 페이지를 떠나시겠습니까?';
+            }
+        });
+
+        // 전역 함수로 노출 (디버깅용)
+        window.filesDebug = {
+            currentFiles: () => currentFiles,
+            loadFiles: loadFiles,
+            channelName: channelName,
+            workspaceName: workspaceName,
+            channelId: channelId,
+            workspaceId: workspaceId,
+            IS_DEV_MODE: IS_DEV_MODE,
+            apiCall: apiCall,
+            mockFiles: MOCK_FILES
+        };
+    </script>
+</body>
+</html>

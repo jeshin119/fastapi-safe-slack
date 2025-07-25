@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 완료 - WorkSpace</title>
+    
+    <!-- CSS 파일들 임포트 -->
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/account-setup.css">
+</head>
+<body>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+
+    <div class="setup-container">
+        <!-- 헤더 -->
+        <div class="header-section">
+            <div class="logo">🌊</div>
+            <h1 class="welcome-text">계정 설정</h1>
+            <p class="subtitle">간단한 설정으로 개인화된<br>워크스페이스를 시작하세요</p>
+        </div>
+
+        <!-- 프로필 설정 -->
+        <div class="profile-section">
+            <div class="section-title">
+                👤 프로필 설정
+            </div>
+            
+            <div class="profile-upload">
+                <div class="avatar-container">
+                    <div class="avatar" id="avatar">
+                        👤
+                    </div>
+                    <div class="upload-overlay" onclick="document.getElementById('avatar-input').click()">
+                        📷
+                    </div>
+                </div>
+                <input type="file" id="avatar-input" class="file-input" accept="image/*">
+                <p class="upload-text">프로필 사진을 설정하세요</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">표시 이름</label>
+                <input type="text" class="form-input" id="displayName" placeholder="홍길동" value="홍길동">
+            </div>
+        </div>
+
+        <!-- 워크스페이스 설정 -->
+        <div class="workspace-section">
+            <div class="section-title">
+                🏢 워크스페이스 설정
+            </div>
+            
+            <div class="workspace-options">
+                <div class="workspace-option" onclick="selectWorkspace('create')">
+                    <div class="option-header">
+                        <div class="option-icon">➕</div>
+                        <div class="option-title">새 워크스페이스 만들기</div>
+                    </div>
+                    <div class="option-description">
+                        새로운 팀을 만들고 동료들을 초대하여 함께 협업하세요.
+                    </div>
+                </div>
+
+                <div class="workspace-option" onclick="selectWorkspace('join')">
+                    <div class="option-header">
+                        <div class="option-icon">👥</div>
+                        <div class="option-title">기존 워크스페이스 참여</div>
+                    </div>
+                    <div class="option-description">
+                        초대 링크를 통해 기존 팀에 참여하세요.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 완료 버튼 -->
+        <button class="setup-button" id="setup-btn" onclick="completeSetup()">
+            <div class="loading-spinner" id="loading-spinner"></div>
+            <span id="btn-text">설정 완료</span>
+        </button>
+
+        <!-- 스킵 링크 -->
+        <div class="skip-link">
+            <a href="#" onclick="skipSetup()">나중에 설정하기</a>
+        </div>
+    </div>
+
+    <script>
+        let selectedWorkspace = null;
+
+        // 프로필 사진 업로드
+        document.getElementById('avatar-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('avatar').innerHTML = `<img src="${e.target.result}" alt="프로필">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 워크스페이스 선택
+        function selectWorkspace(type) {
+            selectedWorkspace = type;
+            document.querySelectorAll('.workspace-option').forEach(opt => opt.classList.remove('selected'));
+            event.target.closest('.workspace-option').classList.add('selected');
+        }
+
+        // 설정 완료
+        function completeSetup() {
+            const displayName = document.getElementById('displayName').value;
+            const setupBtn = document.getElementById('setup-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('loading-spinner');
+
+            if (!displayName.trim()) {
+                alert('표시 이름을 입력해주세요.');
+                return;
+            }
+
+            // 로딩 상태
+            setupBtn.disabled = true;
+            btnText.textContent = '설정 중...';
+            spinner.style.display = 'inline-block';
+
+            // 가짜 처리 (실제로는 서버에 요청)
+            setTimeout(() => {
+                let message = '';
+                switch(selectedWorkspace) {
+                    case 'create':
+                        message = '🎉 새 워크스페이스가 생성되었습니다!\n팀원들을 초대해보세요.';
+                        break;
+                    case 'join':
+                        message = '🎉 워크스페이스 참여 준비가 완료되었습니다!\n초대 링크를 입력해주세요.';
+                        break;
+                    case 'explore':
+                        message = '🎉 설정이 완료되었습니다!\n워크스페이스를 둘러보세요.';
+                        break;
+                    default:
+                        message = '🎉 기본 설정이 완료되었습니다!\n워크스페이스를 시작해보세요.';
+                }
+                
+                alert(message);
+                // 실제로는 워크스페이스 메인 페이지로 리다이렉트
+                // window.location.href = '/workspace';
+            }, 2000);
+        }
+
+        // 스킵
+        function skipSetup() {
+            if (confirm('설정을 건너뛰고 바로 시작하시겠습니까?')) {
+                alert('🚀 워크스페이스로 이동합니다!');
+                window.location.href = '../workspace/workspace-select.html';
+                // 실제로는 워크스페이스 메인 페이지로 리다이렉트
+            }
+        }
+
+        // 입력 필드 실시간 검증
+        document.getElementById('displayName').addEventListener('input', function() {
+            const setupBtn = document.getElementById('setup-btn');
+            if (this.value.trim()) {
+                setupBtn.disabled = false;
+            } else {
+                setupBtn.disabled = true;
+            }
+        });
+
+        // 초기 상태 설정
+        document.getElementById('setup-btn').disabled = false;
+    </script>
+</body>
+</html>

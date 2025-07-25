@@ -1,0 +1,360 @@
+/* ======================
+   TEAM-WORKSPACE.CSS - 팀 워크스페이스 페이지 전용 스타일
+====================== */
+
+/* body 오버라이드 (팀 워크스페이스는 다른 레이아웃) */
+body {
+    background-color: #f1f5f9;
+    height: 100vh;
+    display: flex;
+    min-height: auto; /* common.css의 min-height 오버라이드 */
+    align-items: stretch; /* common.css의 center 오버라이드 */
+    justify-content: flex-start; /* common.css의 center 오버라이드 */
+    padding: 0; /* common.css의 padding 오버라이드 */
+    overflow: visible; /* common.css의 overflow 오버라이드 */
+    background: #f1f5f9; /* common.css의 gradient 오버라이드 */
+}
+
+/* 좌측 기능 툴바 */
+.left-toolbar {
+    width: 80px;
+    background-color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    gap: 20px;
+}
+
+.toolbar-item {
+    width: 48px;
+    height: 48px;
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: white;
+    font-size: 20px;
+    position: relative;
+}
+
+.toolbar-item:hover {
+    background-color: #0ea5e9;
+    transform: scale(1.1);
+}
+
+.toolbar-item.active {
+    background-color: #0ea5e9;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.toolbar-tooltip {
+    position: absolute;
+    left: 60px;
+    background-color: #1f2937;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 1000;
+}
+
+.toolbar-item:hover .toolbar-tooltip {
+    opacity: 1;
+}
+
+/* 사이드바 */
+.sidebar {
+    width: 280px;
+    background-color: #0ea5e9;
+    color: white;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.team-header {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.team-name {
+    font-size: 20px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-info {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.content-section {
+    padding: 20px 0;
+    flex: 1;
+}
+
+.section-title {
+    padding: 0 20px;
+    font-size: 15px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    opacity: 0.9;
+}
+
+.item-list {
+    list-style: none;
+}
+
+.list-item {
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 0 20px 20px 0;
+    margin-right: 16px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.list-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.list-item.active {
+    background-color: #2563eb;
+    font-weight: bold;
+}
+
+.item-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.file-icon {
+    width: 24px;
+    height: 24px;
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.item-meta {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* 메인 콘텐츠 */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+}
+
+.content-header {
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.header-left h1 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.header-left p {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    padding: 8px 16px;
+    border: 1px solid #e2e8f0;
+    background-color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-btn.primary {
+    background-color: #0ea5e9;
+    color: white;
+    border-color: #0ea5e9;
+}
+
+.action-btn:hover {
+    background-color: #f8fafc;
+}
+
+.action-btn.primary:hover {
+    background-color: #0284c7;
+}
+
+/* 콘텐츠 영역 */
+.content-area {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.content-card {
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.2s;
+}
+
+.content-card:hover {
+    border-color: #0ea5e9;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.1);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.card-icon {
+    width: 40px;
+    height: 40px;
+    background-color: #0ea5e9;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.card-description {
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-new {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.status-urgent {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.status-progress {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* 업로드 드래그 영역 */
+.upload-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    color: #64748b;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #0ea5e9;
+    background-color: #f0f9ff;
+}
+
+.upload-area.dragover {
+    border-color: #0ea5e9;
+    background-color: #e0f2fe;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .left-toolbar {
+        width: 60px;
+    }
+    
+    .sidebar {
+        width: 240px;
+    }
+    
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}

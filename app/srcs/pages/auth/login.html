@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkSpace - 로그인</title>
+    
+    <!-- CSS 파일들 임포트 -->
+    <link rel="stylesheet" href="../../css/common.css">
+    <link rel="stylesheet" href="../../css/auth.css">
+</head>
+<body>
+    <!-- 배경 장식 -->
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+    <div class="bg-decoration"></div>
+
+    <!-- 로그인 컨테이너 -->
+    <div class="login-container">
+        <!-- 로고 섹션 -->
+        <div class="logo-section">
+            <div class="logo">🌊</div>
+            <h1 class="welcome-text">환영합니다!</h1>
+            <p class="subtitle">워크스페이스에 로그인하여<br>팀과 함께 협업을 시작하세요</p>
+        </div>
+
+        <!-- 에러 메시지 -->
+        <div class="error-message" id="error-message">
+            이메일 또는 비밀번호가 올바르지 않습니다.
+        </div>
+
+        <!-- 로그인 폼 -->
+        <form class="login-form" id="login-form">
+            <div class="form-group">
+                <label class="form-label" for="email">이메일</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    class="form-input" 
+                    placeholder="name@company.com"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">비밀번호</label>
+                <div class="password-group">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-input" 
+                        placeholder="비밀번호를 입력하세요"
+                        required
+                    >
+                    <button type="button" class="password-toggle" id="password-toggle">
+                        👁️
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-options">
+                <label class="remember-me">
+                    <input type="checkbox" class="checkbox" id="remember">
+                    <span>로그인 유지</span>
+                </label>
+                <span class="forgot-password" onclick="showPasswordReset()">비밀번호 찾기</span>
+            </div>
+
+            <button type="submit" class="login-button" id="login-btn">
+                <div class="loading-spinner" id="loading-spinner"></div>
+                <span id="btn-text">로그인</span>
+            </button>
+        </form>
+
+        <!-- 구분선 -->
+        <div class="divider">
+            <span>또는</span>
+        </div>
+
+
+        <!-- 회원가입 링크 -->
+        <div class="signup-link">
+            아직 계정이 없으신가요? <a href="#" onclick="goToSignup()">회원가입</a>
+        </div>
+    </div>
+
+    <!-- 성공 애니메이션 -->
+    <div class="success-animation" id="success-animation">
+        <div class="success-content">
+            <div class="success-icon">✅</div>
+            <h2>로그인 성공!</h2>
+            <p>워크스페이스로 이동중...</p>
+        </div>
+    </div>
+
+    <script>
+        // ============================
+        // API 설정
+        // ============================
+        const API_BASE_URL = 'http://localhost:8000'; // 서버 주소 (필요시 변경)
+
+        // ============================
+        // API 호출 함수들
+        // ============================
+        async function loginUser(email, password) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,            // <- 정확히 email
+                        password: password       // <- 정확히 password
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 성공: JWT 토큰 저장
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('token_type', data.token_type);
+                    return { success: true, data };
+                } else {
+                    // 실패: 에러 메시지 반환
+                    return { success: false, error: data.detail || '로그인에 실패했습니다.' };
+                }
+            } catch (error) {
+                console.error('Login API Error:', error);
+                return { success: false, error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+            }
+        }
+
+        // 토큰 유효성 검사 (선택적)
+        async function checkTokenValidity() {
+            const token = localStorage.getItem('access_token');
+            if (!token) return false;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // ============================
+        // UI 이벤트 핸들러들
+        // ============================
+
+        // 비밀번호 표시/숨기기
+        document.getElementById('password-toggle').addEventListener('click', function() {
+            const passwordInput = document.getElementById('password');
+            const isPassword = passwordInput.type === 'password';
+            
+            passwordInput.type = isPassword ? 'text' : 'password';
+            this.textContent = isPassword ? '🙈' : '👁️';
+        });
+
+        // 로그인 폼 제출 (🟢 실제 API 연결)
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('login-btn');
+            const btnText = document.getElementById('btn-text');
+            const spinner = document.getElementById('loading-spinner');
+            const errorMessage = document.getElementById('error-message');
+
+            // 입력값 검증
+            if (!email || !password) {
+                errorMessage.textContent = '이메일과 비밀번호를 모두 입력해주세요.';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            // 로딩 상태
+            loginBtn.disabled = true;
+            loginBtn.classList.add('loading');
+            btnText.textContent = '로그인 중...';
+            spinner.style.display = 'inline-block';
+            errorMessage.style.display = 'none';
+
+            try {
+                // 🟢 실제 API 호출
+                const result = await loginUser(email, password);
+                
+                if (result.success) {
+                    // 성공: 성공 애니메이션 표시
+                    document.getElementById('success-animation').style.display = 'flex';
+                    
+                    // 2초 후 워크스페이스로 이동
+                    setTimeout(() => {
+                        // window.location.href = 'page8_workspace_main.html';
+                        // window.location.href = '../workspace/workspace-main.html';
+                        window.location.href = '../workspace/workspace-select.html';
+                    }, 2000);
+                } else {
+                    // 실패: 에러 메시지 표시
+                    errorMessage.textContent = result.error;
+                    errorMessage.style.display = 'block';
+                    
+                    // 로딩 상태 원복
+                    loginBtn.disabled = false;
+                    loginBtn.classList.remove('loading');
+                    btnText.textContent = '로그인';
+                    spinner.style.display = 'none';
+                }
+            } catch (error) {
+                // 예외 발생시
+                console.error('Login error:', error);
+                errorMessage.textContent = '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+                errorMessage.style.display = 'block';
+                
+                // 로딩 상태 원복
+                loginBtn.disabled = false;
+                loginBtn.classList.remove('loading');
+                btnText.textContent = '로그인';
+                spinner.style.display = 'none';
+            }
+        });
+
+        // 소셜 로그인 (기존 가짜 기능 유지)
+        function socialLogin(provider) {
+            const providers = {
+                'google': 'Google',
+                'github': 'GitHub', 
+                'apple': 'Apple'
+            };
+            
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.style.opacity = '0.7';
+            btn.textContent = '...';
+            
+            // TODO: 실제 소셜 로그인 API 연결
+            setTimeout(() => {
+                alert(`${providers[provider]} 소셜 로그인은 아직 구현되지 않았습니다.`);
+                btn.style.opacity = '1';
+                btn.textContent = originalText;
+            }, 1000);
+        }
+
+        // 회원가입 페이지로 이동
+        function goToSignup() {
+            window.location.href = 'signup.html';
+        }
+
+        // 비밀번호 찾기 페이지로 이동
+        function showPasswordReset() {
+            window.location.href = 'page2_reset.html';
+        }
+
+        // ============================
+        // 추가 기능들
+        // ============================
+
+        // 입력 필드 애니메이션
+        document.querySelectorAll('.form-input').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'scale(1.02)';
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+
+        // 엔터키로 로그인
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('login-form').dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // 페이지 로드시 이미 로그인된 사용자 확인
+        document.addEventListener('DOMContentLoaded', async function() {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                const isValid = await checkTokenValidity();
+                if (isValid) {
+                    // 이미 로그인된 상태면 워크스페이스로 리다이렉트
+                    window.location.href = 'page8_workspace_main.html';
+                } else {
+                    // 토큰이 만료되었으면 제거
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('token_type');
+                }
+            }
+        });
+
+        // 개발자 도구용 디버깅 함수
+        window.debugAPI = {
+            testLogin: () => loginUser('test@example.com', 'testpassword'),
+            checkToken: checkTokenValidity,
+            clearTokens: () => {
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('token_type');
+                console.log('토큰이 삭제되었습니다.');
+            }
+        };
+        
+        console.log('🔧 개발자 도구에서 debugAPI 객체를 사용하여 테스트할 수 있습니다.');
+        console.log('예: debugAPI.testLogin(), debugAPI.checkToken(), debugAPI.clearTokens()');
+    </script>
+</body>
+</html>
