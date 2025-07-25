@@ -6,8 +6,8 @@
     <title>WorkSpace - 회원가입</title>
     
     <!-- CSS 파일들 임포트 -->
-    <link rel="stylesheet" href="../../css/common.css">
-    <link rel="stylesheet" href="../../css/signup.css">
+    <link rel="stylesheet" href="/static/css/common.css">
+    <link rel="stylesheet" href="/static/css/signup.css">
 </head>
 <body>
     <!-- 배경 장식 -->
@@ -127,7 +127,7 @@
         // ============================
         // 변수 설정
         // ============================
-        const API_BASE_URL = 'http://localhost:8080';
+        const API_BASE_URL = 'http://localhost:8000';
         let currentStep = 1;
         let workspaceOption = 'create';
 
@@ -218,7 +218,7 @@
 
             if (result.success) {
                 alert('🎉 회원가입 완료!\n' + result.data.message);
-                window.location.href = '../index.html'; // 다음 페이지로 이동
+                window.location.href = '/static/index.html'; // 다음 페이지로 이동
             } else {
                 errorBox.textContent = result.error;
                 errorBox.style.display = 'block';
