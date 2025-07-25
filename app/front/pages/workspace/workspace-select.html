@@ -517,6 +517,9 @@ async function enterWorkspace() {
         localStorage.setItem('current_workspace_name', data.workspace_name);
         localStorage.setItem('is_workspace_admin', data.is_workspace_admin);
 
+        // 워크스페이스 메인 페이지로 리다이렉트
+        window.location.href = `workspace-main.html?workspace_name=${encodeURIComponent(selectedWorkspace.name)}`;
+
     } catch (error) {
         console.error('워크스페이스 입장 실패:', error);
         alert('워크스페이스 입장에 실패했습니다: ' + error.message);
