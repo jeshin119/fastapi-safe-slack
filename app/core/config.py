@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     AWS_REGION: Optional[str] = None
     S3_BUCKET_NAME: Optional[str] = None
     
+    # AWS DynamoDB 설정 (.env에서 읽음)
+    DYNAMODB_USER_ACCESS_KEY_ID: Optional[str] = None
+    DYNAMODB_USER_SECRET_ACCESS_KEY: Optional[str] = None
+    DYNAMODB_REGION: Optional[str] = None
+    DYNAMODB_TABLE_NAME: Optional[str] = None
+    
     # 이메일 설정 (.env에서 읽음)
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: Optional[int] = None

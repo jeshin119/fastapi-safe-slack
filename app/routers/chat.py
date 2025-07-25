@@ -5,6 +5,7 @@ from app.db.session import get_db
 from app.core.utils import get_current_user_with_context, verify_token
 from app.core.websocket_manager import manager
 from app.models.models import Workspace, Channel, WorkspaceMember, ChannelMember, User
+from app.core.dynamodb import dynamodb_manager
 from app.schemas.chat import WebSocketMessage
 from datetime import datetime
 import json
@@ -42,7 +43,7 @@ async def websocket_endpoint(
         await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
         return
     
-    # 데이터베이스 연결
+    # 데이터베이스 연결 (워크스페이스/채널 검증용)
     db = await get_db().__anext__()
     
     try:
@@ -124,19 +125,24 @@ async def websocket_endpoint(
                         })
                         continue
                     
-                    # 메시지 DB 저장 (DynamoDB 전환 전까지 임시 주석)
-                    # new_message = Message(
-                    #     content=content,
-                    #     user_id=user_context["user_id"],
-                    #     channel_id=channel.id,
-                    #     message_type=message_type,
-                    #     reply_to=message_data.get("reply_to"),
-                    #     mentions=json.dumps(message_data.get("mentions", [])) if message_data.get("mentions") else None
-                    # )
-                    # 
-                    # db.add(new_message)
-                    # await db.commit()
-                    # await db.refresh(new_message)
+                    # DynamoDB에 메시지 저장
+                    message_item = {
+                        'channel_id': channel.id,
+                        'user_id': user_context["user_id"],
+                        'user_name': user_context["user_name"],
+                        'content': content,
+                        'message_type': message_type,
+                        'reply_to': message_data.get('reply_to'),
+                        'mentions': message_data.get('mentions', [])
+                    }
+                    
+                    try:
+                        message_id = await dynamodb_manager.save_message(message_item)
+                        print(f"DynamoDB 메시지 저장 성공: {message_id}")
+                    except Exception as e:
+                        print(f"DynamoDB 메시지 저장 실패: {e}")
+                        # DynamoDB 저장 실패해도 실시간 채팅은 계속 진행
+                        message_id = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}"
                     
                     # 채널 멤버들에게 메시지 브로드캐스트
                     await manager.broadcast_to_channel(
@@ -144,7 +150,7 @@ async def websocket_endpoint(
                         channel.id,
                         {
                             "type": "message",
-                            "message_id": None,  # DB 저장 안하므로 None
+                            "message_id": message_id,
                             "content": content,
                             "user_id": user_context["user_id"],
                             "user_name": user_context["user_name"],
@@ -191,11 +197,9 @@ async def websocket_endpoint(
             "message": f"오류가 발생했습니다: {str(e)}",
             "timestamp": datetime.now().isoformat()
         })
-        await manager.disconnect(websocket)
     finally:
         await db.close()
 
-# REST API 엔드포인트 (메시지 히스토리 조회)
 @router.get("/workspaces/{workspace_name}/channels/{channel_name}/messages")
 async def get_message_history(
     workspace_name: str,
@@ -220,7 +224,7 @@ async def get_message_history(
     if not channel:
         raise HTTPException(status_code=404, detail="채널을 찾을 수 없습니다.")
     
-    # 권한 확인
+    # 워크스페이스 멤버십 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
         WorkspaceMember.workspace_id == workspace.id
@@ -229,6 +233,7 @@ async def get_message_history(
     if not workspace_membership:
         raise HTTPException(status_code=403, detail="워크스페이스에 접근할 권한이 없습니다.")
     
+    # 채널 멤버십 확인
     result = await db.execute(select(ChannelMember).where(
         ChannelMember.user_id == user_context["user_id"],
         ChannelMember.channel_id == channel.id,
@@ -238,40 +243,21 @@ async def get_message_history(
     if not channel_membership:
         raise HTTPException(status_code=403, detail="채널에 접근할 권한이 없습니다.")
     
-    # 메시지 히스토리 조회
-    result = await db.execute(
-        select(Message)
-        .where(Message.channel_id == channel.id)
-        .order_by(Message.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
-    messages = result.scalars().all()
+    # DynamoDB에서 메시지 조회
+    messages = await dynamodb_manager.get_messages(channel.id, limit)
     
-    # 사용자 정보 조회
-    user_ids = list(set([msg.user_id for msg in messages]))
-    result = await db.execute(select(User).where(User.id.in_(user_ids)))
-    users = {user.id: user for user in result.scalars().all()}
-    
-    # 응답 데이터 구성
-    message_list = []
-    for msg in reversed(messages):  # 최신순으로 정렬
-        user = users.get(msg.user_id)
-        message_list.append({
-            "message_id": msg.id,
-            "content": msg.content,
-            "user_id": msg.user_id,
-            "user_name": user.name if user else "알 수 없음",
-            "message_type": msg.message_type,
-            "reply_to": msg.reply_to,
-            "mentions": json.loads(msg.mentions) if msg.mentions else None,
-            "timestamp": msg.created_at.isoformat(),
-            "workspace_id": workspace.id,
-            "channel_id": channel.id
+    # 응답 형식 변환
+    formatted_messages = []
+    for msg in messages:
+        formatted_messages.append({
+            "message_id": msg["message_id"],
+            "content": msg["content"],
+            "user_id": msg["user_id"],
+            "user_name": msg["user_name"],
+            "message_type": msg.get("message_type", "text"),
+            "timestamp": msg["timestamp"],
+            "reply_to": msg.get("reply_to"),
+            "mentions": json.loads(msg["mentions"]) if msg.get("mentions") else []
         })
     
-    return {
-        "messages": message_list,
-        "total": len(message_list),
-        "has_more": len(messages) == limit
-    } 
+    return formatted_messages 
