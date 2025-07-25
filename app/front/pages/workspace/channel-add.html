@@ -254,20 +254,21 @@
         // 채널 생성 API
         // ============================
         async function createChannel() {
+            const workspace_name = localStorage.getItem('current_workspace_name');
             const name = document.getElementById('channel-name').value.trim();
             const isPublic = selectedVisibility === 'public';
 
             try {
                 const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/channels`, {
+                const response = await fetch(`${API_BASE_URL}/channels/create`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        name: name,
-                        workspace_id: 1, // 실제로는 현재 워크스페이스 ID
+                        workspace_name: workspace_name,
+                        channel_name: name,
                         is_public: isPublic
                     })
                 });
