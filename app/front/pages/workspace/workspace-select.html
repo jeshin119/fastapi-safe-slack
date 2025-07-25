@@ -8,8 +8,8 @@
     <title>워크스페이스 선택 - WorkSpace</title>
     
     <!-- CSS 파일들 임포트 -->
-    <link rel="stylesheet" href="../../css/common.css">
-    <link rel="stylesheet" href="../../css/workspace-select.css">
+    <link rel="stylesheet" href="/front/css/common.css">
+    <link rel="stylesheet" href="/front/css/workspace-select.css">
 </head>
 <body>
     <!-- 배경 장식 -->
@@ -293,25 +293,25 @@
             console.log(`현재 URL: ${window.location.href}`);
             
             // 개발 모드 표시 (먼저)
-            if (IS_DEV_MODE) {
-                document.body.style.borderTop = '4px solid #f59e0b';
-                const devBadge = document.createElement('div');
-                devBadge.innerHTML = '🔧 개발 모드';
-                devBadge.style.cssText = `
-                    position: fixed;
-                    top: 4px;
-                    right: 20px;
-                    background: #f59e0b;
-                    color: white;
-                    padding: 4px 12px;
-                    border-radius: 0 0 8px 8px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    z-index: 1000;
-                `;
-                document.body.appendChild(devBadge);
-                console.log('✅ 개발 모드 배지 추가됨');
-            }
+            // if (IS_DEV_MODE) {
+            //     document.body.style.borderTop = '4px solid #f59e0b';
+            //     const devBadge = document.createElement('div');
+            //     devBadge.innerHTML = '🔧 개발 모드';
+            //     devBadge.style.cssText = `
+            //         position: fixed;
+            //         top: 4px;
+            //         right: 20px;
+            //         background: #f59e0b;
+            //         color: white;
+            //         padding: 4px 12px;
+            //         border-radius: 0 0 8px 8px;
+            //         font-size: 12px;
+            //         font-weight: 600;
+            //         z-index: 1000;
+            //     `;
+            //     document.body.appendChild(devBadge);
+            //     console.log('✅ 개발 모드 배지 추가됨');
+            // }
             
             loadUserInfo();
             loadUserWorkspaces();

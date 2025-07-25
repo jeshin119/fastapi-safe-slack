@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>파일 관리</title>
       <!-- CSS 파일들 임포트 -->
-      <link rel="stylesheet" href="../../css/common.css">
-      <link rel="stylesheet" href="../../css/file.css">
+      <link rel="stylesheet" href="/front/css/common.css">
+      <link rel="stylesheet" href="/front/css/file.css">
 </head>
 <body>
     <div class="files-container">
@@ -731,25 +731,25 @@
                 document.getElementById('valid-to').min = this.value;
             });
 
-            // 개발 모드 표시
-            if (IS_DEV_MODE) {
-                document.body.style.borderTop = '4px solid #f59e0b';
-                const devBadge = document.createElement('div');
-                devBadge.innerHTML = '🔧 개발 모드';
-                devBadge.style.cssText = `
-                    position: fixed;
-                    top: 4px;
-                    right: 20px;
-                    background: #f59e0b;
-                    color: white;
-                    padding: 4px 12px;
-                    border-radius: 0 0 8px 8px;
-                    font-size: 12px;
-                    font-weight: 600;
-                    z-index: 1000;
-                `;
-                document.body.appendChild(devBadge);
-            }
+            // // 개발 모드 표시
+            // if (IS_DEV_MODE) {
+            //     document.body.style.borderTop = '4px solid #f59e0b';
+            //     const devBadge = document.createElement('div');
+            //     devBadge.innerHTML = '🔧 개발 모드';
+            //     devBadge.style.cssText = `
+            //         position: fixed;
+            //         top: 4px;
+            //         right: 20px;
+            //         background: #f59e0b;
+            //         color: white;
+            //         padding: 4px 12px;
+            //         border-radius: 0 0 8px 8px;
+            //         font-size: 12px;
+            //         font-weight: 600;
+            //         z-index: 1000;
+            //     `;
+            //     document.body.appendChild(devBadge);
+            // }
 
             // 키보드 단축키
             document.addEventListener('keydown', function(e) {
