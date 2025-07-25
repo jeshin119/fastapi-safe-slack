@@ -461,6 +461,12 @@ function selectWorkspace(workspaceId) {
         item.classList.remove('selected');
     });
     event.target.closest('.workspace-item').classList.add('selected');
+
+    // ✅ 여기서 저장!
+    if (selectedWorkspace) {
+        localStorage.setItem('current_workspace_name', selectedWorkspace.name);
+        localStorage.setItem('current_workspace', JSON.stringify(selectedWorkspace));
+    }
     
     updateEnterButton();
 

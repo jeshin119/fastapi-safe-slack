@@ -192,6 +192,10 @@
                 const result = await loginUser(email, password);
                 
                 if (result.success) {
+                    // ✅ 워크스페이스 정보 초기화
+                    localStorage.removeItem('current_workspace_name');
+                    localStorage.removeItem('current_workspace');
+                    
                     // 성공: 성공 애니메이션 표시
                     document.getElementById('success-animation').style.display = 'flex';
                     
