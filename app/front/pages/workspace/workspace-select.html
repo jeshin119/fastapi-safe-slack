@@ -496,7 +496,7 @@ async function enterWorkspace() {
     btnText.textContent = '입장 중...';
 
     try {
-        // 워크스페이스 선택 API 호출 (명세서에 따라 수정)
+        // 워크스페이스 선택 API 호출
         const data = await apiCall('/workspaces/workspaces_select', {
             method: 'POST',
             body: JSON.stringify({
@@ -506,16 +506,26 @@ async function enterWorkspace() {
 
         console.log('워크스페이스 선택 응답:', data);
 
-        // 워크스페이스 정보를 로컬스토리지에 저장
-        localStorage.setItem('current_workspace_name', selectedWorkspace.name);
-        localStorage.setItem('current_workspace', JSON.stringify(selectedWorkspace));
+        
+        // 워크스페이스 정보 더 자세히 저장 -로컬에에
+        localStorage.setItem('current_workspace_name', data.workspace_name || selectedWorkspace.name);
+        localStorage.setItem('is_workspace_admin', data.is_workspace_admin || false);
+        localStorage.setItem('user_role_id', selectedWorkspace.role_id || '');
+        localStorage.setItem('workspace_start_date', selectedWorkspace.start_date || '');
+        
+        // JWT 토큰도 확인하여 저장 
+        if (data.access_token) {
+            localStorage.setItem('access_token', data.access_token);
+        }
 
-        // 성공 메시지 표시 (API 응답의 message 사용)
-        alert(`🎉 ${data.message}`);
-
-        // 워크스페이스 정보를 로컬스토리지에 저장 (API 응답 데이터 사용)
-        localStorage.setItem('current_workspace_name', data.workspace_name);
-        localStorage.setItem('is_workspace_admin', data.is_workspace_admin);
+         // 성공 메시지
+         alert(`🎉 ${data.message || selectedWorkspace.name + ' 워크스페이스에 입장했습니다!'}`);
+         // URL 파라미터로 워크스페이스 정보 전달
+         const workspaceParams = new URLSearchParams({
+            workspace_name: encodeURIComponent(selectedWorkspace.name),
+            is_admin: data.is_workspace_admin || false,
+            from_select: 'true'
+        });
 
         // 워크스페이스 메인 페이지로 리다이렉트
         window.location.href = `workspace-main.html?workspace_name=${encodeURIComponent(selectedWorkspace.name)}`;
