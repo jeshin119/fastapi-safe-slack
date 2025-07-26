@@ -5,7 +5,6 @@ from datetime import datetime
 
 class FileBase(BaseModel):
     filename: str
-    s3_url: str
 
 class FileCreate(FileBase):
     min_role_name: Optional[str] = None

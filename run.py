@@ -10,6 +10,6 @@ if __name__ == "__main__":
         reload=True,            # 출시할 때는 False로 변경해야함 🐰
         log_level="info",       # warning → info 변경 (서버 로그 확인용)
         server_header=False,
-        use_colors=False,        # CVE-2020-7694 대응
+        use_colors=True,         # 로그 색상 활성화 (개발용)
         proxy_headers=True,      # 프록시 환경 대응
     )
