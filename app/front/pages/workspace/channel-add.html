@@ -92,25 +92,25 @@
             <div class="create-form">
                 <div style="text-align: center; margin-bottom: 25px;">
                     <div style="font-size: 48px; margin-bottom: 15px;">🔗</div>
-                    <div style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">채널 ID로 참여</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">채널 이름으로 참여</div>
                     <div style="font-size: 14px; color: #64748b; line-height: 1.5;">
-                        참여하고 싶은 채널의 ID를 입력하세요<br>
+                        참여하고 싶은 채널의 이름을 입력하세요<br>
                         비공개 채널의 경우 관리자 승인이 필요합니다
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="target-channel-id">
-                        채널 ID <span style="color: #ef4444;">*</span>
+                        채널 이름 <span style="color: #ef4444;">*</span>
                     </label>
                     <input 
-                        type="number" 
+                        type="text" 
                         id="target-channel-id" 
                         class="form-input" 
-                        placeholder="예: 123"
+                        placeholder="예: 개발팀 채널"
                     >
                     <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-                        💡 채널 ID는 채널 관리자나 멤버에게 문의하세요
+                        💡 채널 이름은 채널 관리자나 멤버에게 문의하세요
                     </div>
                 </div>
             </div>
@@ -159,6 +159,7 @@
             } else if (type === 'join') {
                 document.getElementById('join-form').style.display = 'block';
                 document.getElementById('action-btn-text').textContent = '채널 참여';
+                
             }
             
             validateForm();
@@ -195,7 +196,7 @@
                 isValid = channelName.length >= 2;
             } else if (selectedType === 'join') {
                 const channelId = document.getElementById('target-channel-id').value.trim();
-                isValid = channelId.length > 0 && !isNaN(channelId);
+                isValid = channelId.length > 2;
             }
             
             actionBtn.disabled = !isValid;
@@ -313,40 +314,56 @@
         // 채널 참여 API
         // ============================
         async function joinChannel() {
-            const channelId = parseInt(document.getElementById('target-channel-id').value.trim());
+        const channelName = document.getElementById('target-channel-id').value.trim();
+        const token = localStorage.getItem('access_token');
+        const workspace_name = localStorage.getItem('current_workspace_name');
 
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/channels/${channelId}/join-request`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        workspace_id: "1" // 실제로는 현재 워크스페이스 ID
-                    })
-                });
+        try {
+            const response = await fetch(`${API_BASE_URL}/channels/join-request`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workspace_name: workspace_name,
+                    channel_name: channelName
+                })
+            });
 
-                if (response.ok) {
-                    return {
-                        success: true,
-                        message: `📨 채널 #${channelId} 참여 요청이 전송되었습니다!\n관리자의 승인을 기다려주세요.`
-                    };
+            const data = await response.json();  // 📌 추가: 응답 메시지 추출
+
+            if (response.ok) {
+                // 📌 응답 메시지 내용에 따라 분기 처리
+                let message = data.message;
+                let successMessage = "";
+
+                if (message.includes("입장했습니다")) {
+                    // 공개 채널일 경우
+                    successMessage = `🎉 채널 #${channelName}에 참여되었습니다!`;
                 } else {
-                    const data = await response.json();
-                    return {
-                        success: false,
-                        error: data.detail || '채널 참여 요청에 실패했습니다.'
-                    };
+                    // 비공개 채널 요청 대기
+                    successMessage = `📨 채널 #${channelName} 참여 요청이 전송되었습니다.\n관리자의 승인을 기다려주세요.`;
                 }
-            } catch (error) {
+
+                return {
+                    success: true,
+                    message: successMessage
+                };
+            } else {
                 return {
                     success: false,
-                    error: '서버 연결에 실패했습니다.'
+                    error: data.detail || '채널 참여 요청에 실패했습니다.'
                 };
             }
+        } catch (error) {
+            return {
+                success: false,
+                error: '서버 연결에 실패했습니다.'
+            };
         }
+    }
+
 
         // ============================
         // 기타 함수들
