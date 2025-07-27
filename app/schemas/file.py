@@ -12,12 +12,12 @@ class FileCreate(FileBase):
     valid_to: Optional[date] = None
 
 class FileResponse(FileBase):
-    id: int
-    uploaded_by: str
+    file_id: int
     min_role_name: Optional[str] = None
     valid_from: Optional[date] = None
     valid_to: Optional[date] = None
-    created_at: datetime
+    uploaded_by: str
+    uploaded_at: datetime
 
     class Config:
         from_attributes = True

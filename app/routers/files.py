@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
-from app.models.models import User, File as FileModel
+from app.models.models import User, File as FileModel, Role
 from app.schemas.file import FileResponse
 from app.core.utils import get_current_user_with_context
 from app.core.db_utils import get_role_by_name, get_workspace_membership, get_user_role
@@ -77,8 +77,13 @@ async def upload_file(
     await db.refresh(file_record)
     
     return {
+        "file_id": file_record.id,
         "filename": file_record.filename,
-        "uploaded_by": user_context["user_email"]  # 토큰에서 user_email 사용
+        "min_role_name": min_role_name,
+        "valid_from": file_record.valid_from,
+        "valid_to": file_record.valid_to,
+        "uploaded_by": user_context["user_email"],  # 토큰에서 user_email 사용
+        "uploaded_at": file_record.uploaded_at
     }
 
 @router.get("/{channel_name}/files", response_model=List[FileResponse])
@@ -124,39 +129,52 @@ async def get_files(
         users = result.scalars().all()
         uploaders = {user.id: user.email for user in users}
     
+    # 역할 정보를 한 번에 가져오기 (성능 최적화)
+    role_ids = list(set(file_record.min_role_id for file_record in files if file_record.min_role_id))
+    roles = {}
+    if role_ids:
+        result = await db.execute(select(Role).where(Role.id.in_(role_ids)))
+        role_objects = result.scalars().all()
+        roles = {role.id: role.name for role in role_objects}
+    
     return [
         {
+            "file_id": file_record.id,
             "filename": file_record.filename,
+            "min_role_name": roles.get(file_record.min_role_id) if file_record.min_role_id else None,
             "valid_from": file_record.valid_from,
-            "valid_to": file_record.valid_to
+            "valid_to": file_record.valid_to,
+            "uploaded_by": uploaders.get(file_record.uploaded_by, "Unknown"),
+            "uploaded_at": file_record.uploaded_at
         }
         for file_record in files
     ]
 
-@router.get("/{channel_name}/files/{file_id}/download")
+@router.get("/files/{file_id}/download")
 async def download_file(
-    channel_name: str,
     file_id: int,
-    workspace_name: str = Query(..., description="워크스페이스 이름"),
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 파일 접근 권한 확인
-    file_record = await verify_file_access(db, user_context["user_id"], file_id, workspace_name, channel_name)
+    # 파일 접근 권한 확인 (파일 ID만으로 조회)
+    result = await db.execute(select(FileModel).where(FileModel.id == file_id))
+    file_record = result.scalars().first()
+    
+    if not file_record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="파일을 찾을 수 없습니다."
+        )
     
     # S3에서 파일 스트림 다운로드
     return download_file_from_s3(file_record.filename) 
 
-@router.delete("/{channel_name}/files/{file_id}")
+@router.delete("/files/{file_id}")
 async def delete_file(
-    channel_name: str,
     file_id: int,
-    workspace_name: str = Query(..., description="워크스페이스 이름"),
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 워크스페이스와 채널 접근 권한 확인
-    workspace, channel = await verify_channel_access(db, user_context["user_id"], workspace_name, channel_name)
     
     # 파일 소유자 확인 및 파일 조회
     file_record = await verify_file_owner(db, user_context["user_id"], file_id)
