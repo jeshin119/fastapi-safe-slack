@@ -208,6 +208,31 @@ class DynamoDBManager:
         except Exception as e:
             print(f"메시지 조회 오류: {e}")
             return []
+
+    async def get_messages_after_join(self, channel_id: int, join_timestamp: str, limit: int = 50) -> List[Dict]:
+        """채널 가입 시간 이후의 메시지 조회"""
+        self._initialize()
+        
+        try:
+            # KeyConditionExpression을 사용하여 timestamp 범위를 직접 지정 (더 효율적)
+            query_kwargs = {
+                'KeyConditionExpression': (
+                    boto3.dynamodb.conditions.Key('channel_id').eq(str(channel_id)) &
+                    boto3.dynamodb.conditions.Key('timestamp').gte(join_timestamp)
+                ),
+                'Limit': limit,
+                'ScanIndexForward': False  # 최신 메시지부터
+            }
+            
+            response = self.table.query(**query_kwargs)
+            messages = response.get('Items', [])
+            
+            print(f"채널 {channel_id}에서 가입 시간({join_timestamp}) 이후 {len(messages)}개 메시지 조회 완료")
+            return messages[:limit]
+            
+        except Exception as e:
+            print(f"가입 시간 이후 메시지 조회 오류: {e}")
+            return []
     
     async def delete_message(self, channel_id: int, message_id: str, user_id: int) -> bool:
         """메시지 삭제 (작성자만 가능)"""

@@ -43,7 +43,7 @@ async def health_check():
 @app.get("/test-chat")
 async def test_chat():
     """채팅 테스트 페이지 제공"""
-    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"chat3.html")
+    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"chat.html")
 
 # @app.get("/test-chat")
 # async def test_chat():

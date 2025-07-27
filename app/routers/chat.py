@@ -115,15 +115,15 @@ async def websocket_endpoint(
             "timestamp": datetime.now().isoformat()
         })
         
-        # 새로 가입한 유저가 아닌 경우 이전 채팅 내용 전송
-        # 채널 멤버십 가입 시간 확인 (24시간 이내면 새 멤버로 간주)
-        one_day_ago = get_hours_ago(24)
-        
-        if channel_membership.joined_at and channel_membership.joined_at < one_day_ago:
-            print(f"📚 기존 멤버 ({user_context['user_name']})에게 메시지 히스토리 전송")
+        # 채널 가입 시간 이후의 메시지 히스토리 전송
+        if channel_membership.joined_at:
+            print(f"📚 멤버 ({user_context['user_name']})에게 가입 시간 이후 메시지 히스토리 전송")
             try:
-                # DynamoDB에서 최근 메시지 50개 조회
-                messages = await dynamodb_manager.get_messages(channel.id, limit=50)
+                # 채널 가입 시간을 ISO 형식으로 변환
+                join_timestamp = channel_membership.joined_at.isoformat()
+                
+                # DynamoDB에서 가입 시간 이후 최근 메시지 50개 조회
+                messages = await dynamodb_manager.get_messages_after_join(channel.id, join_timestamp, limit=50)
                 
                 if messages:
                     # 메시지 히스토리 전송
@@ -132,15 +132,15 @@ async def websocket_endpoint(
                         "messages": messages,
                         "timestamp": get_current_datetime().isoformat()
                     })
-                    print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지")
+                    print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지 (가입 시간: {join_timestamp})")
                 else:
-                    print("📭 메시지 히스토리가 없습니다.")
+                    print("📭 가입 시간 이후 메시지 히스토리가 없습니다.")
                     
             except Exception as e:
                 print(f"❌ 메시지 히스토리 조회 실패: {e}")
                 # 히스토리 조회 실패해도 실시간 채팅은 계속 진행
         else:
-            print(f"🆕 새 멤버 ({user_context['user_name']}) - 메시지 히스토리 전송 건너뜀")
+            print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
         
         # 메시지 수신 루프
         while True:
@@ -251,51 +251,3 @@ async def websocket_endpoint(
                 await db.close()
             except Exception as e:
                 print(f"데이터베이스 세션 정리 오류: {e}")
-
-@router.get("/workspaces/{workspace_name}/channels/{channel_name}/messages")
-async def get_message_history(
-    workspace_name: str,
-    channel_name: str,
-    limit: int = 50,
-    offset: int = 0,
-    user_context: dict = Depends(get_current_user_with_context),
-    db: AsyncSession = Depends(get_db)
-):
-    # 워크스페이스와 채널 접근 권한 확인
-    workspace, channel = await verify_channel_access(db, user_context["user_id"], workspace_name, channel_name)
-    result = await db.execute(select(WorkspaceMember).where(
-        WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == workspace.id
-    ))
-    workspace_membership = result.scalars().first()
-    if not workspace_membership:
-        raise HTTPException(status_code=403, detail="워크스페이스에 접근할 권한이 없습니다.")
-    
-    # 채널 멤버십 확인
-    result = await db.execute(select(ChannelMember).where(
-        ChannelMember.user_id == user_context["user_id"],
-        ChannelMember.channel_id == channel.id,
-        ChannelMember.status == "approved"
-    ))
-    channel_membership = result.scalars().first()
-    if not channel_membership:
-        raise HTTPException(status_code=403, detail="채널에 접근할 권한이 없습니다.")
-    
-    # DynamoDB에서 메시지 조회
-    messages = await dynamodb_manager.get_messages(channel.id, limit)
-    
-    # 응답 형식 변환
-    formatted_messages = []
-    for msg in messages:
-        formatted_messages.append({
-            "message_id": msg["message_id"],
-            "content": msg["content"],
-            "user_id": msg["user_id"],
-            "user_name": msg["user_name"],
-            "message_type": msg.get("message_type", "text"),
-            "timestamp": msg["timestamp"],
-            "reply_to": msg.get("reply_to"),
-            "mentions": json.loads(msg["mentions"]) if msg.get("mentions") else []
-        })
-    
-    return formatted_messages 
