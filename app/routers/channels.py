@@ -5,6 +5,7 @@ from app.db.session import get_db
 from app.models.models import User, Channel, ChannelMember, WorkspaceMember, Workspace, Role
 from app.schemas.channel import ChannelCreate, ChannelResponse, ChannelJoinRequestResponse, ChannelJoinRequest, ChannelApproveRequest
 from app.core.utils import get_current_user_with_context
+from app.core.business_utils import create_channel_with_creator
 from datetime import datetime
 from typing import List
 from pydantic import BaseModel
@@ -65,50 +66,8 @@ async def create_channel(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # workspace_name으로 workspace_id 찾기
-    result = await db.execute(select(Workspace).where(Workspace.name == channel_data.workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="워크스페이스를 찾을 수 없습니다."
-        )
-    
-    # 채널명 중복 확인
-    result = await db.execute(select(Channel).where(
-        Channel.name == channel_data.channel_name,
-        Channel.workspace_id == workspace.id
-    ))
-    existing_channel = result.scalars().first()
-    if existing_channel:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 존재하는 채널명입니다."
-        )
-    
-    channel = Channel(
-        name=channel_data.channel_name,
-        workspace_id=workspace.id,
-        created_by=user_context["user_id"],
-        is_public=channel_data.is_public
-    )
-    db.add(channel)
-    await db.flush()
-    
-    # 채널 생성자를 멤버로 추가
-    member = ChannelMember(
-        user_id=user_context["user_id"],
-        channel_id=channel.id,
-        status="approved"
-    )
-    db.add(member)
-    
-    await db.commit()
-    await db.refresh(channel)
-    
-    return {
-        "message": "채널이 생성되었습니다."
-    }
+    result = await create_channel_with_creator(db, channel_data.workspace_name, channel_data.channel_name, user_context["user_id"])
+    return result
 
 @router.post("/list")
 async def get_channels(

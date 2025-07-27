@@ -1,7 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Set
 import json
-from datetime import datetime
+from app.core.date_utils import get_current_datetime
 
 class ConnectionManager:
     def __init__(self):
@@ -26,22 +26,22 @@ class ConnectionManager:
         await self.send_personal_message(websocket, {
             "type": "connection",
             "message": "채팅방에 연결되었습니다.",
-            "timestamp": datetime.now().isoformat()
+            "timestamp": get_current_datetime().isoformat()
         })
         
-        # 다른 사용자들에게 입장 알림
-        await self.broadcast_to_channel(
-            workspace_id, 
-            channel_id, 
-            {
-                "type": "user_joined",
-                "user_id": user_id,
-                "user_name": user_name,
-                "message": f"{user_name}님이 입장하셨습니다.",
-                "timestamp": datetime.now().isoformat()
-            },
-            exclude_websocket=websocket
-        )
+                    # 다른 사용자들에게 입장 알림
+            await self.broadcast_to_channel(
+                workspace_id, 
+                channel_id, 
+                {
+                    "type": "user_joined",
+                    "user_id": user_id,
+                    "user_name": user_name,
+                    "message": f"{user_name}님이 입장하셨습니다.",
+                    "timestamp": get_current_datetime().isoformat()
+                },
+                exclude_websocket=websocket
+            )
     
     async def disconnect(self, websocket: WebSocket):
         if websocket in self.connection_info:
@@ -69,7 +69,7 @@ class ConnectionManager:
                     "user_id": user_id,
                     "user_name": user_name,
                     "message": f"{user_name}님이 퇴장하셨습니다.",
-                    "timestamp": datetime.now().isoformat()
+                    "timestamp": get_current_datetime().isoformat()
                 }
             )
     

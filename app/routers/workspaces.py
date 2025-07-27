@@ -5,14 +5,12 @@ from app.db.session import get_db
 from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode
 from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse
 from app.schemas.channel import ChannelResponse
-
-from app.core.utils import get_current_user, get_current_user_with_context
+from app.core.utils import get_current_user_with_context
+from app.core.business_utils import create_workspace_with_admin, get_workspace_join_requests_for_admin, get_user_workspaces_with_member_count
 from datetime import datetime
 from typing import List
 from app.models.workspace import RequestStatus
-from datetime import datetime, timedelta
 from pydantic import BaseModel
-from datetime import date
 
 router = APIRouter()
 
@@ -56,49 +54,8 @@ async def create_workspace(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # 워크스페이스 이름 중복 확인
-    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
-    existing_workspace = result.scalars().first()
-    if existing_workspace:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 존재하는 워크스페이스 이름입니다."
-        )
-    
-    # 워크스페이스 생성
-    new_workspace = Workspace(name=request_data.workspace_name)
-    db.add(new_workspace)
-    await db.flush()  # ID를 얻기 위해 flush
-    
-    # 기본 관리자 역할 찾기 (level이 가장 높은 역할)
-    result = await db.execute(select(Role).order_by(Role.level.desc()))
-    admin_role = result.scalars().first()
-    
-    if not admin_role:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="시스템에 역할이 설정되지 않았습니다."
-        )
-    
-    today = date.today()
-
-    # 생성자를 워크스페이스 관리자로 추가
-    workspace_member = WorkspaceMember(
-        user_id=user_context["user_id"],
-        workspace_id=new_workspace.id,
-        role_id=admin_role.id,
-        is_workspace_admin=True,
-        start_date=today  # ⬅️ 응답에 포함
-    )
-    db.add(workspace_member)
-    
-    await db.commit()
-    
-    return WorkspaceCreateResponse(
-        message="워크스페이스가 생성되었습니다.",
-        workspace_name=request_data.workspace_name,
-        start_date=today  # ⬅️ 응답에 포함
-    )
+    result = await create_workspace_with_admin(db, request_data.workspace_name, user_context["user_id"])
+    return WorkspaceCreateResponse(**result)
 
 @router.post("/join-request")
 async def request_workspace_join(
@@ -181,63 +138,11 @@ async def request_workspace_join(
 
 @router.post("/join-requests-list")
 async def get_workspace_join_requests(
-    workspace_data: WorkspaceCreateRequest,  # ⭐ workspace_name 받기
+    workspace_data: WorkspaceCreateRequest,
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # ⭐ 1. workspace_name → workspace_id
-    result = await db.execute(select(Workspace).where(Workspace.name == workspace_data.workspace_name))
-    workspace = result.scalars().first()
-    if not workspace:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="해당 워크스페이스를 찾을 수 없습니다."
-        )
-
-    # ⭐ 2. 해당 워크스페이스에서 관리자인지 확인
-    result = await db.execute(select(WorkspaceMember).where(
-        WorkspaceMember.user_id == user_context["user_id"],
-        WorkspaceMember.workspace_id == workspace.id,
-        WorkspaceMember.is_workspace_admin == True
-    ))
-    membership = result.scalars().first()
-    if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="해당 워크스페이스의 관리자만 요청 목록을 볼 수 있습니다."
-        )
-
-    # 3. 해당 워크스페이스의 초대 코드 목록 조회
-    result = await db.execute(select(InviteCode).where(InviteCode.workspace_id == workspace.id))
-    invite_codes = result.scalars().all()
-    invite_code_ids = [ic.id for ic in invite_codes]
-
-    if not invite_code_ids:
-        return []
-
-    # 4. 가입 요청 조회 (JOIN)
-    result = await db.execute(
-        select(WorkspaceJoinRequest, User, Role)
-        .join(User, WorkspaceJoinRequest.user_id == User.id)
-        .join(Role, WorkspaceJoinRequest.role_id == Role.id)
-        .where(
-            WorkspaceJoinRequest.invite_code_id.in_(invite_code_ids),
-            WorkspaceJoinRequest.status == "pending"
-        )
-    )
-    requests_data = result.all()
-
-    return [
-        {
-            "request_id": request.id,
-            "user_email": user.email,
-            "user_name": user.name,
-            "role_name": role.name,
-            "is_contractor": False,
-            "requested_at": request.requested_at
-        }
-        for request, user, role in requests_data
-    ]
+    return await get_workspace_join_requests_for_admin(db, workspace_data.workspace_name, user_context["user_id"])
 
 
 @router.post("/approve")
@@ -388,34 +293,12 @@ async def get_workspace_members(
         for member, user, role in members_data
     ] 
 
-@router.get("/workspaces_list", response_model=List[dict])  # 본인이 포함된 워크스페이스 목록 조회
+@router.get("/workspaces_list", response_model=List[dict])
 async def get_my_workspace_names_with_roles(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    user_id = user_context["user_id"]
-
-    result = await db.execute(
-        select(
-            Workspace.name,
-            WorkspaceMember.role_id,
-            WorkspaceMember.start_date,
-            WorkspaceMember.is_workspace_admin  # ✅ 관리자 여부 추가
-        )
-        .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
-        .where(WorkspaceMember.user_id == user_id)
-    )
-
-    data = result.all()
-    return [
-        {
-            "name": name,
-            "role_id": role_id,
-            "start_date": start_date.isoformat() if start_date else None,
-            "is_workspace_admin": is_admin  # ✅ 응답에 추가
-        }
-        for name, role_id, start_date, is_admin in data
-    ]
+    return await get_user_workspaces_with_member_count(db, user_context["user_id"])
 
 @router.post("/workspaces_select", response_model=WorkspaceSelectResponse)
 async def select_workspace(
