@@ -11,20 +11,20 @@ from datetime import datetime
 
 async def create_workspace_with_admin(db: AsyncSession, workspace_name: str, user_id: int) -> Dict:
     """
-    워크스페이스 생성 및 관리자 설정
+    워크스페이스 생성 및 관리자 설정 + 기본 채널 생성
     """
-    # 워크스페이스 이름 중복 확인
+    # 1. 워크스페이스 이름 중복 확인
     result = await db.execute(select(Workspace).where(Workspace.name == workspace_name))
     existing_workspace = result.scalars().first()
     if existing_workspace:
         raise_duplicate_workspace()
     
-    # 워크스페이스 생성
+    # 2. 워크스페이스 생성
     new_workspace = Workspace(name=workspace_name)
     db.add(new_workspace)
-    await db.flush()
-    
-    # 기본 관리자 역할 찾기
+    await db.flush()  # workspace_id 확보
+
+    # 3. 최고 레벨의 관리자 역할 선택
     result = await db.execute(select(Role).order_by(Role.level.desc()))
     admin_role = result.scalars().first()
     
@@ -32,8 +32,8 @@ async def create_workspace_with_admin(db: AsyncSession, workspace_name: str, use
         raise_internal_server_error("시스템에 역할이 설정되지 않았습니다.")
     
     today = get_current_date()
-    
-    # 생성자를 워크스페이스 관리자로 추가
+
+    # 4. 생성자를 워크스페이스 관리자 멤버로 등록
     workspace_member = WorkspaceMember(
         user_id=user_id,
         workspace_id=new_workspace.id,
@@ -42,14 +42,34 @@ async def create_workspace_with_admin(db: AsyncSession, workspace_name: str, use
         start_date=today
     )
     db.add(workspace_member)
-    
+
+    # 5. ✅ 기본 채널(general) 생성
+    default_channel = Channel(
+        name="기본 전체 채널",
+        workspace_id=new_workspace.id,
+        is_public=True,
+        is_default=True,
+        created_by=user_id
+    )
+    db.add(default_channel)
+    await db.flush()  # channel_id 확보
+
+    # 6. ✅ 관리자 채널 멤버 등록
+    channel_member = ChannelMember(
+        channel_id=default_channel.id,
+        user_id=user_id
+    )
+    db.add(channel_member)
+
+    # 7. 커밋
     await db.commit()
-    
+
     return {
         "message": "워크스페이스가 생성되었습니다.",
         "workspace_name": workspace_name,
         "start_date": today
     }
+
 
 
 async def get_workspace_join_requests_for_admin(db: AsyncSession, workspace_name: str, user_id: int) -> List[Dict]:

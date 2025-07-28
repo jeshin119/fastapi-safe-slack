@@ -596,7 +596,7 @@
                 id: channel.channel_id || channel.id,
                 name: channel.name || channel.channel_name,
                 is_public: channel.is_public !== false, // 기본값을 true로
-                is_default: channel.name === 'general' || channel.is_default
+                is_default: channel.is_default === true  // 또는 그냥 channel.is_default
             };
             console.log('🔄 채널 변환:', channel, '→', transformedChannel);
             return transformedChannel;
