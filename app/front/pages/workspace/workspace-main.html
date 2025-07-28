@@ -64,14 +64,70 @@
             </div>
         </header>
 
-        <!-- 탭 네비게이션 - 동적으로 생성됨 -->
-        <nav class="content-tabs" id="content-tabs">
-            <!-- 탭 버튼들이 JavaScript로 동적 생성 -->
+        <!-- 탭 네비게이션 -->
+        <nav class="content-tabs">
+            <button class="tab-button active" data-tab="chat" onclick="switchTab('chat')">
+                💬 대화
+                <span class="tab-count" id="message-count">0</span>
+            </button>
+            <button class="tab-button" data-tab="files" onclick="switchTab('files')">
+                📁 파일
+                <span class="tab-count" id="file-count">0</span>
+            </button>
         </nav>
 
-        <!-- 동적 탭 콘텐츠 컨테이너 -->
-        <div id="dynamic-tab-container">
-            <!-- 외부 HTML 파일들이 여기에 동적으로 로드됨 -->
+        <!-- 채팅 탭 (기본) -->
+        <div class="tab-content active" id="chat-content">
+            <div class="chat-content">
+                <div class="welcome-section" id="welcome-message">
+                    <div class="welcome-icon">🏠</div>
+                    <div class="welcome-title">채널에 오신 것을 환영합니다</div>
+                    <div class="welcome-description">
+                        자유롭게 소통하고 파일을 공유하세요. ⭐
+                    </div>
+                </div>
+
+                <!-- 채팅 메시지에 스크롤 컨테이너 추가 -->
+                <div class="chat-messages-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <!-- 메시지들이 여기에 동적으로 표시됩니다 -->
+                    </div>
+                </div>
+
+                <div class="message-input-container">
+                    <textarea class="message-input" id="message-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
+                    <div class="input-toolbar">
+                        <div class="input-actions">
+                            <button class="input-btn" onclick="attachFile()" title="파일 첨부">📎</button>
+                            <button class="input-btn" onclick="addEmoji()" title="이모지">😊</button>
+                            <button class="input-btn" onclick="mentionUser()" title="멘션">@</button>
+                            <button class="input-btn" onclick="voiceMessage()" title="음성 메시지">🎤</button>
+                        </div>
+                        <button class="send-btn" id="send-btn" onclick="sendMessage()">전송</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 파일 탭 -->
+        <div class="tab-content" id="files-content">
+            <div class="files-content">
+                <div class="upload-area" id="upload-area" onclick="triggerFileUpload()">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-title">파일 업로드</div>
+                    <div class="upload-description">
+                        파일을 드래그하여 놓거나 클릭하여 선택하세요
+                    </div>
+                    <button class="upload-button">📤 파일 선택</button>
+                </div>
+
+                <!-- 파일 목록에 스크롤 컨테이너 추가 -->
+                <div class="files-list-container">
+                    <div id="files-list">
+                        <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -115,216 +171,7 @@
         let websocket = null;
         let reconnectAttempts = 0;
         const MAX_RECONNECT_ATTEMPTS = 5;
-        let loadedTabs = new Map(); // 캐시된 탭 콘텐츠
-
-        // 탭 설정
-        const TAB_CONFIG = [
-            { 
-                id: 'chat', 
-                name: '대화', 
-                icon: '💬', 
-                file: '/static/pages/workspace/chat.html',
-                countId: 'message-count'
-            },
-            { 
-                id: 'files', 
-                name: '파일', 
-                icon: '📁', 
-                file: '/static/pages/workspace/file.html',
-                countId: 'file-count'
-            }
-        ];
-
-        // 외부 HTML 파일 로드
-        async function loadTabHTML(fileName) {
-            try {
-                const response = await fetch(fileName);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const htmlContent = await response.text();
-                return htmlContent;
-            } catch (error) {
-                console.error('HTML 파일 로드 실패:', fileName, error);
-                return null;
-            }
-        }
-
-        // 탭 네비게이션 렌더링
-        function renderTabNavigation() {
-            const tabsContainer = document.getElementById('content-tabs');
-            
-            tabsContainer.innerHTML = TAB_CONFIG.map(tab => `
-                <button class="tab-button ${tab.id === currentTab ? 'active' : ''}" 
-                        data-tab="${tab.id}" 
-                        onclick="switchTab('${tab.id}')">
-                    ${tab.icon} ${tab.name}
-                    <span class="tab-count" id="${tab.countId}">0</span>
-                </button>
-            `).join('');
-        }
-
-        // 동적 탭 시스템 초기화
-        async function initializeDynamicTabs() {
-            try {
-                console.log('🔄 동적 탭 시스템 초기화 중...');
-                
-                // 탭 네비게이션 렌더링
-                renderTabNavigation();
-                
-                // 기본 탭 로드
-                if (TAB_CONFIG.length > 0) {
-                    await switchTab(TAB_CONFIG[0].id);
-                }
-                
-                console.log('✅ 동적 탭 시스템 초기화 완료');
-            } catch (error) {
-                console.error('❌ 동적 탭 시스템 초기화 실패:', error);
-                // 폴백으로 기본 탭 구조 생성
-                createFallbackTabs();
-            }
-        }
-
-        // 폴백 탭 생성
-        function createFallbackTabs() {
-            const container = document.getElementById('dynamic-tab-container');
-            container.innerHTML = `
-                <div class="tab-content active" id="chat-content">
-                    <div class="chat-content">
-                        <div class="welcome-section" id="welcome-message">
-                            <div class="welcome-icon">🏠</div>
-                            <div class="welcome-title">채널에 오신 것을 환영합니다</div>
-                            <div class="welcome-description">
-                                자유롭게 소통하고 파일을 공유하세요. ⭐
-                            </div>
-                        </div>
-                        <div class="chat-messages-container">
-                            <div class="chat-messages" id="chat-messages">
-                                <!-- 메시지들이 여기에 동적으로 표시됩니다 -->
-                            </div>
-                        </div>
-                        <div class="message-input-container">
-                            <textarea class="message-input" id="message-input" placeholder="메시지를 입력하세요..." rows="1"></textarea>
-                            <div class="input-toolbar">
-                                <div class="input-actions">
-                                    <button class="input-btn" onclick="attachFile()" title="파일 첨부">📎</button>
-                                    <button class="input-btn" onclick="addEmoji()" title="이모지">😊</button>
-                                    <button class="input-btn" onclick="mentionUser()" title="멘션">@</button>
-                                    <button class="input-btn" onclick="voiceMessage()" title="음성 메시지">🎤</button>
-                                </div>
-                                <button class="send-btn" id="send-btn" onclick="sendMessage()">전송</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="tab-content" id="files-content">
-                    <div class="files-content">
-                        <div class="upload-area" id="upload-area" onclick="triggerFileUpload()">
-                            <div class="upload-icon">📁</div>
-                            <div class="upload-title">파일 업로드</div>
-                            <div class="upload-description">
-                                파일을 드래그하여 놓거나 클릭하여 선택하세요
-                            </div>
-                            <button class="upload-button">📤 파일 선택</button>
-                        </div>
-                        <div class="files-list-container">
-                            <div id="files-list">
-                                <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // 탭 전환 (수정된 버전)
-        async function switchTab(tabName) {
-            try {
-                const tab = TAB_CONFIG.find(t => t.id === tabName);
-                if (!tab) {
-                    console.error('존재하지 않는 탭:', tabName);
-                    return;
-                }
-
-                currentTab = tabName;
-                
-                // 탭 버튼 상태 업데이트
-                document.querySelectorAll('.tab-button').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.tab === tabName);
-                });
-
-                // 기존 탭 콘텐츠 숨기기
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.style.display = 'none';
-                });
-
-                // 탭 콘텐츠 로드 또는 표시
-                let tabContent = document.getElementById(`${tabName}-content`);
-                
-                if (!tabContent) {
-                    // 캐시된 콘텐츠 확인
-                    if (loadedTabs.has(tabName)) {
-                        const cachedContent = loadedTabs.get(tabName);
-                        const container = document.getElementById('dynamic-tab-container');
-                        container.appendChild(cachedContent);
-                        tabContent = cachedContent;
-                    } else {
-                        // 새로 로드
-                        console.log(`📥 탭 로딩 중: ${tabName}`);
-                        const htmlContent = await loadTabHTML(tab.file);
-                        
-                        if (htmlContent) {
-                            tabContent = document.createElement('div');
-                            tabContent.id = `${tabName}-content`;
-                            tabContent.className = 'tab-content';
-                            tabContent.innerHTML = htmlContent;
-                            
-                            const container = document.getElementById('dynamic-tab-container');
-                            container.appendChild(tabContent);
-                            
-                            // 캐시에 저장
-                            loadedTabs.set(tabName, tabContent);
-                            
-                            console.log(`✅ 탭 로딩 완료: ${tabName}`);
-                        } else {
-                            console.error(`❌ 탭 로딩 실패: ${tabName}`);
-                            return;
-                        }
-                    }
-                }
-                
-                // 해당 탭 보이기
-                if (tabContent) {
-                    tabContent.style.display = 'block';
-                }
-
-                // 탭별 추가 로직 실행
-                onTabSwitch(tabName);
-
-            } catch (error) {
-                console.error('탭 전환 실패:', error);
-            }
-        }
-
-        // 탭 전환 시 추가 로직
-        function onTabSwitch(tabName) {
-            switch (tabName) {
-                case 'chat':
-                    // 채팅 탭 활성화 시 메시지 목록 스크롤을 맨 아래로
-                    setTimeout(() => {
-                        const messagesContainer = document.getElementById('chat-messages');
-                        if (messagesContainer) {
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        }
-                    }, 100);
-                    break;
-                case 'files':
-                    // 파일 탭 활성화 시 파일 목록 새로고침
-                    renderFiles();
-                    break;
-            }
-        }
-
+    
         // API 호출 함수
         async function apiCall(endpoint, options = {}) {
             try {
@@ -622,9 +469,6 @@
                         window.location.pathname;
                     window.history.replaceState({}, document.title, newUrl);
                 }
-
-                // 탭 시스템 초기화 추가
-                await initializeDynamicTabs();
     
                 // 병렬로 데이터 로딩
                 await Promise.all([
@@ -658,81 +502,81 @@
     
         // 채널 목록 로딩
         async function loadChannels() {
-            try {
-                const workspaceName = globalData.workspace?.name;
-                if (!workspaceName) {
-                    console.error('워크스페이스 이름이 없습니다.');
-                    return;
-                }
-
-                console.log('🔍 채널 로딩 시작 - 워크스페이스:', workspaceName);
-
-                // POST /channels/list로 API 호출
-                const channels = await apiCall('/channels/list', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        workspace_name: workspaceName
-                    })
-                });
-
-                console.log('📋 채널 목록 응답:', channels);
-                console.log('📋 응답 타입:', typeof channels);
-                console.log('📋 배열 여부:', Array.isArray(channels));
-
-                // 응답이 배열인지 확인하고 처리
-                let channelArray = [];
-                if (Array.isArray(channels)) {
-                    channelArray = channels;
-                    console.log('✅ 직접 배열 처리 - 채널 개수:', channelArray.length);
-                } else if (channels && channels.channels && Array.isArray(channels.channels)) {
-                    channelArray = channels.channels;
-                    console.log('✅ channels 속성 처리 - 채널 개수:', channelArray.length);
-                } else {
-                    console.error('❌ 예상하지 못한 응답 구조:', channels);
-                    channelArray = [];
-                }
-
-                // 각 채널 데이터 로그 출력
-                channelArray.forEach((channel, index) => {
-                    console.log(`📋 채널 ${index + 1}:`, channel);
-                });
-
-                // 채널 데이터 변환
-                globalData.channels = channelArray.map(channel => {
-                    const transformedChannel = {
-                        id: channel.channel_id || channel.id,
-                        name: channel.name || channel.channel_name,
-                        is_public: channel.is_public !== false, // 기본값을 true로
-                        is_default: channel.name === 'general' || channel.is_default
-                    };
-                    console.log('🔄 채널 변환:', channel, '→', transformedChannel);
-                    return transformedChannel;
-                });
-
-                console.log('✅ 최종 변환된 채널 목록:', globalData.channels);
-                console.log('✅ 최종 채널 개수:', globalData.channels.length);
-
-                // 채널이 없는 경우 경고
-                if (globalData.channels.length === 0) {
-                    console.warn('⚠️ 변환된 채널이 없습니다.');
-                }
-
-                renderChannelList();
-                
-            } catch (error) {
-                console.error('❌ 채널 로딩 실패:', error);
-                console.error('❌ 에러 상세:', error.message);
-                console.error('❌ 에러 스택:', error.stack);
-                
-                // 에러 발생 시에만 빈 배열로 설정
-                globalData.channels = [];
-                renderChannelList();
-                
-                // 사용자에게 알림
-                alert('채널 목록을 불러오는데 실패했습니다: ' + error.message);
-            }
+    try {
+        const workspaceName = globalData.workspace?.name;
+        if (!workspaceName) {
+            console.error('워크스페이스 이름이 없습니다.');
+            return;
         }
-            
+
+        console.log('🔍 채널 로딩 시작 - 워크스페이스:', workspaceName);
+
+        // POST /channels/list로 API 호출
+        const channels = await apiCall('/channels/list', {
+            method: 'POST',
+            body: JSON.stringify({
+                workspace_name: workspaceName
+            })
+        });
+
+        console.log('📋 채널 목록 응답:', channels);
+        console.log('📋 응답 타입:', typeof channels);
+        console.log('📋 배열 여부:', Array.isArray(channels));
+
+        // 응답이 배열인지 확인하고 처리
+        let channelArray = [];
+        if (Array.isArray(channels)) {
+            channelArray = channels;
+            console.log('✅ 직접 배열 처리 - 채널 개수:', channelArray.length);
+        } else if (channels && channels.channels && Array.isArray(channels.channels)) {
+            channelArray = channels.channels;
+            console.log('✅ channels 속성 처리 - 채널 개수:', channelArray.length);
+        } else {
+            console.error('❌ 예상하지 못한 응답 구조:', channels);
+            channelArray = [];
+        }
+
+        // 각 채널 데이터 로그 출력
+        channelArray.forEach((channel, index) => {
+            console.log(`📋 채널 ${index + 1}:`, channel);
+        });
+
+        // 채널 데이터 변환
+        globalData.channels = channelArray.map(channel => {
+            const transformedChannel = {
+                id: channel.channel_id || channel.id,
+                name: channel.name || channel.channel_name,
+                is_public: channel.is_public !== false, // 기본값을 true로
+                is_default: channel.name === 'general' || channel.is_default
+            };
+            console.log('🔄 채널 변환:', channel, '→', transformedChannel);
+            return transformedChannel;
+        });
+
+        console.log('✅ 최종 변환된 채널 목록:', globalData.channels);
+        console.log('✅ 최종 채널 개수:', globalData.channels.length);
+
+        // 채널이 없는 경우 경고
+        if (globalData.channels.length === 0) {
+            console.warn('⚠️ 변환된 채널이 없습니다.');
+        }
+
+        renderChannelList();
+        
+    } catch (error) {
+        console.error('❌ 채널 로딩 실패:', error);
+        console.error('❌ 에러 상세:', error.message);
+        console.error('❌ 에러 스택:', error.stack);
+        
+        // 에러 발생 시에만 빈 배열로 설정
+        globalData.channels = [];
+        renderChannelList();
+        
+        // 사용자에게 알림
+        alert('채널 목록을 불러오는데 실패했습니다: ' + error.message);
+    }
+}
+        
         // 팀원 목록 로딩 (실제 워크스페이스 멤버 API 사용)
         async function loadTeamMembers() {
             try {
@@ -869,11 +713,7 @@
                     typeBadge.className = 'channel-badge private';
                 }
                 
-                const messageInput = document.getElementById('message-input');
-                if (messageInput) {
-                    messageInput.placeholder = `# ${channel.name} 채널에 메시지 보내기`;
-                }
-                
+                document.getElementById('message-input').placeholder = `# ${channel.name} 채널에 메시지 보내기`;
                 updateChannelContent();
 
                 // 새 채널로 WebSocket 연결
@@ -891,34 +731,38 @@
             if (!channel) return;
             
             const welcomeMessage = document.getElementById('welcome-message');
-            if (welcomeMessage) {
-                welcomeMessage.innerHTML = `
-                    <div class="welcome-icon">🏠</div>
-                    <div class="welcome-title"># ${channel.name} 채널에 오신 것을 환영합니다</div>
-                    <div class="welcome-description">
-                        ${channel.is_public ? '모든 멤버가 참여할 수 있는 공개 채널입니다.' : '초대받은 멤버만 참여할 수 있는 비공개 채널입니다.'} 자유롭게 소통하고 파일을 공유하세요. ⭐
-                    </div>
-                `;
-            }
+            welcomeMessage.innerHTML = `
+                <div class="welcome-icon">🏠</div>
+                <div class="welcome-title"># ${channel.name} 채널에 오신 것을 환영합니다</div>
+                <div class="welcome-description">
+                    ${channel.is_public ? '모든 멤버가 참여할 수 있는 공개 채널입니다.' : '초대받은 멤버만 참여할 수 있는 비공개 채널입니다.'} 자유롭게 소통하고 파일을 공유하세요. ⭐
+                </div>
+            `;
     
             const messages = globalData.messages[channel.name] || [];
             const files = globalData.files[channel.name] || [];
             
-            const messageCountEl = document.getElementById('message-count');
-            const fileCountEl = document.getElementById('file-count');
-            
-            if (messageCountEl) messageCountEl.textContent = messages.length;
-            if (fileCountEl) fileCountEl.textContent = files.length;
+            document.getElementById('message-count').textContent = messages.length;
+            document.getElementById('file-count').textContent = files.length;
     
             renderMessages();
             renderFiles();
         }
     
+        // 탭 전환
+        function switchTab(tabName) {
+            currentTab = tabName;
+            
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+    
         // 메시지 렌더링
         function renderMessages() {
             const messagesContainer = document.getElementById('chat-messages');
-            if (!messagesContainer) return;
-            
             const messages = globalData.messages[currentChannelName] || [];
             
             if (messages.length === 0) {
@@ -961,8 +805,6 @@
         // 메시지 전송 (WebSocket 사용)
         async function sendMessage() {
             const input = document.getElementById('message-input');
-            if (!input) return;
-            
             const content = input.value.trim();
             
             if (!content || !currentChannelName || !websocket || websocket.readyState !== WebSocket.OPEN) {
@@ -996,8 +838,6 @@
         // 파일 렌더링
         function renderFiles() {
             const filesContainer = document.getElementById('files-list');
-            if (!filesContainer) return;
-            
             const files = globalData.files[currentChannelName] || [];
             
             if (files.length === 0) {
@@ -1038,11 +878,7 @@
         // 메시지 입력 관련
         function updateSendButton() {
             const sendBtn = document.getElementById('send-btn');
-            const messageInput = document.getElementById('message-input');
-            
-            if (!sendBtn || !messageInput) return;
-            
-            const hasText = messageInput.value.trim().length > 0;
+            const hasText = document.getElementById('message-input').value.trim().length > 0;
             const isConnected = websocket && websocket.readyState === WebSocket.OPEN;
             sendBtn.disabled = !hasText || !isConnected;
         }
@@ -1117,8 +953,6 @@
             const uploadArea = document.getElementById('upload-area');
             const filesContent = document.querySelector('.files-content');
     
-            if (!uploadArea || !filesContent) return;
-
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 uploadArea.addEventListener(eventName, preventDefaults, false);
                 filesContent.addEventListener(eventName, preventDefaults, false);
@@ -1164,8 +998,6 @@
         // 기타 기능들
         function addEmoji() {
             const input = document.getElementById('message-input');
-            if (!input) return;
-            
             const emojis = ['😊', '👍', '❤️', '🎉', '💯', '🔥', '✨', '🚀', '👏', '💪'];
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             
@@ -1181,8 +1013,6 @@
     
         function mentionUser() {
             const input = document.getElementById('message-input');
-            if (!input) return;
-            
             const members = globalData.teamMembers || [];
             
             if (members.length === 0) {
@@ -1267,8 +1097,6 @@
             const messageInput = document.getElementById('message-input');
             const STORAGE_KEY = 'draft_message_';
             
-            if (!messageInput) return () => {};
-            
             // 메시지 임시 저장
             messageInput.addEventListener('input', function() {
                 if (currentChannelName) {
@@ -1320,20 +1148,18 @@
             
             // 메시지 입력 이벤트 리스너
             const messageInput = document.getElementById('message-input');
-            if (messageInput) {
-                messageInput.addEventListener('input', function() {
-                    this.style.height = 'auto';
-                    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
-                    updateSendButton();
-                });
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+                updateSendButton();
+            });
     
-                messageInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                    }
-                });
-            }
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
             
             // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링
             setInterval(() => {
