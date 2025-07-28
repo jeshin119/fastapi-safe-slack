@@ -1,6 +1,6 @@
 import asyncio
 import signal
-import sys
+import os
 from typing import Optional, Callable
 from app.core.websocket_manager import manager
 
@@ -11,7 +11,6 @@ class ServerShutdownManager:
         self.shutdown_event = asyncio.Event()
         self.shutdown_callback: Optional[Callable] = None
         self._original_sigint_handler = None
-        self._original_sigterm_handler = None
         self._force_exit_handler = None
     
     def setup_signal_handlers(self, shutdown_callback: Optional[Callable] = None):
@@ -20,7 +19,6 @@ class ServerShutdownManager:
         
         # 기존 핸들러 백업
         self._original_sigint_handler = signal.getsignal(signal.SIGINT)
-        self._original_sigterm_handler = signal.getsignal(signal.SIGTERM)
         
         # 강제 종료 핸들러
         def force_exit_handler(signum, frame):
@@ -30,13 +28,13 @@ class ServerShutdownManager:
                 asyncio.create_task(self.shutdown_websockets())
             except:
                 pass
-            sys.exit(0)
+            # 즉시 종료
+            os._exit(0)
         
         self._force_exit_handler = force_exit_handler
         
-        # 새로운 핸들러 등록
+        # 새로운 핸들러 등록 (SIGINT만)
         signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
     
     def _signal_handler(self, signum, frame):
         """시그널 핸들러: 서버 종료 시그널 처리"""
@@ -49,17 +47,14 @@ class ServerShutdownManager:
             except Exception as e:
                 print(f"종료 콜백 실행 중 오류: {e}")
         
-        # 강제 종료 핸들러도 등록
+        # 강제 종료 핸들러도 등록 (SIGINT만)
         if self._force_exit_handler:
             signal.signal(signal.SIGINT, self._force_exit_handler)
-            signal.signal(signal.SIGTERM, self._force_exit_handler)
     
     def restore_signal_handlers(self):
         """원본 시그널 핸들러 복원"""
         if self._original_sigint_handler:
             signal.signal(signal.SIGINT, self._original_sigint_handler)
-        if self._original_sigterm_handler:
-            signal.signal(signal.SIGTERM, self._original_sigterm_handler)
     
     async def shutdown_websockets(self):
         """모든 WebSocket 연결 정상 종료"""

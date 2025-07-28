@@ -1,6 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Set
 import json
+import asyncio
 from app.core.date_utils import get_current_datetime
 
 class ConnectionManager:
@@ -78,24 +79,43 @@ class ConnectionManager:
         """서버 종료 시 모든 WebSocket 연결 정리"""
         connections_to_close = list(self.connection_info.keys())
         
+        if not connections_to_close:
+            print("🔌 종료할 WebSocket 연결이 없습니다.")
+            return
+        
+        print(f"🔌 {len(connections_to_close)}개의 WebSocket 연결 종료 중...")
+        
         for websocket in connections_to_close:
             try:
-                # 서버 종료 알림 메시지 전송
-                await self.send_personal_message(websocket, {
-                    "type": "server_shutdown",
-                    "message": "서버가 종료됩니다. 잠시 후 다시 연결해주세요.",
-                    "timestamp": get_current_datetime().isoformat()
-                })
+                # 서버 종료 알림 메시지 전송 (타임아웃 추가)
+                await asyncio.wait_for(
+                    self.send_personal_message(websocket, {
+                        "type": "server_shutdown",
+                        "message": "서버가 종료됩니다. 잠시 후 다시 연결해주세요.",
+                        "timestamp": get_current_datetime().isoformat()
+                    }),
+                    timeout=1.0
+                )
                 
-                # 정상 종료 코드로 연결 해제
-                await websocket.close(code=1000, reason="Server shutdown")
+                # 정상 종료 코드로 연결 해제 (타임아웃 추가)
+                await asyncio.wait_for(
+                    websocket.close(code=1000, reason="Server shutdown"),
+                    timeout=1.0
+                )
                 
+            except asyncio.TimeoutError:
+                # 타임아웃 발생 시 강제 종료
+                try:
+                    await websocket.close(code=1000, reason="Server shutdown")
+                except:
+                    pass
             except Exception as e:
-                print(f"WebSocket 종료 실패: {e}")
+                print(f"❌ WebSocket 종료 실패: {e}")
         
         # 연결 정보 초기화
         self.active_connections.clear()
         self.connection_info.clear()
+        print("✅ WebSocket 연결 정리 완료")
     
     def get_connection_count(self) -> int:
         """현재 활성 연결 수 반환"""

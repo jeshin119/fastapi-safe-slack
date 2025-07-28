@@ -39,27 +39,3 @@ async def serve_root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
-@app.get("/test-chat")
-async def test_chat():
-    """채팅 테스트 페이지 제공"""
-    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"chat.html")
-
-# @app.get("/test-chat")
-# async def test_chat():
-#     """채팅 테스트 페이지 제공"""
-#     return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"test_chat.html")
-
-@app.get("/test-websocket")
-async def test_websocket():
-    """WebSocket 테스트 페이지 제공"""
-    return FileResponse(BASE_DIR / "front" / "test-websocket.html")
-@app.get("/test-workspace")
-async def test_chat():
-    """워크스페이스 메인 테스트 페이지 제공"""
-    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"workspace-main.html")
-
-@app.get("/test-channel-add")
-async def test_channel():
-    """채널 생성 테스트 페이지 제공"""
-    return FileResponse(BASE_DIR / "front" / "pages" / "workspace"/"channel-add.html")

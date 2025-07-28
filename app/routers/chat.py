@@ -14,6 +14,7 @@ from datetime import datetime
 import json
 import asyncio
 from jose.exceptions import JWTError
+from urllib.parse import unquote
 
 router = APIRouter()
 
@@ -147,11 +148,11 @@ async def websocket_endpoint(
             # print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
             pass
         
-        # 메시지 수신 루프 (타임아웃 추가)
+        # 메시지 수신 루프 (시그널 처리를 위한 개선)
         while True:
             try:
-                # 타임아웃을 추가하여 시그널 처리가 가능하도록 함
-                data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+                # 타임아웃 없이 메시지 수신 (실시간 채팅을 위해)
+                data = await websocket.receive_text()
                 message_data = json.loads(data)
                 
                 # 메시지 타입에 따른 처리
@@ -265,12 +266,9 @@ async def websocket_endpoint(
                     # 읽음 확인 처리 (추후 구현)
                     pass
                     
-            except asyncio.TimeoutError:
-                # 타임아웃 발생 시 계속 진행 (시그널 처리를 위해)
-                continue
             except asyncio.CancelledError:
-                # 서버 종료 시 WebSocket 연결이 취소됨
-                # print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
+                # 서버 종료 시 WebSocket 연결이 취소됨 (SIGINT 강제종료 포함)
+                print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
                 break
             except json.JSONDecodeError:
                 # 잘못된 JSON 형식
@@ -281,6 +279,7 @@ async def websocket_endpoint(
                 })
             except Exception as e:
                 # 기타 오류 처리
+                print(f"❌ 메시지 처리 중 오류: {e}")
                 await manager.send_personal_message(websocket, {
                     "type": "error",
                     "message": f"메시지 처리 중 오류가 발생했습니다: {str(e)}",
@@ -292,7 +291,7 @@ async def websocket_endpoint(
         print(f"🔌 WebSocket 연결 해제: {user_context.get('user_name', 'Unknown')}")
         manager.disconnect(websocket)
     except asyncio.CancelledError:
-        # 서버 종료 시 WebSocket 연결이 취소됨
+        # 서버 종료 시 WebSocket 연결이 취소됨 (SIGINT 강제종료 포함)
         print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
         manager.disconnect(websocket)
     except Exception as e:
