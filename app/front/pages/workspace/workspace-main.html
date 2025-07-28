@@ -739,7 +739,8 @@
             formData.append('channel', currentChannelName);
     
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
-            const response = await fetch(`${API_BASE_URL}/channels/${currentChannelName}/files`, {
+            const workspaceName = localStorage.getItem('current_workspace_name');
+            const response = await fetch(`${API_BASE_URL}/channels/${currentChannelName}/files?workspace_name=${encodeURIComponent(workspaceName)}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`

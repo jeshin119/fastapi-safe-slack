@@ -262,8 +262,9 @@
                 
                 // 워크스페이스와 채널 정보를 포함한 파일 목록 요청
                 let endpoint;
+                const workspaceName = localStorage.getItem('current_workspace_name');
                 if (channelId) {
-                    endpoint = `/channels/${channelId}/files`;
+                    endpoint = `/channels/${channelId}/files?workspace_name=${encodeURIComponent(workspaceName)}`;
                 } else {
                     endpoint = `/workspaces/${workspaceId}/channels/${channelName}/files`;
                 }
@@ -505,8 +506,9 @@
                         if (channelId) formData.append('channel_id', channelId);
 
                         let endpoint;
+                        const workspaceName = localStorage.getItem('current_workspace_name');
                         if (channelId) {
-                            endpoint = `/channels/${channelId}/files`;
+                            endpoint = `/channels/${channelId}/files?workspace_name=${encodeURIComponent(workspaceName)}`;
                         } else {
                             endpoint = `/workspaces/${workspaceId}/channels/${channelName}/files`;
                         }
