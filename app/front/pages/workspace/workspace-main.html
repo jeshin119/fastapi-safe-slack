@@ -688,6 +688,9 @@
                 }
                 
                 currentChannelName = channelName;
+
+                // ✅ 채널 이름을 localStorage에 저장
+                localStorage.setItem("current_channel_name", channelName);
                 
                 const channel = globalData.channels.find(ch => ch.name === channelName);
                 if (!channel) return;
