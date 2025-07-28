@@ -16,21 +16,28 @@
     <div class="bg-decoration"></div>
 
     <div class="admin-container">
-        <!-- 헤더 -->
-        <div class="header-section">
-            <div class="admin-badge">👑 관리자</div>
-            <div class="logo">⚙️</div>
-            <h1 class="welcome-text">워크스페이스 설정</h1>
-            <p class="subtitle">워크스페이스 관리 및 설정을<br>한 곳에서 편리하게 관리하세요</p>
-        </div>
-
         <!-- 워크스페이스 정보 -->
         <div class="workspace-info">
             <div class="workspace-icon">🚀</div>
             <div class="workspace-details">
-                <div class="workspace-name">스타트업팀</div>
-                <div class="workspace-meta">생성일: 2023년 6월 1일 • 관리자: 정진섭</div>
-                <div class="workspace-id">ID: workspace_12345</div>
+                <div class="workspace-name" id="display-workspace-name">로딩 중...</div>
+                <div class="workspace-meta" id="display-workspace-meta">워크스페이스 정보를 불러오는 중...</div>
+                
+                
+                <!-- 워크스페이스 선택기 -->
+                <div id="workspace-selector" style="margin-top: 12px; display: none;">
+                    <select id="workspace-select" style="
+                        padding: 8px 12px; 
+                        border: 2px solid #e2e8f0; 
+                        border-radius: 8px; 
+                        background: white;
+                        font-size: 14px;
+                        cursor: pointer;
+                        min-width: 200px;
+                    " onchange="switchWorkspace()">
+                        <!-- 옵션들이 동적으로 추가됩니다 -->
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -61,20 +68,20 @@
 
                     <div class="form-group">
                         <label class="form-label">워크스페이스 이름</label>
-                        <input type="text" class="form-input" value="스타트업팀" id="workspace-name" />
+                        <input type="text" class="form-input" placeholder="워크스페이스 이름을 입력하세요" id="workspace-name" />
                         <div class="form-help">워크스페이스 이름은 모든 멤버에게 표시됩니다.</div>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">설명</label>
-                        <textarea class="form-textarea" id="workspace-description" placeholder="워크스페이스에 대한 설명을 입력하세요">혁신적인 제품을 만드는 스타트업 팀입니다. 함께 성장하고 배우며 최고의 서비스를 만들어 갑니다.</textarea>
+                        <textarea class="form-textarea" id="workspace-description" placeholder="워크스페이스에 대한 설명을 입력하세요"></textarea>
                         <div class="form-help">워크스페이스의 목적과 문화를 설명해주세요.</div>
                     </div>
 
                     <div class="btn-group">
-                        <button class="btn btn-secondary">취소</button>
+                        <button class="btn btn-secondary" onclick="loadWorkspaceInfo()">취소</button>
                         <button class="btn btn-primary" onclick="saveGeneralSettings()">
-                            <div class="loading-spinner" id="general-spinner"></div>
+                            <div class="loading-spinner" id="general-spinner" style="display: none;"></div>
                             💾 저장
                         </button>
                     </div>
@@ -86,20 +93,63 @@
                 <div class="settings-section">
                     <div class="section-header">
                         <div class="section-title">
-                            🎫 초대 코드 관리
+                            🎫 새 초대 코드 생성
                         </div>
-                        <div class="section-description">새로운 멤버를 초대할 수 있는 코드를 관리합니다.</div>
+                        <div class="section-description">새로운 멤버를 초대할 수 있는 코드를 생성합니다.</div>
                     </div>
 
-                    <div class="invite-section">
+                    <div class="form-group">
+                        <label class="form-label">워크스페이스 이름</label>
+                        <input type="text" class="form-input" id="invite-workspace-name" placeholder="워크스페이스 이름을 입력하세요" />
+                        <div class="form-help">이 이름으로 초대 코드가 생성됩니다.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">만료일 (선택사항)</label>
+                        <input type="datetime-local" class="form-input" id="invite-expires-at" />
+                        <div class="form-help">비워두면 무제한으로 사용 가능합니다.</div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="generateInviteCode()">
+                            <div class="loading-spinner" id="invite-spinner" style="display: none;"></div>
+                            🎫 초대 코드 생성
+                        </button>
+                    </div>
+
+                    <!-- 생성된 초대 코드 표시 -->
+                    <div class="invite-section" id="generated-invite-section" style="display: none; margin-top: 24px;">
                         <div class="invite-header">
-                            <div class="invite-title">현재 초대 코드</div>
-                            <button class="btn btn-secondary" onclick="regenerateInviteCode()">🔄 새로 생성</button>
+                            <div class="invite-title">생성된 초대 코드</div>
+                            <button class="btn btn-secondary" onclick="copyInviteCode()">📋 복사</button>
                         </div>
                         <div class="invite-display">
-                            <input type="text" class="invite-code" value="STARTUP2025" readonly id="current-invite-code" />
-                            <button class="copy-btn" onclick="copyInviteCode()">📋 복사</button>
+                            <input type="text" class="invite-code" readonly id="generated-invite-code" />
                         </div>
+                        <div class="form-help" id="invite-code-info"></div>
+                    </div>
+                </div>
+
+                <!-- 기존 초대 코드 목록 -->
+                <div class="settings-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            📋 기존 초대 코드 목록
+                        </div>
+                        <div class="section-description">생성된 초대 코드들을 확인하고 관리합니다.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">조회할 워크스페이스</label>
+                        <input type="text" class="form-input" id="list-workspace-name" placeholder="워크스페이스 이름을 입력하세요" />
+                        <button class="btn btn-secondary" onclick="loadInviteCodes()" style="margin-top: 8px;">
+                            <div class="loading-spinner" id="list-spinner" style="display: none;"></div>
+                            🔍 코드 목록 조회
+                        </button>
+                    </div>
+
+                    <div id="invite-codes-container" style="margin-top: 20px;">
+                        <!-- 초대 코드 목록이 여기에 표시됩니다 -->
                     </div>
                 </div>
             </div>
@@ -129,8 +179,310 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'http://localhost:8000';
+        // ============================
+        // 전역 변수 (window 객체에 저장하여 탭 간 공유)
+        // ============================
+        window.API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+        window.userData = window.userData || null;
+        window.currentWorkspaceName = window.currentWorkspaceName || '';
+        window.availableWorkspaces = window.availableWorkspaces || [];
 
+        // ============================
+        // 초기화
+        // ============================
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('🚀 워크스페이스 설정 페이지 초기화');
+            
+            try {
+                // 사용자 정보 로드
+                await loadUserInfo();
+                
+                // 워크스페이스 정보 로드 (API 실패해도 기본값으로 진행)
+                await loadWorkspaceInfo();
+                
+                console.log('✅ 페이지 초기화 완료');
+            } catch (error) {
+                console.error('❌ 초기화 중 오류 발생:', error);
+                // 최악의 경우 기본값으로 설정
+                updateWorkspaceDisplay('기본 워크스페이스', '관리자', new Date().toLocaleDateString('ko-KR'), 'ws_default');
+            }
+        });
+
+        // ============================
+        // 사용자 정보 로드
+        // ============================
+        async function loadUserInfo() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                alert('로그인이 필요합니다.');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                // JWT 토큰에서 사용자 정보 추출
+                const tokenData = JSON.parse(atob(token.split('.')[1]));
+                userData = {
+                    id: tokenData.user_id,
+                    email: tokenData.user_email,
+                    name: tokenData.user_name
+                };
+                
+                // window 객체에도 저장
+                window.userData = userData;
+                
+                console.log('👤 사용자 정보:', userData);
+                
+                // 기본 워크스페이스 이름 설정
+                currentWorkspaceName = `${userData.name}의 워크스페이스`;
+                window.currentWorkspaceName = currentWorkspaceName;
+                
+            } catch (error) {
+                console.error('토큰 파싱 오류:', error);
+                alert('인증 정보가 올바르지 않습니다.');
+                localStorage.removeItem('access_token');
+                window.location.href = '/login.html';
+            }
+        }
+
+        // ============================
+        // API 호출 공통 함수
+        // ============================
+        async function apiCall(endpoint, options = {}) {
+            const token = localStorage.getItem('access_token');
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (response.status === 401) {
+                    alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login.html';
+                    return null;
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error(`API 호출 실패 (${endpoint}):`, error);
+                throw error;
+            }
+        }
+        // ============================
+        // 워크스페이스 정보 로드 (수정된 버전)
+        // ============================
+        async function loadWorkspaceInfo() {
+            try {
+                console.log('🚀 워크스페이스 정보 로드 시작');
+                
+                // URL에서 워크스페이스 이름 파라미터 가져오기
+                const urlParams = new URLSearchParams(window.location.search);
+                const targetWorkspace = urlParams.get('workspace');
+                console.log('🎯 대상 워크스페이스:', targetWorkspace);
+                
+                // API 호출: 사용자가 속한 워크스페이스 목록 가져오기
+                const workspaces = await apiCall('/workspaces/workspaces_list', {
+                    method: 'GET'
+                });
+                
+                console.log('📋 워크스페이스 목록:', workspaces);
+                
+                // 워크스페이스가 없는 경우
+                if (!workspaces || workspaces.length === 0) {
+                    console.log('⚠️ 워크스페이스가 없어 기본값 사용');
+                    showDefaultWorkspace();
+                    return;
+                }
+                
+                // 현재 워크스페이스 찾기
+                let currentWorkspace = null;
+                
+                if (targetWorkspace) {
+                    // URL 파라미터가 있으면 해당 워크스페이스 찾기
+                    currentWorkspace = workspaces.find(ws => ws.name === targetWorkspace);
+                    console.log('🔍 URL 파라미터로 찾은 워크스페이스:', currentWorkspace);
+                }
+                
+                if (!currentWorkspace) {
+                    // URL 파라미터가 없거나 매칭 실패시 첫 번째 워크스페이스
+                    currentWorkspace = workspaces[0];
+                    console.log('📌 첫 번째 워크스페이스 선택:', currentWorkspace);
+                }
+                
+                // 워크스페이스 정보 업데이트
+                setupCurrentWorkspace(currentWorkspace, workspaces);
+                
+                console.log('✅ 워크스페이스 정보 로드 완료');
+                
+            } catch (error) {
+                console.error('❌ 워크스페이스 로드 실패:', error);
+                handleWorkspaceLoadError(error);
+            }
+        }
+        // ============================
+        // 기본 워크스페이스 표시
+        // ============================
+        function showDefaultWorkspace() {
+            const workspaceName = currentWorkspaceName || `${userData?.name || '사용자'}의 워크스페이스`;
+            const workspaceId = `ws_${userData?.id || Date.now()}`;
+            
+            updateWorkspaceDisplay(
+                workspaceName,
+                userData?.name || '알 수 없음',
+                new Date().toLocaleDateString('ko-KR'),
+                workspaceId,
+                1,
+                true
+            );
+            
+            console.log('🏠 기본 워크스페이스 설정:', workspaceName);
+        }
+        // ============================
+        // 워크스페이스 로드 에러 처리
+        // ============================
+        function handleWorkspaceLoadError(error) {
+            console.log('🔄 에러 발생, 기본값으로 설정합니다');
+            
+            const workspaceName = currentWorkspaceName || `${userData?.name || '사용자'}의 워크스페이스`;
+            const workspaceId = `ws_${userData?.id || Date.now()}`;
+            
+            updateWorkspaceDisplay(
+                workspaceName,
+                userData?.name || '알 수 없음',
+                new Date().toLocaleDateString('ko-KR'),
+                workspaceId,
+                1,
+                true
+            ); console.warn('⚠️ 워크스페이스 정보를 불러올 수 없어 기본값을 사용합니다.');
+        }
+
+        // ============================
+        // 현재 워크스페이스 설정 (기존 setupRealWorkspaceData 대체)
+        // ============================
+        function setupCurrentWorkspace(selectedWorkspace, allWorkspaces) {
+            console.log('🎯 선택된 워크스페이스 설정:', selectedWorkspace);
+            
+            // 전역 변수 업데이트
+            availableWorkspaces = allWorkspaces;
+            window.availableWorkspaces = allWorkspaces;
+            currentWorkspaceName = selectedWorkspace.name;
+            window.currentWorkspaceName = selectedWorkspace.name;
+            
+            // 워크스페이스 선택기 설정 (2개 이상일 때만)
+            if (allWorkspaces.length > 1) {
+                setupWorkspaceSelector(allWorkspaces, selectedWorkspace);
+            } else {
+                // 1개 이하면 선택기 숨김
+                document.getElementById('workspace-selector').style.display = 'none';
+            }
+            
+            // 화면 정보 업데이트
+            const workspaceName = selectedWorkspace.name;
+            const startDate = selectedWorkspace.start_date ? 
+                new Date(selectedWorkspace.start_date).toLocaleDateString('ko-KR') : 
+                '정보 없음';
+            const workspaceId = `ws_${selectedWorkspace.name.replace(/\s+/g, '_').toLowerCase()}`;
+            const memberCount = selectedWorkspace.member_count || 1;
+            const isAdmin = selectedWorkspace.is_workspace_admin;
+            
+            // 관리자 이름 (현재 사용자가 관리자인 경우)
+            const adminName = isAdmin ? userData?.name || '알 수 없음' : '외부 관리자';
+            
+            // 화면 업데이트
+            updateWorkspaceDisplay(workspaceName, adminName, startDate, workspaceId, memberCount, isAdmin);
+            
+            console.log('✅ 워크스페이스 설정 완료:', {
+                name: workspaceName,
+                admin: adminName,
+                startDate: startDate,
+                memberCount: memberCount,
+                isAdmin: isAdmin
+            });
+        }
+
+        // ============================
+        // 워크스페이스 선택기 설정 (수정된 버전)
+        // ============================
+        function setupWorkspaceSelector(workspaces, selectedWorkspace) {
+            const selector = document.getElementById('workspace-selector');
+            const select = document.getElementById('workspace-select');
+            
+            console.log('🔧 워크스페이스 선택기 설정:', workspaces.length, '개');
+            
+            if (workspaces.length <= 1) {
+                // 워크스페이스가 1개 이하면 선택기 숨김
+                selector.style.display = 'none';
+                console.log('👁️ 선택기 숨김 (워크스페이스 1개 이하)');
+                return;
+            }
+            
+            // 선택기 표시
+            selector.style.display = 'block';
+            console.log('👁️ 선택기 표시 (워크스페이스 2개 이상)');
+            
+            // 옵션 생성 - API 응답 구조에 맞게 수정
+            select.innerHTML = workspaces.map(ws => `
+                <option value="${ws.name}" ${ws.name === selectedWorkspace.name ? 'selected' : ''}>
+                    ${ws.is_workspace_admin ? '👑' : '👤'} ${ws.name} (${ws.member_count || 1}명)
+                </option>
+            `).join('');
+            
+            console.log('✅ 선택기 옵션 생성 완료');
+        }
+
+        // ============================
+        // 워크스페이스 전환
+        // ============================
+        async function switchWorkspace() {
+            const selectedName = document.getElementById('workspace-select').value;
+            const selectedWorkspace = availableWorkspaces.find(ws => ws.name === selectedName);
+            
+            if (!selectedWorkspace) return;
+            
+            console.log('🔄 워크스페이스 전환:', selectedName);
+            
+            // URL 업데이트 (새로고침 없이)
+            const url = new URL(window.location);
+            url.searchParams.set('workspace', selectedName);
+            window.history.pushState({}, '', url);
+            
+            // 현재 워크스페이스 설정
+            setupCurrentWorkspace(selectedWorkspace, availableWorkspaces);
+        }
+
+        // ============================
+        // 워크스페이스 화면 업데이트
+        // ============================
+        function updateWorkspaceDisplay(workspaceName, adminName, startDate, workspaceId, memberCount = 1, isAdmin = true) {
+            // 표시 정보 업데이트
+            document.getElementById('display-workspace-name').textContent = workspaceName;
+            document.getElementById('display-workspace-meta').textContent = 
+                `관리자: ${adminName} • 생성일: ${startDate} • 멤버: ${memberCount}명`;
+            
+            // 폼 필드 설정
+            document.getElementById('workspace-name').value = workspaceName;
+            document.getElementById('workspace-description').value = 
+                `${workspaceName}은(는) 팀원들과 함께 협업하고 소통하는 공간입니다. 함께 성장하고 발전하는 워크스페이스입니다.`;
+            
+            // 초대 관리 탭의 기본값 설정
+            document.getElementById('invite-workspace-name').value = workspaceName;
+            document.getElementById('list-workspace-name').value = workspaceName;
+        }
+
+        // ============================
+        // 탭 전환
+        // ============================
         function switchTab(tabId) {
             const tabs = document.querySelectorAll('.tab-button');
             const contents = document.querySelectorAll('.tab-content');
@@ -142,7 +494,18 @@
             document.getElementById(`${tabId}-content`).classList.add('active');
         }
 
+        // ============================
+        // 일반 설정 저장
+        // ============================
         function saveGeneralSettings() {
+            const workspaceName = document.getElementById('workspace-name').value.trim();
+            const workspaceDescription = document.getElementById('workspace-description').value.trim();
+            
+            if (!workspaceName) {
+                alert('워크스페이스 이름을 입력해주세요.');
+                return;
+            }
+
             const spinner = document.getElementById('general-spinner');
             const btn = event.target;
             const originalText = btn.innerHTML;
@@ -151,7 +514,16 @@
             spinner.style.display = 'inline-block';
             btn.innerHTML = '<div class="loading-spinner" style="display: inline-block; margin-right: 8px;"></div>저장 중...';
             
+            // 실제 워크스페이스 수정 API가 없으므로 임시 처리
             setTimeout(() => {
+                // 현재 워크스페이스 이름 업데이트
+                currentWorkspaceName = workspaceName;
+                
+                // 표시 정보 업데이트
+                document.getElementById('display-workspace-name').textContent = workspaceName;
+                document.getElementById('invite-workspace-name').value = workspaceName;
+                document.getElementById('list-workspace-name').value = workspaceName;
+                
                 spinner.style.display = 'none';
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -159,52 +531,172 @@
             }, 1000);
         }
 
-        async function regenerateInviteCode() {
+        // ============================
+        // 초대 코드 생성
+        // ============================
+        async function generateInviteCode() {
+            const workspaceName = document.getElementById('invite-workspace-name').value.trim();
+            const expiresAt = document.getElementById('invite-expires-at').value;
+            
+            if (!workspaceName) {
+                alert('워크스페이스 이름을 입력해주세요.');
+                return;
+            }
+
+            const spinner = document.getElementById('invite-spinner');
             const btn = event.target;
-            const originalText = btn.textContent;
+            const originalText = btn.innerHTML;
             
             btn.disabled = true;
-            btn.textContent = '생성 중...';
+            spinner.style.display = 'inline-block';
+            btn.innerHTML = '<div class="loading-spinner" style="display: inline-block; margin-right: 8px;"></div>생성 중...';
             
             try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/auth/invite-codes`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const requestBody = {
+                    workspace_name: workspaceName
+                };
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('current-invite-code').value = data.code;
-                    alert(`✅ 새로운 초대 코드: ${data.code}`);
-                } else {
-                    throw new Error('API 실패');
+                if (expiresAt) {
+                    requestBody.expires_at = expiresAt + ':59'; // 초 단위 추가
                 }
+
+                const result = await apiCall('/auth/invite-codes-create', {
+                    method: 'POST',
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (result) {
+                    // 생성된 코드 표시
+                    document.getElementById('generated-invite-code').value = result.code;
+                    document.getElementById('invite-code-info').textContent = 
+                        `생성일: ${new Date(result.created_at).toLocaleString('ko-KR')} • 만료일: ${result.expires_at ? new Date(result.expires_at).toLocaleString('ko-KR') : '무제한'}`;
+                    document.getElementById('generated-invite-section').style.display = 'block';
+                    
+                    alert(`✅ 새로운 초대 코드가 생성되었습니다!\n\n🎫 코드: ${result.code}\n📅 만료일: ${result.expires_at ? new Date(result.expires_at).toLocaleString('ko-KR') : '무제한'}`);
+                    
+                    // 폼 초기화
+                    document.getElementById('invite-expires-at').value = '';
+                }
+                
             } catch (error) {
-                console.error('Error:', error);
-                const fallbackCode = 'INV' + Math.random().toString(36).substring(2, 8).toUpperCase();
-                document.getElementById('current-invite-code').value = fallbackCode;
-                alert(`🔧 테스트 코드: ${fallbackCode}`);
+                alert(`❌ 초대 코드 생성 실패:\n${error.message}`);
             } finally {
                 btn.disabled = false;
-                btn.textContent = originalText;
+                spinner.style.display = 'none';
+                btn.innerHTML = originalText;
             }
         }
 
-        function copyInviteCode() {
-            const input = document.getElementById('current-invite-code');
-            const code = input.value;
+        // ============================
+        // 초대 코드 목록 조회
+        // ============================
+        async function loadInviteCodes() {
+            const workspaceName = document.getElementById('list-workspace-name').value.trim();
             
-            if (!code) {
-                alert('⚠️ 먼저 초대 코드를 생성해주세요.');
+            if (!workspaceName) {
+                alert('워크스페이스 이름을 입력해주세요.');
+                return;
+            }
+
+            const spinner = document.getElementById('list-spinner');
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            const container = document.getElementById('invite-codes-container');
+            
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btn.innerHTML = '<div class="loading-spinner" style="display: inline-block; margin-right: 8px;"></div>조회 중...';
+            
+            try {
+                const codes = await apiCall('/auth/invite-codes-list', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        workspace_name: workspaceName
+                    })
+                });
+
+                if (codes && codes.length > 0) {
+                    container.innerHTML = `
+                        <div style="margin-bottom: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <strong>📊 통계:</strong> 총 ${codes.length}개의 초대 코드 • ${codes.filter(c => c.used).length}개 사용됨 • ${codes.filter(c => !c.used).length}개 미사용
+                        </div>
+                        ${codes.map(code => `
+                            <div style="
+                                border: 2px solid ${code.used ? '#10b981' : '#f59e0b'}; 
+                                border-radius: 12px; 
+                                padding: 16px; 
+                                margin-bottom: 12px;
+                                background: white;
+                            ">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1e293b; font-size: 18px;">
+                                            🎫 ${code.code}
+                                        </div>
+                                        <div style="font-size: 14px; color: #64748b; margin-top: 8px;">
+                                            <span style="background: ${code.used ? '#dcfce7' : '#fef3c7'}; color: ${code.used ? '#166534' : '#92400e'}; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                                ${code.used ? '✅ 사용됨' : '⏳ 미사용'}
+                                            </span>
+                                            <span style="margin-left: 12px;">
+                                                📅 만료: ${code.expires_at ? new Date(code.expires_at).toLocaleDateString('ko-KR') : '무제한'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button onclick="copyToClipboard('${code.code}')" style="
+                                        padding: 8px 16px; 
+                                        background: #3b82f6; 
+                                        color: white; 
+                                        border: none; 
+                                        border-radius: 6px; 
+                                        cursor: pointer;
+                                        font-weight: 500;
+                                    ">📋 복사</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #64748b; border: 2px dashed #e2e8f0; border-radius: 12px;">
+                            <div style="font-size: 48px; margin-bottom: 16px;">🎫</div>
+                            <h3>생성된 초대 코드가 없습니다</h3>
+                            <p>"${workspaceName}" 워크스페이스에 대한 초대 코드를 먼저 생성해주세요.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #ef4444; border: 2px solid #fecaca; border-radius: 12px; background: #fef2f2;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                        <h3>초대 코드 조회 실패</h3>
+                        <p>${error.message}</p>
+                        <button onclick="loadInviteCodes()" style="margin-top: 16px; padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">다시 시도</button>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btn.innerHTML = originalText;
+            }
+        }
+
+        // ============================
+        // 초대 코드 복사
+        // ============================
+        function copyInviteCode() {
+            const code = document.getElementById('generated-invite-code').value;
+            copyToClipboard(code);
+        }
+
+        function copyToClipboard(text) {
+            if (!text) {
+                alert('⚠️ 복사할 코드가 없습니다.');
                 return;
             }
             
             if (navigator.clipboard) {
-                navigator.clipboard.writeText(code).then(() => {
+                navigator.clipboard.writeText(text).then(() => {
                     const btn = event.target;
                     const originalText = btn.textContent;
                     
@@ -217,42 +709,33 @@
                     }, 2000);
                 });
             } else {
-                input.select();
+                // 폴백 방법
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
                 document.execCommand('copy');
-                alert('📋 복사되었습니다!');
+                document.body.removeChild(textarea);
+                alert(`📋 "${text}" 복사되었습니다!`);
             }
         }
 
+        // ============================
+        // 워크스페이스 삭제
+        // ============================
         function deleteWorkspace() {
             if (confirm("⚠️ 정말로 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.")) {
                 if (confirm("🚨 마지막 확인: 모든 데이터가 영구 삭제됩니다.")) {
-                    alert("🗑️ 워크스페이스가 삭제되었습니다.");
+                    // 실제 삭제 API 호출 (현재는 알림만)
+                    alert("🗑️ 워크스페이스 삭제 기능은 준비 중입니다.\n실제로는 DELETE /workspaces/{id} API가 필요합니다.");
                     // window.location.href = '/';
                 }
             }
         }
 
-        async function loadCurrentInviteCode() {
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/auth/invite-codes/current`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('current-invite-code').value = data.code;
-                }
-            } catch (error) {
-                console.log('기존 초대 코드 불러오기 실패');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCurrentInviteCode();
-        });
-
+        // ============================
         // 키보드 단축키
+        // ============================
         document.addEventListener('keydown', function(e) {
             // ESC 키로 모든 모달 닫기
             if (e.key === 'Escape') {
@@ -278,18 +761,32 @@
             }
         });
 
+        // ============================
         // 개발자 도구용 디버깅
+        // ============================
         window.debugSettings = {
-            testInvite: () => regenerateInviteCode(),
-            fillTest: () => {
-                document.getElementById('workspace-name').value = '테스트 워크스페이스';
-                document.getElementById('workspace-description').value = '테스트용입니다.';
+            generateTestInvite: () => generateInviteCode(),
+            loadTestCodes: () => loadInviteCodes(),
+            refreshWorkspaces: () => loadWorkspaceInfo(),
+            switchToWorkspace: (name) => {
+                const url = new URL(window.location);
+                url.searchParams.set('workspace', name);
+                window.location.href = url.toString();
             },
-            switchToTab: (tab) => switchTab(tab)
+            fillTestData: () => {
+                document.getElementById('workspace-name').value = '테스트 워크스페이스';
+                document.getElementById('workspace-description').value = '테스트용 워크스페이스입니다.';
+                document.getElementById('invite-workspace-name').value = '테스트 워크스페이스';
+                document.getElementById('list-workspace-name').value = '테스트 워크스페이스';
+            },
+            switchToTab: (tab) => switchTab(tab),
+            getUserData: () => userData,
+            getCurrentWorkspace: () => currentWorkspaceName,
+            getAvailableWorkspaces: () => availableWorkspaces
         };
         
         console.log('🔧 개발자 도구에서 debugSettings 객체를 사용하여 테스트할 수 있습니다.');
-        console.log('예: debugSettings.testInvite(), debugSettings.fillTest()');
+        console.log('예: debugSettings.generateTestInvite(), debugSettings.fillTestData()');
     </script>
 </body>
 </html>

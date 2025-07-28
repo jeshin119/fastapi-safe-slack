@@ -32,39 +32,136 @@
             <p class="dashboard-subtitle">워크스페이스의 모든 관리 기능을<br>한 곳에서 편리하게 이용하세요</p>
         </div>
 
-        <!-- 탭 네비게이션 -->
-        <div class="tab-navigation">
-            <button class="tab-button active" onclick="switchTab('members')" id="members-tab">
-                👥 멤버 관리
-                <span class="badge" id="members-badge">3</span>
-            </button>
-            <button class="tab-button" onclick="switchTab('channels')" id="channels-tab">
-                💬 채널 관리
-            </button>
-            <button class="tab-button" onclick="switchTab('settings')" id="settings-tab">
-                ⚙️ 워크스페이스 설정
-            </button>
-        </div>
+    
+        <!-- 새로운 메뉴 버튼들 -->
+        <!-- 기존 탭 네비게이션 대신 이걸로 교체 -->
+        <div class="admin-menu-cards">
+            <div class="menu-card" onclick="goToMembersPage()">
+                <div class="card-icon">👥</div>
+                <div class="card-content">
+                    <h3 class="card-title">멤버 관리</h3>
+                    <p class="card-description">워크스페이스 멤버들의 가입 승인과 권한 관리를 수행하세요</p>
+                </div>
+                <div class="card-badge" id="members-badge">3</div>
+            </div>
 
-        <!-- 탭 콘텐츠들 -->
-        <div class="tab-content active" id="members-content">
-            <div class="loading-content">
+            <div class="menu-card" onclick="goToChannelsPage()">
+                <div class="card-icon">💬</div>
+                <div class="card-content">
+                    <h3 class="card-title">채널 관리</h3>
+                    <p class="card-description">워크스페이스의 모든 채널을 생성하고 관리하세요</p>
+                </div>
+            </div>
+
+            <div class="menu-card" onclick="goToSettingsPage()">
+                <div class="card-icon">⚙️</div>
+                <div class="card-content">
+                    <h3 class="card-title">워크스페이스 설정</h3>
+                    <p class="card-description">워크스페이스 기본 설정과 초대 코드를 관리하세요</p>
+                </div>
             </div>
         </div>
 
-        <div class="tab-content" id="channels-content">
-            <div class="loading-content">
-            </div>
-        </div>
+        <style>
+        .admin-menu-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 90%;
+            max-width: 800px;
+            margin: 40px auto;
+            
+            
+        }
 
-        <div class="tab-content" id="settings-content">
-            <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <div>워크스페이스 설정 페이지를 불러오는 중...</div>
-            </div>
-        </div>
-    </div>
+        .menu-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
 
+        .menu-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border-color: #0ea5e9;
+        }
+
+        .card-icon {
+            font-size: 40px;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            border-radius: 12px;
+            flex-shrink: 0;
+        }
+
+        .card-content {
+            flex: 1;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+            margin: 0 0 8px 0;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .card-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .admin-menu-cards {
+                margin: 20px;
+            }
+            
+            .menu-card {
+                padding: 20px;
+                gap: 16px;
+            }
+            
+            .card-icon {
+                font-size: 32px;
+                width: 50px;
+                height: 50px;
+            }
+            
+            .card-title {
+                font-size: 18px;
+            }
+        }
+        </style>
+
+        
     <script>
         // ============================
         // 전역 변수
@@ -97,6 +194,21 @@
             if (!loadedTabs.has(tabName)) {
                 await loadTabContent(tabName);
             }
+        }
+        
+        // 멤버 관리 페이지로 이동
+        function goToMembersPage() {
+            window.location.href = 'admin-members.html';
+        }
+
+        // 채널 관리 페이지로 이동
+        function goToChannelsPage() {
+            window.location.href = 'admin-channels.html';
+        }
+
+        // 워크스페이스 설정 페이지로 이동
+        function goToSettingsPage() {
+            window.location.href = 'admin-ws-settings.html';
         }
 
         // ============================
