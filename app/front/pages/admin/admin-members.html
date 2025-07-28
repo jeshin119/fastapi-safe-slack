@@ -126,7 +126,7 @@
                     </div>
                 </div>
 
-                <div class="members-grid" id="active-list">
+                <div class="members-grid" id="active-members-list">
                     <div class="empty-state">
                         <div class="empty-icon">👥</div>
                         <div class="empty-title">활성 멤버가 표시됩니다</div>
@@ -462,6 +462,10 @@
                 
                 const pendingData = await pendingResponse.json();
                 const membersData = await membersResponse.json();
+                console.log("✅ membersData:", membersData);
+
+                // 여기서 호출!
+                updateActiveMembersFromAPI(Array.isArray(membersData) ? membersData : []);
                 
                 // 통계 계산
                 const stats = {
@@ -731,6 +735,32 @@
                 }
             } catch (error) {
                 return { success: false, error: '거부 처리에 실패했습니다.' };
+            }
+        }
+
+        function updateActiveMembersFromAPI(members) {
+            const container = document.getElementById('active-members-list');
+            if (!container) {
+                console.warn("❗ active-members-list 요소가 없습니다.");
+                return;
+            }
+
+            container.innerHTML = "";
+
+            if (!members || members.length === 0) {
+                container.innerHTML = "<p>활성 멤버가 없습니다.</p>";
+                return;
+            }
+
+            for (const member of members) {
+                const div = document.createElement("div");
+                div.className = "member-card";
+                div.innerHTML = `
+                    <div class="member-field"><span class="field-label">👤 이름:</span> ${member.name}</div>
+                    <div class="member-field"><span class="field-label">📧 이메일:</span> ${member.email}</div>
+                    <div class="member-field"><span class="field-label">🏷️ 직급:</span> ${member.role_name}</div>
+                `;
+                container.appendChild(div);
             }
         }
 
