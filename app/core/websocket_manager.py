@@ -10,7 +10,7 @@ class ConnectionManager:
         # {WebSocket: (workspace_id, channel_id, user_id, user_name)}
         self.connection_info: Dict[WebSocket, tuple] = {}
     
-    async def connect(self, websocket: WebSocket, workspace_id: int, channel_id: int, user_id: int, user_name: str):
+    async def connect(self, websocket: WebSocket, workspace_id: int, channel_id: int, user_id: int, user_name: str, is_new_member: bool = False):
         await websocket.accept()
         
         # 워크스페이스/채널별 연결 관리
@@ -29,19 +29,20 @@ class ConnectionManager:
             "timestamp": get_current_datetime().isoformat()
         })
         
-        # 다른 사용자들에게 입장 알림
-        await self.broadcast_to_channel(
-            workspace_id, 
-            channel_id, 
-            {
-                "type": "user_joined",
-                "user_id": user_id,
-                "user_name": user_name,
-                "message": f"{user_name}님이 입장하셨습니다.",
-                "timestamp": get_current_datetime().isoformat()
-            },
-            exclude_websocket=websocket
-        )
+        # 새로 가입한 멤버인 경우에만 다른 사용자들에게 입장 알림
+        if is_new_member:
+            await self.broadcast_to_channel(
+                workspace_id, 
+                channel_id, 
+                {
+                    "type": "user_joined",
+                    "user_id": user_id,
+                    "user_name": user_name,
+                    "message": f"{user_name}님이 채널에 가입하셨습니다.",
+                    "timestamp": get_current_datetime().isoformat()
+                },
+                exclude_websocket=websocket
+            )
     
     async def disconnect(self, websocket: WebSocket):
         if websocket in self.connection_info:

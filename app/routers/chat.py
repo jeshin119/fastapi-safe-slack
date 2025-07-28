@@ -23,21 +23,21 @@ def verify_websocket_token(token: str) -> dict:
     try:
         payload = verify_token(token)
         if payload is None:
-            print(f"❌ 토큰 검증 실패: verify_token이 None 반환")
+            # print(f"❌ 토큰 검증 실패: verify_token이 None 반환")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials"
             )
-        print(f"✅ 토큰 검증 성공: payload={payload}")
+        # print(f"✅ 토큰 검증 성공: payload={payload}")
         return payload
     except JWTError as e:
-        print(f"❌ JWT 디코딩 오류: {e}")
+        # print(f"❌ JWT 디코딩 오류: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"JWT decode error: {str(e)}"
         )
     except Exception as e:
-        print(f"❌ 토큰 검증 중 예상치 못한 오류: {e}")
+        # print(f"❌ 토큰 검증 중 예상치 못한 오류: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Token validation error: {str(e)}"
@@ -58,9 +58,9 @@ async def websocket_endpoint(
     try:
         # WebSocket용 토큰 검증
         user_context = verify_websocket_token(token)
-        print(f"🔍 WebSocket 토큰 검증 성공: user_id={user_context.get('user_id')}, user_name={user_context.get('user_name')}")
+        # print(f"🔍 WebSocket 토큰 검증 성공: user_id={user_context.get('user_id')}, user_name={user_context.get('user_name')}")
     except Exception as e:
-        print(f"❌ WebSocket 토큰 검증 실패: {e}")
+        # print(f"❌ WebSocket 토큰 검증 실패: {e}")
         await websocket.close(code=4001, reason="유효하지 않은 토큰입니다.")
         return
     
@@ -71,40 +71,41 @@ async def websocket_endpoint(
     try:
         # 워크스페이스와 채널 접근 권한 확인
         workspace = await get_workspace_by_name(db, workspace_name)
-        print(f"✅ 워크스페이스 확인 성공: {workspace_name} (ID: {workspace.id})")
+        # print(f"✅ 워크스페이스 확인 성공: {workspace_name} (ID: {workspace.id})")
         
         channel = await get_channel_by_name(db, channel_name, workspace.id)
-        print(f"✅ 채널 확인 성공: {channel_name} (ID: {channel.id})")
+        # print(f"✅ 채널 확인 성공: {channel_name} (ID: {channel.id})")
         
         # 워크스페이스 멤버십 확인
         workspace_membership = await get_workspace_membership(db, user_context["user_id"], workspace.id)
         if not workspace_membership:
-            print(f"❌ 워크스페이스 멤버십 없음: user_id={user_context['user_id']}, workspace_id={workspace.id}")
+            # print(f"❌ 워크스페이스 멤버십 없음: user_id={user_context['user_id']}, workspace_id={workspace.id}")
             await websocket.close(code=4003, reason="워크스페이스에 접근할 권한이 없습니다.")
             return
-        print(f"✅ 워크스페이스 멤버십 확인 성공: user_id={user_context['user_id']}")
+        # print(f"✅ 워크스페이스 멤버십 확인 성공: user_id={user_context['user_id']}")
         
         # 채널 멤버십 확인
         channel_membership = await get_channel_membership(db, user_context["user_id"], channel.id)
         if not channel_membership:
-            print(f"❌ 채널 멤버십 없음: user_id={user_context['user_id']}, channel_id={channel.id}")
+            # print(f"❌ 채널 멤버십 없음: user_id={user_context['user_id']}, channel_id={channel.id}")
             await websocket.close(code=4003, reason="채널에 접근할 권한이 없습니다.")
             return
-        print(f"✅ 채널 멤버십 확인 성공: user_id={user_context['user_id']}")
+        # print(f"✅ 채널 멤버십 확인 성공: user_id={user_context['user_id']}")
         
     except Exception as e:
-        print(f"❌ 데이터베이스 오류: {e}")
+        # print(f"❌ 데이터베이스 오류: {e}")
         await websocket.close(code=4005, reason=f"데이터베이스 오류: {str(e)}")
         return
     
     try:
-        # WebSocket 연결
+        # WebSocket 연결 (입장 메시지는 채널 가입 승인 시에만 전송)
         await manager.connect(
             websocket, 
             workspace.id, 
             channel.id, 
             user_context["user_id"], 
-            user_context["user_name"]
+            user_context["user_name"],
+            False  # WebSocket 연결 시에는 입장 메시지 전송하지 않음
         )
         
         # 연결된 사용자 목록 전송
@@ -117,7 +118,7 @@ async def websocket_endpoint(
         
         # 채널 가입 시간 이후의 메시지 히스토리 전송
         if channel_membership.joined_at:
-            print(f"📚 멤버 ({user_context['user_name']})에게 가입 시간 이후 메시지 히스토리 전송")
+            # print(f"📚 멤버 ({user_context['user_name']})에게 가입 시간 이후 메시지 히스토리 전송")
             try:
                 # 채널 가입 시간을 ISO 형식으로 변환
                 join_timestamp = channel_membership.joined_at.isoformat()
@@ -132,15 +133,18 @@ async def websocket_endpoint(
                         "messages": messages,
                         "timestamp": get_current_datetime().isoformat()
                     })
-                    print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지 (가입 시간: {join_timestamp})")
+                    # print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지 (가입 시간: {join_timestamp})")
                 else:
-                    print("📭 가입 시간 이후 메시지 히스토리가 없습니다.")
+                    # print("📭 가입 시간 이후 메시지 히스토리가 없습니다.")
+                    pass
                     
             except Exception as e:
-                print(f"❌ 메시지 히스토리 조회 실패: {e}")
+                # print(f"❌ 메시지 히스토리 조회 실패: {e}")
                 # 히스토리 조회 실패해도 실시간 채팅은 계속 진행
+                pass
         else:
-            print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
+            # print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
+            pass
         
         # 메시지 수신 루프
         while True:
@@ -178,9 +182,9 @@ async def websocket_endpoint(
                     
                     try:
                         message_id = await dynamodb_manager.save_message(message_item)
-                        print(f"DynamoDB 메시지 저장 성공: {message_id}")
+                        # print(f"DynamoDB 메시지 저장 성공: {message_id}")
                     except Exception as e:
-                        print(f"DynamoDB 메시지 저장 실패: {e}")
+                        # print(f"DynamoDB 메시지 저장 실패: {e}")
                         # DynamoDB 저장 실패해도 실시간 채팅은 계속 진행
                         message_id = f"temp_{get_current_datetime().strftime('%Y%m%d_%H%M%S_%f')}"
                     
@@ -214,6 +218,46 @@ async def websocket_endpoint(
                         },
                         exclude_websocket=websocket
                     )
+                
+                elif message_data.get("type") == "load_older_messages":
+                    # 더 이전 메시지 요청 처리
+                    try:
+                        before_timestamp = message_data.get("before_timestamp")
+                        if not before_timestamp:
+                            await manager.send_personal_message(websocket, {
+                                "type": "error",
+                                "message": "이전 메시지 요청에 필요한 timestamp가 없습니다.",
+                                "timestamp": get_current_datetime().isoformat()
+                            })
+                            continue
+                        
+                        # 더 이전 메시지 조회
+                        older_messages = await dynamodb_manager.get_older_messages(
+                            channel.id, 
+                            before_timestamp, 
+                            limit=50
+                        )
+                        
+                        if older_messages:
+                            # 이전 메시지 전송
+                            await manager.send_personal_message(websocket, {
+                                "type": "older_messages",
+                                "messages": older_messages,
+                                "timestamp": get_current_datetime().isoformat()
+                            })
+                        else:
+                            # 더 이상 이전 메시지가 없음
+                            await manager.send_personal_message(websocket, {
+                                "type": "no_older_messages",
+                                "timestamp": get_current_datetime().isoformat()
+                            })
+                            
+                    except Exception as e:
+                        await manager.send_personal_message(websocket, {
+                            "type": "error",
+                            "message": f"이전 메시지 조회 중 오류가 발생했습니다: {str(e)}",
+                            "timestamp": get_current_datetime().isoformat()
+                        })
                 
                 elif message_data.get("type") == "read_receipt":
                     # 읽음 확인 처리 (추후 구현)

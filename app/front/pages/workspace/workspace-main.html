@@ -163,10 +163,11 @@
             currentChannel: null,
             messages: {},  
             files: {},     
-            teamMembers: []
+            teamMembers: [],
+            isLoadingOlderMessages: false
         };
         
-        let currentChannelName = "디자인";
+        let currentChannelName = "null";
         let currentTab = 'chat';
         let websocket = null;
         let reconnectAttempts = 0;
@@ -228,172 +229,220 @@
         }
     
         // WebSocket 연결 관리 (chat.py 방식으로 수정)
-        // function connectWebSocket() {
-        //     try {
-        //         if (!currentChannelName || !globalData.workspace?.name) {
-        //             console.log('WebSocket 연결 대기: 채널이나 워크스페이스 정보가 없음');
-        //             return;
-        //         }
+        function connectWebSocket() {
+            try {
+                if (!currentChannelName || !globalData.workspace?.name) {
+                    console.log('WebSocket 연결 대기: 채널이나 워크스페이스 정보가 없음');
+                    return;
+                }
 
-        //         const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
-        //         if (!token) {
-        //             console.error('WebSocket 연결을 위한 토큰이 없습니다.');
-        //             return;
-        //         }
+                const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
+                if (!token) {
+                    console.error('WebSocket 연결을 위한 토큰이 없습니다.');
+                    return;
+                }
 
-        //         // 기존 연결이 있으면 먼저 닫기
-        //         if (websocket) {
-        //             websocket.close();
-        //         }
+                // 기존 연결이 있으면 먼저 닫기
+                if (websocket) {
+                    websocket.close();
+                }
 
-        //         // chat.py 방식으로 WebSocket URL 구성
-        //         const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
-        //         console.log('WebSocket 연결 시도:', wsUrl);
+                // chat.py 방식으로 WebSocket URL 구성
+                const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
+                console.log('WebSocket 연결 시도:', wsUrl);
                 
-        //         websocket = new WebSocket(wsUrl);
+                websocket = new WebSocket(wsUrl);
                 
-        //         websocket.onopen = function() {
-        //             console.log('✅ WebSocket 연결됨:', currentChannelName);
-        //             updateConnectionStatus('online');
-        //             reconnectAttempts = 0;
-        //         };
+                websocket.onopen = function() {
+                    console.log('✅ WebSocket 연결됨:', currentChannelName);
+                    updateConnectionStatus('online');
+                    reconnectAttempts = 0;
+                };
     
-        //         websocket.onmessage = function(event) {
-        //             const data = JSON.parse(event.data);
-        //             console.log('📨 WebSocket 메시지 수신:', data);
-        //             handleWebSocketMessage(data);
-        //         };
+                websocket.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    console.log('📨 WebSocket 메시지 수신:', data);
+                    handleWebSocketMessage(data);
+                };
     
-        //         websocket.onclose = function(event) {
-        //             console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
-        //             updateConnectionStatus('offline');
+                websocket.onclose = function(event) {
+                    console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+                    updateConnectionStatus('offline');
                     
-        //             // 정상적인 종료가 아닌 경우에만 재연결 시도
-        //             if (event.code !== 1000) {
-        //                 attemptReconnect();
-        //             }
-        //         };
+                    // 정상적인 종료가 아닌 경우에만 재연결 시도
+                    if (event.code !== 1000) {
+                        attemptReconnect();
+                    }
+                };
     
-        //         websocket.onerror = function(error) {
-        //             console.error('❌ WebSocket 오류:', error);
-        //             updateConnectionStatus('offline');
-        //         };
-        //     } catch (error) {
-        //         console.error('WebSocket 연결 실패:', error);
-        //         updateConnectionStatus('offline');
-        //     }
-        // }
+                websocket.onerror = function(error) {
+                    console.error('❌ WebSocket 오류:', error);
+                    updateConnectionStatus('offline');
+                };
+            } catch (error) {
+                console.error('WebSocket 연결 실패:', error);
+                updateConnectionStatus('offline');
+            }
+        }
     
-        // function attemptReconnect() {
-        //     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName) {
-        //         reconnectAttempts++;
-        //         updateConnectionStatus('reconnecting');
-        //         setTimeout(() => {
-        //             console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
-        //             connectWebSocket();
-        //         }, 3000 * reconnectAttempts);
-        //     }
-        // }
+        function attemptReconnect() {
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName) {
+                reconnectAttempts++;
+                updateConnectionStatus('reconnecting');
+                setTimeout(() => {
+                    console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+                    connectWebSocket();
+                }, 3000 * reconnectAttempts);
+            }
+        }
     
-        // function handleWebSocketMessage(data) {
-        //     console.log('🔧 WebSocket 메시지 처리:', data.type, data);
+        function handleWebSocketMessage(data) {
+            console.log('🔧 WebSocket 메시지 처리:', data.type, data);
             
-        //     switch (data.type) {
-        //         case 'connection':
-        //             console.log('✅ WebSocket 연결 확인:', data.message);
-        //             break;
+            switch (data.type) {
+                case 'connection':
+                    console.log('✅ WebSocket 연결 확인:', data.message);
+                    break;
                     
-        //         case 'message':
-        //         case 'new_message':
-        //             // 메시지 수신 처리
-        //             if (!globalData.messages[currentChannelName]) {
-        //                 globalData.messages[currentChannelName] = [];
-        //             }
+                case 'message':
+                case 'new_message':
+                    // 메시지 수신 처리
+                    if (!globalData.messages[currentChannelName]) {
+                        globalData.messages[currentChannelName] = [];
+                    }
                     
-        //             const newMessage = {
-        //                 id: data.message_id,
-        //                 content: data.content,
-        //                 user_id: data.user_id,
-        //                 user_name: data.user_name,
-        //                 user_email: data.user_email || data.user_name,
-        //                 message_type: data.message_type || 'text',
-        //                 timestamp: data.timestamp,
-        //                 created_at: data.timestamp
-        //             };
+                    const newMessage = {
+                        id: data.message_id,
+                        content: data.content,
+                        user_id: data.user_id,
+                        user_name: data.user_name,
+                        user_email: data.user_email || data.user_name,
+                        message_type: data.message_type || 'text',
+                        timestamp: data.timestamp,
+                        created_at: data.timestamp
+                    };
                     
-        //             globalData.messages[currentChannelName].push(newMessage);
-        //             renderMessages();
-        //             updateChannelContent();
-        //             break;
+                    globalData.messages[currentChannelName].push(newMessage);
+                    renderMessages();
+                    updateChannelContent();
+                    break;
                     
-        //         case 'message_history':
-        //             // 메시지 히스토리 수신 처리
-        //             if (data.messages && data.messages.length > 0) {
-        //                 globalData.messages[currentChannelName] = data.messages.map(msg => ({
-        //                     id: msg.message_id,
-        //                     content: msg.content,
-        //                     user_id: msg.user_id,
-        //                     user_name: msg.user_name,
-        //                     user_email: msg.user_name, // DynamoDB에는 email이 없을 수 있음
-        //                     message_type: msg.message_type || 'text',
-        //                     timestamp: msg.timestamp,
-        //                     created_at: msg.timestamp
-        //                 }));
-        //                 renderMessages();
-        //                 updateChannelContent();
-        //             }
-        //             break;
+                case 'message_history':
+                    // 메시지 히스토리 수신 처리
+                    if (data.messages && data.messages.length > 0) {
+                        // DynamoDB에서 이미 시간순으로 정렬되어 옴 (맨 위가 가장 예전 메시지)
+                        globalData.messages[currentChannelName] = data.messages.map(msg => ({
+                            id: msg.message_id,
+                            content: msg.content,
+                            user_id: msg.user_id,
+                            user_name: msg.user_name,
+                            user_email: msg.user_name, // DynamoDB에는 email이 없을 수 있음
+                            message_type: msg.message_type || 'text',
+                            timestamp: msg.timestamp,
+                            created_at: msg.timestamp
+                        }));
+                        renderMessages();
+                        updateChannelContent();
+                        setupScrollHandler(); // 스크롤 핸들러 설정
+                    }
+                    break;
                     
-        //         case 'user_joined':
-        //             console.log('👋 사용자 입장:', data.user_name);
-        //             break;
+                case 'older_messages':
+                    // 더 이전 메시지 수신 처리
+                    if (data.messages && data.messages.length > 0) {
+                        const messages = globalData.messages[currentChannelName] || [];
+                        
+                        // 기존 메시지 앞에 새로운 메시지들 추가
+                        const newMessages = data.messages.map(msg => ({
+                            id: msg.message_id,
+                            content: msg.content,
+                            user_id: msg.user_id,
+                            user_name: msg.user_name,
+                            user_email: msg.user_name,
+                            message_type: msg.message_type || 'text',
+                            timestamp: msg.timestamp,
+                            created_at: msg.timestamp
+                        }));
+                        
+                        globalData.messages[currentChannelName] = [...newMessages, ...messages];
+                        
+                        // 로딩 표시 제거
+                        const loadingDiv = document.querySelector('.loading-older-messages');
+                        if (loadingDiv) {
+                            loadingDiv.remove();
+                        }
+                        
+                        // 로딩 상태 리셋
+                        globalData.isLoadingOlderMessages = false;
+                        
+                        renderMessages();
+                        updateChannelContent();
+                    }
+                    break;
                     
-        //         case 'user_left':
-        //             console.log('👋 사용자 퇴장:', data.user_name);
-        //             break;
+                case 'no_older_messages':
+                    // 더 이상 이전 메시지가 없음
+                    // const loadingDiv = document.querySelector('.loading-older-messages');
+                    // if (loadingDiv) {
+                    //     loadingDiv.innerHTML = '<span>더 이상 이전 메시지가 없습니다.</span>';
+                    //     setTimeout(() => {
+                    //         loadingDiv.remove();
+                    //     }, 2000);
+                    // }
+                    // 로딩 상태 리셋
+                    globalData.isLoadingOlderMessages = false;
+                    break;
                     
-        //         case 'typing':
-        //             console.log('⌨️ 타이핑 상태:', data.user_name);
-        //             break;
+                case 'user_joined':
+                    console.log('👋 사용자 입장:', data.user_name);
+                    break;
                     
-        //         case 'connected_users':
-        //             console.log('👥 연결된 사용자:', data.connected_users);
-        //             break;
+                case 'user_left':
+                    console.log('👋 사용자 퇴장:', data.user_name);
+                    break;
                     
-        //         case 'error':
-        //             console.error('❌ WebSocket 에러:', data.message);
-        //             alert('채팅 오류: ' + data.message);
-        //             break;
+                case 'typing':
+                    console.log('⌨️ 타이핑 상태:', data.user_name);
+                    break;
                     
-        //         default:
-        //             console.log('❓ 알 수 없는 메시지 타입:', data.type, data);
-        //     }
-        // }
+                case 'connected_users':
+                    console.log('👥 연결된 사용자:', data.connected_users);
+                    break;
+                    
+                case 'error':
+                    console.error('❌ WebSocket 에러:', data.message);
+                    alert('채팅 오류: ' + data.message);
+                    break;
+                    
+                default:
+                    console.log('❓ 알 수 없는 메시지 타입:', data.type, data);
+            }
+        }
     
-        // // 연결 상태 업데이트
-        // function updateConnectionStatus(status) {
-        //     // 연결 상태 표시 요소가 있다면 업데이트
-        //     const statusElement = document.getElementById('connection-status');
-        //     const statusText = document.querySelector('.status-text');
+        // 연결 상태 업데이트
+        function updateConnectionStatus(status) {
+            // 연결 상태 표시 요소가 있다면 업데이트
+            const statusElement = document.getElementById('connection-status');
+            const statusText = document.querySelector('.status-text');
             
-        //     if (statusElement) {
-        //         statusElement.className = `connection-status ${status}`;
-        //     }
+            if (statusElement) {
+                statusElement.className = `connection-status ${status}`;
+            }
             
-        //     if (statusText) {
-        //         switch (status) {
-        //             case 'online':
-        //                 statusText.textContent = '온라인';
-        //                 break;
-        //             case 'offline':
-        //                 statusText.textContent = '오프라인';
-        //                 break;
-        //             case 'reconnecting':
-        //                 statusText.textContent = '재연결 중...';
-        //                 break;
-        //         }
-        //     }
-        // }
+            if (statusText) {
+                switch (status) {
+                    case 'online':
+                        statusText.textContent = '온라인';
+                        break;
+                    case 'offline':
+                        statusText.textContent = '오프라인';
+                        break;
+                    case 'reconnecting':
+                        statusText.textContent = '재연결 중...';
+                        break;
+                }
+            }
+        }
     
         // JWT 토큰에서 사용자 정보 추출
         function getUserInfoFromToken() {
@@ -799,7 +848,54 @@
                 `;
             }).join('');
             
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // 스크롤을 맨 아래로 이동 (부드러운 애니메이션)
+            setTimeout(() => {
+                messagesContainer.scrollTo({
+                    top: messagesContainer.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }, 100);
+        }
+
+        // 스크롤 이벤트 처리
+        function setupScrollHandler() {
+            const messagesContainer = document.getElementById('chat-messages');
+            if (!messagesContainer) return;
+            
+            // 기존 이벤트 리스너 제거
+            messagesContainer.removeEventListener('scroll', handleScroll);
+            
+            // 새로운 이벤트 리스너 추가
+            messagesContainer.addEventListener('scroll', handleScroll);
+            
+            function handleScroll() {
+                // 스크롤이 맨 위에 가까워지면 더 이전 메시지 요청
+                if (messagesContainer.scrollTop <= 100 && !globalData.isLoadingOlderMessages) {
+                    const messages = globalData.messages[currentChannelName] || [];
+                    if (messages.length > 0) {
+                        const oldestMessage = messages[0];
+                        if (oldestMessage && oldestMessage.timestamp) {
+                            globalData.isLoadingOlderMessages = true;
+                            
+                            // 로딩 표시 (메시지 없이 스피너만)
+                            const loadingDiv = document.createElement('div');
+                            loadingDiv.className = 'loading-older-messages';
+                            loadingDiv.innerHTML = `
+                                <div class="loading-spinner"></div>
+                            `;
+                            messagesContainer.insertBefore(loadingDiv, messagesContainer.firstChild);
+                            
+                            // WebSocket으로 이전 메시지 요청
+                            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                                websocket.send(JSON.stringify({
+                                    type: 'load_older_messages',
+                                    before_timestamp: oldestMessage.timestamp
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
         }
     
         // 메시지 전송 (WebSocket 사용)

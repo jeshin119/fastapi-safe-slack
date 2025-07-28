@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.models.models import RequestStatus
 from app.models.models import File
 from app.core.dynamodb import dynamodb_manager
+from app.core.date_utils import get_current_datetime
 
 router = APIRouter()
 
@@ -121,8 +122,31 @@ async def get_channels(
 
     # 5. DB에 저장
     await db.commit()
+    
+    # 6. 공개 채널 자동 가입 시 입장 메시지 브로드캐스트
+    try:
+        from app.core.websocket_manager import manager
+        # 사용자 정보 조회
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
+        
+        for channel in public_channels_to_join:
+            await manager.broadcast_to_channel(
+                workspace.id,
+                channel.id,
+                {
+                    "type": "user_joined",
+                    "user_id": user_id,
+                    "user_name": user.name if user else "Unknown",
+                    "message": f"{user.name if user else 'Unknown'}님이 채널에 가입하셨습니다.",
+                    "timestamp": get_current_datetime().isoformat()
+                }
+            )
+    except Exception as e:
+        print(f"공개 채널 자동 가입 입장 메시지 브로드캐스트 실패: {e}")
+        # WebSocket 오류가 있어도 가입은 성공으로 처리
 
-    # 6. 모든 가입된 채널을 다시 조회
+    # 7. 모든 가입된 채널을 다시 조회
     result = await db.execute(
         select(Channel)
         .join(ChannelMember, Channel.id == ChannelMember.channel_id)
@@ -134,7 +158,7 @@ async def get_channels(
     )
     all_joined_channels = result.scalars().all()
 
-    # 7. 반환
+    # 8. 반환
     return [
         {
             "channel_id": ch.id,
@@ -352,6 +376,29 @@ async def approve_channel_join(
     # 입장 승인
     request.status = RequestStatus.APPROVED
     await db.commit()
+    
+    # 승인된 사용자 정보 조회
+    result = await db.execute(select(User).where(User.id == request.user_id))
+    approved_user = result.scalars().first()
+    
+    # WebSocket을 통해 채널에 입장 메시지 브로드캐스트
+    try:
+        from app.core.websocket_manager import manager
+        await manager.broadcast_to_channel(
+            workspace.id,
+            channel.id,
+            {
+                "type": "user_joined",
+                "user_id": request.user_id,
+                "user_name": approved_user.name if approved_user else "Unknown",
+                "message": f"{approved_user.name if approved_user else 'Unknown'}님이 채널에 가입하셨습니다.",
+                "timestamp": get_current_datetime().isoformat()
+            }
+        )
+    except Exception as e:
+        print(f"입장 메시지 브로드캐스트 실패: {e}")
+        # WebSocket 오류가 있어도 승인은 성공으로 처리
+    
     return {"message": "채널 입장이 승인되었습니다."}
 
 @router.post("/members_list")

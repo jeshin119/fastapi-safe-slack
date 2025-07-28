@@ -20,11 +20,11 @@ class DynamoDBManager:
             return
             
         # 디버그: 환경변수 확인
-        print("=== DynamoDB 초기화 시작 ===")
-        print(f"DYNAMODB_REGION: {settings.DYNAMODB_REGION}")
-        print(f"DYNAMODB_TABLE_NAME: {settings.DYNAMODB_TABLE_NAME}")
-        print(f"DYNAMODB_USER_ACCESS_KEY_ID: {settings.DYNAMODB_USER_ACCESS_KEY_ID[:10]}..." if settings.DYNAMODB_USER_ACCESS_KEY_ID else "None")
-        print(f"DYNAMODB_USER_SECRET_ACCESS_KEY: {settings.DYNAMODB_USER_SECRET_ACCESS_KEY[:10]}..." if settings.DYNAMODB_USER_SECRET_ACCESS_KEY else "None")
+        # print("=== DynamoDB 초기화 시작 ===")
+        # print(f"DYNAMODB_REGION: {settings.DYNAMODB_REGION}")
+        # print(f"DYNAMODB_TABLE_NAME: {settings.DYNAMODB_TABLE_NAME}")
+        # print(f"DYNAMODB_USER_ACCESS_KEY_ID: {settings.DYNAMODB_USER_ACCESS_KEY_ID[:10]}..." if settings.DYNAMODB_USER_ACCESS_KEY_ID else "None")
+        # print(f"DYNAMODB_USER_SECRET_ACCESS_KEY: {settings.DYNAMODB_USER_SECRET_ACCESS_KEY[:10]}..." if settings.DYNAMODB_USER_SECRET_ACCESS_KEY else "None")
         
         self.region = settings.DYNAMODB_REGION or "ap-northeast-2"
         self.table_name = settings.DYNAMODB_TABLE_NAME or "testdb"
@@ -37,27 +37,28 @@ class DynamoDBManager:
                 aws_access_key_id=settings.DYNAMODB_USER_ACCESS_KEY_ID,
                 aws_secret_access_key=settings.DYNAMODB_USER_SECRET_ACCESS_KEY
             )
-            print("DynamoDB 리소스 생성 성공")
+            # print("DynamoDB 리소스 생성 성공")
         except Exception as e:
-            print(f"DynamoDB 리소스 생성 실패: {e}")
+            # print(f"DynamoDB 리소스 생성 실패: {e}")
             raise
         
         self.table = self.dynamodb.Table(self.table_name)
         self._ensure_table_exists()
         self._initialized = True
-        print("=== DynamoDB 초기화 완료 ===")
+        # print("=== DynamoDB 초기화 완료 ===")
     
     def _ensure_table_exists(self):
         """테이블이 존재하지 않으면 생성"""
         try:
             self.table.load()
-            print(f"DynamoDB 테이블 '{self.table_name}' 연결 성공")
+            # print(f"DynamoDB 테이블 '{self.table_name}' 연결 성공")
         except ClientError as e:
             if e.response['Error']['Code'] == 'ResourceNotFoundException':
-                print(f"테이블 '{self.table_name}'이 존재하지 않습니다. 생성합니다...")
+                # print(f"테이블 '{self.table_name}'이 존재하지 않습니다. 생성합니다...")
                 self._create_table()
             else:
-                print(f"DynamoDB 연결 오류: {e}")
+                # print(f"DynamoDB 연결 오류: {e}")
+                pass
     
     def _create_table(self):
         """채팅 메시지 테이블 생성"""
@@ -115,9 +116,10 @@ class DynamoDBManager:
                     'WriteCapacityUnits': 10
                 }
             )
-            print(f"DynamoDB 테이블 '{self.table_name}' 생성 완료")
+            # print(f"DynamoDB 테이블 '{self.table_name}' 생성 완료")
         except Exception as e:
-            print(f"테이블 생성 오류: {e}")
+            # print(f"테이블 생성 오류: {e}")
+            pass
     
     def recreate_table(self):
         """테이블을 삭제하고 재생성 (주의: 모든 데이터가 삭제됩니다)"""
@@ -125,28 +127,28 @@ class DynamoDBManager:
         
         try:
             # 테이블 삭제
-            print(f"테이블 '{self.table_name}' 삭제 중...")
+            # print(f"테이블 '{self.table_name}' 삭제 중...")
             self.table.delete()
             
             # 삭제 완료까지 대기
             waiter = self.dynamodb.meta.client.get_waiter('table_not_exists')
             waiter.wait(TableName=self.table_name)
-            print(f"테이블 '{self.table_name}' 삭제 완료")
+            # print(f"테이블 '{self.table_name}' 삭제 완료")
             
             # 테이블 재생성
-            print(f"테이블 '{self.table_name}' 재생성 중...")
+            # print(f"테이블 '{self.table_name}' 재생성 중...")
             self._create_table()
             
             # 생성 완료까지 대기
             waiter = self.dynamodb.meta.client.get_waiter('table_exists')
             waiter.wait(TableName=self.table_name)
-            print(f"테이블 '{self.table_name}' 재생성 완료")
+            # print(f"테이블 '{self.table_name}' 재생성 완료")
             
             # 테이블 객체 재설정
             self.table = self.dynamodb.Table(self.table_name)
             
         except Exception as e:
-            print(f"테이블 재생성 오류: {e}")
+            # print(f"테이블 재생성 오류: {e}")
             raise
     
     async def save_message(self, message_data: Dict) -> str:
@@ -174,11 +176,11 @@ class DynamoDBManager:
             }
             
             self.table.put_item(Item=item)
-            print(f"메시지 저장 완료: {message_id}")
+            # print(f"메시지 저장 완료: {message_id}")
             return message_id
             
         except Exception as e:
-            print(f"메시지 저장 오류: {e}")
+            # print(f"메시지 저장 오류: {e}")
             return None
     
     async def get_messages(self, channel_id: int, limit: int = 50, last_key: Optional[str] = None) -> List[Dict]:
@@ -190,7 +192,7 @@ class DynamoDBManager:
             query_kwargs = {
                 'KeyConditionExpression': boto3.dynamodb.conditions.Key('channel_id').eq(str(channel_id)),  # 문자열로 변환
                 'Limit': limit,
-                'ScanIndexForward': False  # 최신 메시지부터
+                'ScanIndexForward': True  # 오래된 메시지부터 (시간순)
             }
             
             if last_key:
@@ -199,14 +201,14 @@ class DynamoDBManager:
             response = self.table.query(**query_kwargs)
             messages = response.get('Items', [])
             
-            # 시간순 정렬 (최신순) - timestamp Sort Key로 이미 정렬됨
-            # messages.sort(key=lambda x: x['timestamp'], reverse=True)  # 불필요
+            # 시간순 정렬 (오래된 순) - timestamp Sort Key로 이미 정렬됨
+            # messages.sort(key=lambda x: x['timestamp'], reverse=False)  # 불필요
             
-            print(f"채널 {channel_id}에서 {len(messages)}개 메시지 조회 완료")
+            # print(f"채널 {channel_id}에서 {len(messages)}개 메시지 조회 완료")
             return messages[:limit]
             
         except Exception as e:
-            print(f"메시지 조회 오류: {e}")
+            # print(f"메시지 조회 오류: {e}")
             return []
 
     async def get_messages_after_join(self, channel_id: int, join_timestamp: str, limit: int = 50) -> List[Dict]:
@@ -221,17 +223,45 @@ class DynamoDBManager:
                     boto3.dynamodb.conditions.Key('timestamp').gte(join_timestamp)
                 ),
                 'Limit': limit,
-                'ScanIndexForward': False  # 최신 메시지부터
+                'ScanIndexForward': True  # 오래된 메시지부터 (시간순)
             }
             
             response = self.table.query(**query_kwargs)
             messages = response.get('Items', [])
             
-            print(f"채널 {channel_id}에서 가입 시간({join_timestamp}) 이후 {len(messages)}개 메시지 조회 완료")
+            # print(f"채널 {channel_id}에서 가입 시간({join_timestamp}) 이후 {len(messages)}개 메시지 조회 완료")
             return messages[:limit]
             
         except Exception as e:
-            print(f"가입 시간 이후 메시지 조회 오류: {e}")
+            # print(f"가입 시간 이후 메시지 조회 오류: {e}")
+            return []
+
+    async def get_older_messages(self, channel_id: int, before_timestamp: str, limit: int = 50) -> List[Dict]:
+        """지정된 시간 이전의 더 오래된 메시지 조회"""
+        self._initialize()
+        
+        try:
+            # KeyConditionExpression을 사용하여 timestamp 범위를 직접 지정
+            query_kwargs = {
+                'KeyConditionExpression': (
+                    boto3.dynamodb.conditions.Key('channel_id').eq(str(channel_id)) &
+                    boto3.dynamodb.conditions.Key('timestamp').lt(before_timestamp)
+                ),
+                'Limit': limit,
+                'ScanIndexForward': False  # 최신 메시지부터 (역순으로 가져와서 시간순 정렬)
+            }
+            
+            response = self.table.query(**query_kwargs)
+            messages = response.get('Items', [])
+            
+            # 시간순으로 정렬 (오래된 순)
+            messages.sort(key=lambda x: x['timestamp'])
+            
+            # print(f"채널 {channel_id}에서 {before_timestamp} 이전 {len(messages)}개 메시지 조회 완료")
+            return messages[:limit]
+            
+        except Exception as e:
+            # print(f"이전 메시지 조회 오류: {e}")
             return []
     
     async def delete_message(self, channel_id: int, message_id: str, user_id: int) -> bool:
@@ -259,11 +289,11 @@ class DynamoDBManager:
                     'timestamp': item['timestamp']
                 }
             )
-            print(f"메시지 삭제 완료: {message_id}")
+            # print(f"메시지 삭제 완료: {message_id}")
             return True
             
         except Exception as e:
-            print(f"메시지 삭제 오류: {e}")
+            # print(f"메시지 삭제 오류: {e}")
             return False
 
     async def delete_channel_messages(self, channel_id: int) -> bool:
@@ -278,20 +308,20 @@ class DynamoDBManager:
             )
             
             messages = response.get('Items', [])
-            print(f"채널 {channel_id}에서 조회된 메시지 수: {len(messages)}")
+            # print(f"채널 {channel_id}에서 조회된 메시지 수: {len(messages)}")
             
             if not messages:
-                print(f"채널 {channel_id}에 삭제할 메시지가 없습니다.")
+                # print(f"채널 {channel_id}에 삭제할 메시지가 없습니다.")
                 return True
             
             # 조회 결과 로깅 (디버깅용)
-            print(f"조회된 메시지들: {messages[:3]}...")  # 처음 3개만 출력
+            # print(f"조회된 메시지들: {messages[:3]}...")  # 처음 3개만 출력
             
             # 모든 메시지 삭제
             with self.table.batch_writer() as batch:
                 for message in messages:
                     if 'timestamp' not in message:
-                        print(f"timestamp가 없는 메시지: {message}")
+                        # print(f"timestamp가 없는 메시지: {message}")
                         continue
                     
                     try:
@@ -302,14 +332,14 @@ class DynamoDBManager:
                             }
                         )
                     except Exception as delete_error:
-                        print(f"메시지 삭제 실패 - channel_id: {channel_id}, timestamp: {message.get('timestamp')}, 오류: {delete_error}")
+                        # print(f"메시지 삭제 실패 - channel_id: {channel_id}, timestamp: {message.get('timestamp')}, 오류: {delete_error}")
                         continue
             
-            print(f"채널 {channel_id}의 {len(messages)}개 메시지 삭제 완료")
+            # print(f"채널 {channel_id}의 {len(messages)}개 메시지 삭제 완료")
             return True
             
         except Exception as e:
-            print(f"채널 메시지 삭제 오류: {e}")
+            # print(f"채널 메시지 삭제 오류: {e}")
             return False
 
 # 전역 인스턴스

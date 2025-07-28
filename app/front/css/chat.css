@@ -247,6 +247,25 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* 이전 메시지 로딩 스타일 */
+.loading-older-messages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: transparent;
+    margin: 8px 0;
+}
+
+.loading-older-messages .loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e2e8f0;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
 /* 파일 미리보기 */
 .file-preview {
     margin-bottom: 12px;

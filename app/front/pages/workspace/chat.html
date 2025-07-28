@@ -163,7 +163,8 @@
             currentChannel: null,
             messages: {},  
             files: {},     
-            teamMembers: []
+            teamMembers: [],
+            isLoadingOlderMessages: false
         };
         
         let currentChannelName = null;
@@ -329,6 +330,7 @@
                 case 'message_history':
                     // 메시지 히스토리 수신 처리
                     if (data.messages && data.messages.length > 0) {
+                        // DynamoDB에서 이미 시간순으로 정렬되어 옴 (맨 위가 가장 예전 메시지)
                         globalData.messages[currentChannelName] = data.messages.map(msg => ({
                             id: msg.message_id,
                             content: msg.content,
@@ -341,7 +343,54 @@
                         }));
                         renderMessages();
                         updateChannelContent();
+                        setupScrollHandler(); // 스크롤 핸들러 설정
                     }
+                    break;
+                    
+                case 'older_messages':
+                    // 더 이전 메시지 수신 처리
+                    if (data.messages && data.messages.length > 0) {
+                        const messages = globalData.messages[currentChannelName] || [];
+                        
+                        // 기존 메시지 앞에 새로운 메시지들 추가
+                        const newMessages = data.messages.map(msg => ({
+                            id: msg.message_id,
+                            content: msg.content,
+                            user_id: msg.user_id,
+                            user_name: msg.user_name,
+                            user_email: msg.user_name,
+                            message_type: msg.message_type || 'text',
+                            timestamp: msg.timestamp,
+                            created_at: msg.timestamp
+                        }));
+                        
+                        globalData.messages[currentChannelName] = [...newMessages, ...messages];
+                        
+                        // 로딩 표시 제거
+                        const loadingDiv = document.querySelector('.loading-older-messages');
+                        if (loadingDiv) {
+                            loadingDiv.remove();
+                        }
+                        
+                        // 로딩 상태 리셋
+                        globalData.isLoadingOlderMessages = false;
+                        
+                        renderMessages();
+                        updateChannelContent();
+                    }
+                    break;
+                    
+                case 'no_older_messages':
+                    // 더 이상 이전 메시지가 없음
+                    // const loadingDiv = document.querySelector('.loading-older-messages');
+                    // if (loadingDiv) {
+                    //     loadingDiv.innerHTML = '<span>더 이상 이전 메시지가 없습니다.</span>';
+                    //     setTimeout(() => {
+                    //         loadingDiv.remove();
+                    //     }, 2000);
+                    // }
+                    // 로딩 상태 리셋
+                    globalData.isLoadingOlderMessages = false;
                     break;
                     
                 case 'user_joined':
@@ -773,6 +822,47 @@
             }).join('');
             
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 스크롤 이벤트 처리
+        function setupScrollHandler() {
+            const messagesContainer = document.getElementById('chat-messages');
+            if (!messagesContainer) return;
+            
+            // 기존 이벤트 리스너 제거
+            messagesContainer.removeEventListener('scroll', handleScroll);
+            
+            // 새로운 이벤트 리스너 추가
+            messagesContainer.addEventListener('scroll', handleScroll);
+            
+            function handleScroll() {
+                // 스크롤이 맨 위에 가까워지면 더 이전 메시지 요청
+                if (messagesContainer.scrollTop <= 100 && !globalData.isLoadingOlderMessages) {
+                    const messages = globalData.messages[currentChannelName] || [];
+                    if (messages.length > 0) {
+                        const oldestMessage = messages[0];
+                        if (oldestMessage && oldestMessage.timestamp) {
+                            globalData.isLoadingOlderMessages = true;
+                            
+                            // 로딩 표시 (메시지 없이 스피너만)
+                            const loadingDiv = document.createElement('div');
+                            loadingDiv.className = 'loading-older-messages';
+                            loadingDiv.innerHTML = `
+                                <div class="loading-spinner"></div>
+                            `;
+                            messagesContainer.insertBefore(loadingDiv, messagesContainer.firstChild);
+                            
+                            // WebSocket으로 이전 메시지 요청
+                            if (websocket && websocket.readyState === WebSocket.OPEN) {
+                                websocket.send(JSON.stringify({
+                                    type: 'load_older_messages',
+                                    before_timestamp: oldestMessage.timestamp
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
         }
     
         // 메시지 전송 (WebSocket 사용)

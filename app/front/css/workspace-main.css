@@ -357,6 +357,8 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0; /* 플렉스 축소 허용 */
+    max-height: 100vh; /* 최대 높이 제한 */
+    overflow: hidden; /* 오버플로우 방지 */
 }
 
 .welcome-section {
@@ -391,12 +393,15 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0; /* 플렉스 축소 허용 */
+    max-height: calc(100vh - 400px); /* 더 정확한 높이 제한 */
+    height: 0; /* 플렉스 아이템이 컨테이너를 넘지 않도록 */
 }
 
 .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 20px 24px;
+    max-height: 100%; /* 컨테이너 높이를 넘지 않도록 제한 */
 }
 
 .message {
@@ -409,8 +414,7 @@ body {
 
 .message:hover {
     background: #f8fafc;
-    margin: 0 -24px;
-    padding: 8px 24px;
+    /* 크기 변경 방지: margin과 padding 변경 제거하여 호버 시 레이아웃 변화 방지 */
 }
 
 .message-avatar {
