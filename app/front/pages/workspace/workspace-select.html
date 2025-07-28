@@ -388,7 +388,7 @@ async function loadUserWorkspaces() {
             id: index + 1,
             name: ws.name,
             description: '',
-            member_count: 1,
+            member_count: ws.member_count || 0,  // ← ✅ 실제 데이터 사용,
             role: ws.is_workspace_admin ? 'admin' : 'member',
             status: 'active',
             last_activity: '최근 활동',

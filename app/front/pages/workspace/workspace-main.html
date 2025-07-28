@@ -546,7 +546,7 @@
                 return;
             }
             
-            window.location.href = `admin/admin-main.htmll?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
+            window.location.href = `/static/pages/admin/admin-main.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
         }
     
         // 채널 목록 로딩
@@ -737,6 +737,9 @@
                 }
                 
                 currentChannelName = channelName;
+
+                // ✅ 채널 이름을 localStorage에 저장
+                localStorage.setItem("current_channel_name", channelName);
                 
                 const channel = globalData.channels.find(ch => ch.name === channelName);
                 if (!channel) return;
