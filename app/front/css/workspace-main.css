@@ -238,6 +238,9 @@ body {
     flex-direction: column;
     background: #ffffff;
     min-width: 0; /* 플렉스 축소 허용 */
+    position: relative;
+    overflow: hidden;
+    height: 100vh; /* 전체 높이 설정 */
 }
 
 .chat-header {
@@ -248,6 +251,14 @@ body {
     border-bottom: 1px solid #e2e8f0;
     background: #ffffff;
     flex-shrink: 0; /* 고정 크기 */
+    position: sticky; /* absolute에서 sticky로 변경 */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    min-height: 60px; /* 최소 높이 보장 */
 }
 
 .header-left h1 {
@@ -255,17 +266,26 @@ body {
     font-weight: 700;
     color: #1e293b;
     margin-bottom: 2px;
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    overflow: hidden;
+    text-overflow: ellipsis; /* 긴 텍스트는 ...으로 표시 */
+    max-width: 300px; /* 최대 너비 제한 */
 }
 
 .header-left p {
     font-size: 14px;
     color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 300px;
 }
 
 .header-right {
     display: flex;
     gap: 12px;
     align-items: center;
+    flex-shrink: 0; /* 고정 크기 */
 }
 
 .channel-badge {
@@ -273,6 +293,8 @@ body {
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .channel-badge.public {
@@ -285,19 +307,23 @@ body {
     color: #d97706;
 }
 
-.settings-btn {
-    padding: 6px 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+.admin-btn {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
     cursor: pointer;
     transition: all 0.2s;
-    font-size: 14px;
+    border: none;
+    background: #f8fafc;
+    color: #64748b;
 }
 
-.settings-btn:hover {
-    background: #bfdbfe;
-    border-color: #2563eb;
+.admin-btn:hover {
+    background: #e2e8f0;
+    color: #374151;
 }
 
 /* 탭 네비게이션 */
@@ -307,6 +333,14 @@ body {
     border-bottom: 1px solid #e2e8f0;
     padding: 0 24px;
     flex-shrink: 0; /* 고정 크기 */
+    position: sticky; /* absolute에서 sticky로 변경 */
+    top: 60px; /* 헤더 높이만큼 아래로 */
+    left: 0;
+    right: 0;
+    z-index: 99;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    min-height: 50px; /* 최소 높이 보장 */
+    align-items: center;
 }
 
 .tab-button {
@@ -322,6 +356,8 @@ body {
     cursor: pointer;
     border-bottom: 2px solid transparent;
     transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .tab-button:hover {
@@ -341,6 +377,7 @@ body {
     border-radius: 10px;
     font-size: 11px;
     font-weight: 600;
+    flex-shrink: 0;
 }
 
 .tab-button.active .tab-count {
@@ -354,6 +391,7 @@ body {
     flex: 1;
     overflow: hidden;
     min-height: 0; /* 플렉스 축소 허용 */
+    /* padding-top 제거 - sticky 헤더가 자동으로 처리 */
 }
 
 .tab-content.active {
@@ -367,7 +405,6 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 0; /* 플렉스 축소 허용 */
-    max-height: 100vh; /* 최대 높이 제한 */
     overflow: hidden; /* 오버플로우 방지 */
 }
 
@@ -376,7 +413,9 @@ body {
     text-align: center;
     background: #ffffff;
     border-bottom: 1px solid #e2e8f0;
-    flex-shrink: 0; /* 고정 크기 */
+    /* flex-shrink 제거하여 스크롤 영역에 포함 */
+    position: relative;
+    z-index: 10;
 }
 
 .welcome-icon {
@@ -399,19 +438,14 @@ body {
 /* 채팅 메시지 스크롤 컨테이너 */
 .chat-messages-container {
     flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    overflow-y: auto;
     min-height: 0; /* 플렉스 축소 허용 */
-    max-height: calc(100vh - 400px); /* 더 정확한 높이 제한 */
-    height: 0; /* 플렉스 아이템이 컨테이너를 넘지 않도록 */
+    /* max-height 제거 - flex로 자동 조정 */
 }
 
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
     padding: 20px 24px;
-    max-height: 100%; /* 컨테이너 높이를 넘지 않도록 제한 */
+    /* overflow-y 제거 - 컨테이너가 스크롤 처리 */
 }
 
 .message {
@@ -808,6 +842,62 @@ body {
     display: none;
 }
 
+/* 파일 업로드 옵션 스타일 */
+.upload-options {
+    display: none;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin: 16px 0;
+    flex-shrink: 0; /* 고정 크기 */
+}
+
+.options-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.form-select,
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+}
+
+.form-select:focus,
+.form-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
 /* 스크롤바 스타일링 */
 .channel-list-container::-webkit-scrollbar,
 .team-members-container::-webkit-scrollbar,
@@ -859,6 +949,20 @@ body {
         max-height: calc(100vh - 400px);
         min-height: 150px;
     }
+    
+    .upload-options {
+        padding: 16px;
+        margin: 12px 0;
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .form-row .form-group {
+        flex: none;
+    }
 }
 
 @media (max-width: 768px) {
@@ -872,6 +976,42 @@ body {
     
     .chat-header {
         padding: 12px 16px;
+        position: sticky; /* absolute에서 sticky로 변경 */
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        min-height: 50px; /* 모바일에서 최소 높이 조정 */
+    }
+    
+    .header-left h1 {
+        font-size: 18px;
+        max-width: 200px; /* 모바일에서 최대 너비 제한 */
+    }
+    
+    .header-left p {
+        max-width: 200px; /* 모바일에서 최대 너비 제한 */
+    }
+    
+    .content-tabs {
+        position: sticky; /* absolute에서 sticky로 변경 */
+        top: 50px; /* 모바일에서 헤더 높이 조정 */
+        left: 0;
+        right: 0;
+        z-index: 99;
+        padding: 0 16px;
+        min-height: 45px; /* 모바일에서 최소 높이 조정 */
+    }
+    
+    .tab-button {
+        font-size: 14px;
+        margin-right: 20px;
+        padding: 10px 0;
+    }
+    
+    /* padding-top 제거 - sticky 헤더가 자동으로 처리 */
+    .tab-content {
+        /* padding-top 제거 */
     }
     
     .message-input-container {
@@ -907,8 +1047,31 @@ body {
         width: 220px;
     }
     
+    .chat-header {
+        padding: 10px 12px;
+        min-height: 45px;
+    }
+    
     .header-left h1 {
-        font-size: 18px;
+        font-size: 16px;
+        max-width: 150px; /* 더 작은 화면에서 최대 너비 제한 */
+    }
+    
+    .header-left p {
+        font-size: 12px;
+        max-width: 150px; /* 더 작은 화면에서 최대 너비 제한 */
+    }
+    
+    .content-tabs {
+        padding: 0 12px;
+        min-height: 40px;
+        top: 45px; /* 더 작은 헤더 높이에 맞춤 */
+    }
+    
+    .tab-button {
+        font-size: 13px;
+        margin-right: 16px;
+        padding: 8px 0;
     }
     
     .welcome-title {
@@ -939,6 +1102,27 @@ body {
     .refresh-icon,
     .refresh-text {
         font-size: 12px;
+    }
+    
+    /* 파일 업로드 옵션 반응형 */
+    .upload-options {
+        padding: 12px;
+        margin: 8px 0;
+    }
+    
+    .options-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+    
+    .form-label {
+        font-size: 13px;
+    }
+    
+    .form-select,
+    .form-input {
+        padding: 6px 10px;
+        font-size: 13px;
     }
 }
 
@@ -1031,3 +1215,4 @@ button:focus-visible,
     opacity: 0;
     animation: fadeIn 0.2s ease-out forwards;
 }
+

@@ -121,6 +121,34 @@
                     <button class="upload-button">📤 파일 선택</button>
                 </div>
 
+                <!-- 파일 업로드 옵션 (숨김) -->
+                <div class="upload-options" id="upload-options" style="display: none;">
+                    <div class="options-title">📋 파일 접근 권한 설정</div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="min-role">최소 접근 직급 (선택)</label>
+                        <select class="form-select" id="min-role">
+                            <option value="">모든 직급</option>
+                            <!-- 역할 목록이 여기에 동적으로 추가됩니다 -->
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="valid-from">접근 시작일 (선택)</label>
+                            <input type="date" class="form-input" id="valid-from">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="valid-to">접근 종료일 (선택)</label>
+                            <input type="date" class="form-input" id="valid-to">
+                        </div>
+                    </div>
+
+
+
+                    <button class="upload-button" id="upload-submit-btn" style="width: 100%; margin-top: 16px;">📤 선택된 파일 업로드</button>
+                </div>
+
                 <!-- 파일 목록에 스크롤 컨테이너 추가 -->
                 <div class="files-list-container">
                     <div id="files-list">
@@ -946,6 +974,40 @@
             sendBtn.disabled = !hasText || !isConnected;
         }
     
+        // 역할 목록 로드
+        async function loadRoles() {
+            try {
+                const roles = await apiCall('/workspaces/roles');
+                const roleSelect = document.getElementById('min-role');
+                
+                // 기존 옵션 제거 (첫 번째 "모든 직급" 옵션 제외)
+                while (roleSelect.children.length > 1) {
+                    roleSelect.removeChild(roleSelect.lastChild);
+                }
+                
+                // 역할 목록 추가
+                roles.forEach(role => {
+                    const option = document.createElement('option');
+                    option.value = role.name;
+                    option.textContent = `${role.name} 이상`;
+                    roleSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('역할 목록 로딩 실패:', error);
+                // 에러 시 기본 역할 목록 사용
+                const roleSelect = document.getElementById('min-role');
+                const defaultRoles = ['사원', '대리', '과장', '팀장', '부장', '이사'];
+                
+                defaultRoles.forEach(roleName => {
+                    const option = document.createElement('option');
+                    option.value = roleName;
+                    option.textContent = `${roleName} 이상`;
+                    roleSelect.appendChild(option);
+                });
+            }
+        }
+
         // 파일 업로드 관련
         function triggerFileUpload() {
             document.getElementById('file-input').click();
@@ -954,44 +1016,52 @@
         function attachFile() {
             triggerFileUpload();
         }
-    
+
+        // 선택된 파일들
+        let selectedFiles = [];
+
         // 파일 업로드 처리
-        document.getElementById('file-input').addEventListener('change', async function(event) {
-            const files = event.target.files;
-            if (!files.length || !currentChannelName) return;
-    
-            for (const file of files) {
-                try {
-                    await uploadFile(file);
-                } catch (error) {
-                    console.error('파일 업로드 실패:', error);
-                    alert(`파일 업로드에 실패했습니다: ${file.name}`);
-                }
+        document.getElementById('file-input').addEventListener('change', function(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                selectedFiles = files;
+                showUploadOptions();
             }
-            
-            // 파일 입력 초기화
-            event.target.value = '';
         });
-    
+
+        // 업로드 옵션 표시
+        function showUploadOptions() {
+            const uploadOptions = document.getElementById('upload-options');
+            uploadOptions.style.display = 'block';
+            uploadOptions.scrollIntoView({ behavior: 'smooth' });
+        }
+
         // 파일 업로드 함수
         async function uploadFile(file) {
+            const minRole = document.getElementById('min-role').value;
+            const validFrom = document.getElementById('valid-from').value;
+            const validTo = document.getElementById('valid-to').value;
+
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('channel', currentChannelName);
-    
+            if (minRole) formData.append('min_role_name', minRole);
+            if (validFrom) formData.append('valid_from', validFrom);
+            if (validTo) formData.append('valid_to', validTo);
+
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
-            const response = await fetch(`${API_BASE_URL}/channels/${currentChannelName}/files`, {
+            const workspaceName = localStorage.getItem('current_workspace_name');
+            const response = await fetch(`${API_BASE_URL}/channels/${currentChannelName}/files?workspace_name=${encodeURIComponent(workspaceName)}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`
                 },
                 body: formData
             });
-    
+
             if (!response.ok) {
                 throw new Error(`파일 업로드 실패: ${response.status}`);
             }
-    
+
             const result = await response.json();
             
             if (!globalData.files[currentChannelName]) {
@@ -1000,6 +1070,34 @@
             globalData.files[currentChannelName].push(result);
             renderFiles();
             updateChannelContent();
+        }
+
+        // 선택된 파일들 업로드
+        async function handleFileUpload() {
+            if (selectedFiles.length === 0) return;
+
+            try {
+                for (const file of selectedFiles) {
+                    await uploadFile(file);
+                }
+                
+                // 업로드 완료 후 초기화
+                selectedFiles = [];
+                document.getElementById('upload-options').style.display = 'none';
+                document.getElementById('file-input').value = '';
+                resetUploadForm();
+                
+            } catch (error) {
+                console.error('파일 업로드 실패:', error);
+                alert(`파일 업로드에 실패했습니다: ${error.message}`);
+            }
+        }
+
+        // 업로드 폼 초기화
+        function resetUploadForm() {
+            document.getElementById('min-role').value = '';
+            document.getElementById('valid-from').value = '';
+            document.getElementById('valid-to').value = '';
         }
     
         // 파일 크기 포맷팅
@@ -1205,6 +1303,22 @@
             // 워크스페이스 초기화
             initializeWorkspace().then(() => {
                 restoreDraftMessage();
+                
+                // 역할 목록 로드
+                loadRoles();
+                
+                // 날짜 입력 기본값 설정
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('valid-from').min = today;
+                document.getElementById('valid-to').min = today;
+
+                // 종료일은 시작일 이후로 제한
+                document.getElementById('valid-from').addEventListener('change', function() {
+                    document.getElementById('valid-to').min = this.value;
+                });
+
+                // 업로드 버튼 이벤트 리스너
+                document.getElementById('upload-submit-btn').addEventListener('click', handleFileUpload);
             });
             
             updateSendButton();

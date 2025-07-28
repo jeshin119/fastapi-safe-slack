@@ -26,108 +26,321 @@ body {
 }
 
 .upload-area {
-    border: 2px dashed #8d8d8d;
-    border-radius: 12px;
-    padding: 48px;
+    border: 3px dashed #cbd5e1;
+    border-radius: 20px;
+    padding: 56px 32px;
     text-align: center;
-    background: #ffffff;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     cursor: pointer;
-    transition: all 0.3s ease;
-    margin-bottom: 20px;
+    transition: all 0.4s ease;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-area::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(14, 165, 233, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .upload-area:hover {
     border-color: #2563eb;
-    background: #f8fafc;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(37, 99, 235, 0.15);
+}
+
+.upload-area:hover::before {
+    opacity: 1;
 }
 
 .upload-area.dragover {
     border-color: #2563eb;
-    background: #dbeafe;
+    background: linear-gradient(135deg, #dbeafe 0%, #bae6fd 100%);
+    transform: scale(1.02);
+    box-shadow: 0 16px 50px rgba(37, 99, 235, 0.25);
+}
+
+.upload-area.dragover::before {
+    opacity: 1;
 }
 
 .upload-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    font-size: 56px;
+    margin-bottom: 20px;
     color: #64748b;
+    transition: all 0.3s ease;
+    display: block;
+}
+
+.upload-area:hover .upload-icon {
+    color: #2563eb;
+    transform: scale(1.1);
 }
 
 .upload-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
-    color: #1d1c1d;
-    margin-bottom: 8px;
+    color: #1e293b;
+    margin-bottom: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: 0.025em;
 }
 
 .upload-description {
     color: #64748b;
-    margin-bottom: 20px;
-    font-size: 15px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    line-height: 1.6;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .upload-button {
-    padding: 12px 24px;
-    background: #2563eb;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
     color: white;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s;
-    font-size: 14px;
+    transition: all 0.3s ease;
+    font-size: 15px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
 }
 
 .upload-button:hover {
-    background: #1d4ed8;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+}
+
+.upload-button:hover::before {
+    left: 100%;
+}
+
+.upload-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
 }
 
 /* 권한 설정 영역 */
 .upload-options {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 32px;
+    margin-bottom: 28px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    transition: all 0.4s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-options::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #2563eb, #0ea5e9, #06b6d4, #0891b2);
+    border-radius: 24px 24px 0 0;
+}
+
+.upload-options:hover {
+    border-color: #2563eb;
+    box-shadow: 0 12px 40px rgba(37, 99, 235, 0.15);
+    transform: translateY(-3px);
+}
+
+.upload-options:hover::before {
+    background: linear-gradient(90deg, #1d4ed8, #0284c7, #0891b2, #0e7490);
 }
 
 .options-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: #1d1c1d;
-    margin-bottom: 16px;
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 32px;
+    text-align: center;
+    position: relative;
+    letter-spacing: -0.025em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.options-title::before {
+    content: '🔐';
+    display: block;
+    font-size: 32px;
+    margin-bottom: 12px;
+    animation: pulse 2s infinite;
+}
+
+.options-title::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #2563eb, #0ea5e9, #06b6d4);
+    border-radius: 2px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
 }
 
 .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 24px;
+    position: relative;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
 }
 
 .form-label {
     display: block;
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 10px;
+    letter-spacing: 0.025em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    position: relative;
+    padding-left: 24px;
+}
+
+.form-label::before {
+    content: '✨';
+    position: absolute;
+    left: 0;
+    top: 0;
     font-size: 14px;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 6px;
+    opacity: 0.8;
 }
 
 .form-input, .form-select {
     width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    font-size: 14px;
-    background: white;
+    padding: 16px 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    font-size: 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    transition: all 0.3s ease;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #1e293b;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .form-input:focus, .form-select:focus {
     outline: none;
     border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1), 0 8px 25px rgba(37, 99, 235, 0.15);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+}
+
+.form-input:hover, .form-select:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.form-select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%232563eb' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 16px center;
+    background-repeat: no-repeat;
+    background-size: 18px;
+    padding-right: 48px;
+    appearance: none;
+    position: relative;
+}
+
+.form-select:hover {
+    border-color: #2563eb;
+    background-color: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.1);
+}
+
+.form-select:focus {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%230ea5e9' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
 }
 
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
+    gap: 24px;
+    position: relative;
+}
+
+.form-row::before {
+    content: '📅';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 1;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .upload-options {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .options-title {
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
 }
 
 /* 업로드 진행률 */
@@ -191,16 +404,19 @@ body {
 .file-item {
     display: flex;
     align-items: center;
-    padding: 16px;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    background: white;
-    transition: all 0.2s;
+    padding: 20px;
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    transition: all 0.3s ease;
+    margin-bottom: 12px;
 }
 
 .file-item:hover {
     border-color: #2563eb;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 8px 30px rgba(37, 99, 235, 0.15);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
 }
 
 .file-icon {
@@ -214,16 +430,19 @@ body {
 }
 
 .file-name {
-    font-weight: 600;
-    color: #1d1c1d;
-    margin-bottom: 4px;
-    font-size: 15px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6px;
+    font-size: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: 0.025em;
 }
 
 .file-meta {
-    font-size: 13px;
+    font-size: 14px;
     color: #64748b;
-    line-height: 1.4;
+    line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .file-tags {
@@ -255,32 +474,38 @@ body {
 }
 
 .file-action-btn {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border: none;
-    background: #f8fafc;
-    border-radius: 6px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.3s ease;
     color: #64748b;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .file-action-btn:hover {
-    background: #e2e8f0;
-    color: #1d1c1d;
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    color: #1e293b;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 .file-action-btn.download:hover {
-    background: #dbeafe;
+    background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
     color: #2563eb;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
 }
 
 .file-action-btn.delete:hover {
-    background: #fee2e2;
+    background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
     color: #dc2626;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
 }
 
 /* 빈 상태 */
