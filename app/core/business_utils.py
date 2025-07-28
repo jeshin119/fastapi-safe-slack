@@ -118,7 +118,7 @@ async def get_user_workspaces_with_member_count(db: AsyncSession, user_id: int) 
     ]
 
 
-async def create_channel_with_creator(db: AsyncSession, workspace_name: str, channel_name: str, user_id: int) -> Dict:
+async def create_channel_with_creator(db: AsyncSession, workspace_name: str, channel_name: str, user_id: int, is_public: bool = True) -> Dict:
     """
     채널 생성 및 생성자 설정
     """
@@ -140,7 +140,8 @@ async def create_channel_with_creator(db: AsyncSession, workspace_name: str, cha
     new_channel = Channel(
         name=channel_name,
         workspace_id=workspace.id,
-        creator_id=user_id
+        created_by=user_id,
+        is_public=is_public
     )
     db.add(new_channel)
     await db.flush()

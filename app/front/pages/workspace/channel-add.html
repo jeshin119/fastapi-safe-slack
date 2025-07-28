@@ -295,20 +295,13 @@
                     };
                 }
             } catch (error) {
-                // API 실패시 임시 성공 처리 (데모용)
-                return {
-                    success: true,
-                    message: `🎉 "${name}" 채널이 ${isPublic ? '공개' : '비공개'} 채널로 생성되었습니다!`,
-                    channelData: {
-                        id: `new_${Date.now()}`,
-                        name: name,
-                        isPublic: isPublic,
-                        messages: [],
-                        files: []
-                    }
-                };
-            }
-        }
+        console.error('채널 생성 API 오류:', error);
+        return {
+            success: false,
+            error: '서버 연결에 실패했습니다. 네트워크 상태를 확인하고 다시 시도해주세요.'
+        };
+    }
+}
 
         // ============================
         // 채널 참여 API

@@ -211,6 +211,76 @@
         const EMOJI_LIST = ['👍', '❤️', '😊', '🎉', '👏', '🔥', '💯', '✨', '😂', '🤣', '😘', '😍', '🤔', '😎', '👋', '🤝', '💪', '🙏'];
 
         // ============================
+        // 채널 정보 가져오기 함수들
+        // ============================
+        function getWorkspaceAndChannelInfo() {
+            // 1. URL 파라미터에서 가져오기
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlWorkspace = urlParams.get('workspace_name') || urlParams.get('workspace');
+            const urlChannel = urlParams.get('channel_name') || urlParams.get('channel');
+            
+            // 2. localStorage에서 가져오기
+            const storageWorkspace = localStorage.getItem('current_workspace_name');
+            const storageChannel = localStorage.getItem('current_channel_name');
+            
+            // 3. JWT 토큰에서 가져오기
+            let tokenWorkspace = null;
+            try {
+                const token = localStorage.getItem('access_token');
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    tokenWorkspace = payload.workspace_name;
+                }
+            } catch (error) {
+                console.error('토큰 파싱 실패:', error);
+            }
+            
+            // 4. 전역 데이터에서 가져오기 (workspace-main.html에서 설정된 경우)
+            const globalWorkspace = window.parent?.globalData?.workspace?.name || window.globalData?.workspace?.name;
+            const globalChannel = window.parent?.globalData?.currentChannel?.name || window.parent?.currentChannelName || window.globalData?.currentChannel?.name || window.currentChannelName;
+            
+            // 우선순위: URL > 전역데이터 > localStorage > 토큰 > 기본값
+            const workspace = urlWorkspace || globalWorkspace || storageWorkspace || tokenWorkspace || 'admin';
+            const channel = urlChannel || globalChannel || storageChannel || '일반채널';
+            
+            console.log('📍 워크스페이스 정보:', {
+                workspace,
+                channel,
+                sources: {
+                    urlWorkspace,
+                    urlChannel,
+                    globalWorkspace,
+                    globalChannel,
+                    storageWorkspace,
+                    storageChannel,
+                    tokenWorkspace
+                }
+            });
+            
+            return { workspace, channel };
+        }
+
+        // 채널 정보 업데이트 함수
+        function updateChannelInfo(workspace, channel) {
+            // 환영 메시지의 채널 이름 업데이트
+            const welcomeTitle = document.getElementById('welcome-title');
+            if (welcomeTitle) {
+                welcomeTitle.textContent = `# ${channel} 채널에 오신 것을 환영합니다`;
+            }
+            
+            // 메시지 입력창 placeholder 업데이트
+            const messageInput = document.getElementById('message-input');
+            if (messageInput) {
+                messageInput.placeholder = `# ${channel} 채널에 메시지 보내기...`;
+            }
+            
+            // 페이지 제목 업데이트
+            document.title = `${channel} - ${workspace} | WorkSpace`;
+            
+            console.log(`✅ 채널 정보 업데이트됨: ${workspace} > ${channel}`);
+        }
+
+        // ============================
         // WebSocket 연결 관리
         // ============================
         function connectWebSocket() {
@@ -221,22 +291,25 @@
                 return;
             }
 
-            // 워크스페이스와 채널 정보 (실제로는 URL 파라미터나 다른 방법으로 가져와야 함)
-            const workspace = '오픈AI'; // 실제로는 동적으로 가져와야 함
-            const channel = '디자인'; // 실제로는 동적으로 가져와야 함
+            // 동적으로 워크스페이스와 채널 정보 가져오기
+            const { workspace, channel } = getWorkspaceAndChannelInfo();
+            
+            // 채널 정보 UI 업데이트
+            updateChannelInfo(workspace, channel);
             
             const wsUrl = `ws://localhost:8000/ws/${encodeURIComponent(workspace)}/${encodeURIComponent(channel)}?token=${encodeURIComponent(token)}`;
             
+            console.log('🔗 WebSocket 연결 시도:', wsUrl);
             updateConnectionStatus('connecting', '연결 중...');
             
             ws = new WebSocket(wsUrl);
             
             ws.onopen = function(event) {
-                console.log('WebSocket 연결됨');
+                console.log('✅ WebSocket 연결됨:', workspace, '>', channel);
                 isConnected = true;
                 reconnectAttempts = 0;
-                // updateConnectionStatus('connected', '실시간 연결됨');
-                addSystemMessage('채팅방에 연결되었습니다.');
+                updateConnectionStatus('connected', `${channel} 채널에 연결됨`);
+                addSystemMessage(`${channel} 채널에 연결되었습니다.`);
             };
             
             ws.onmessage = function(event) {
@@ -245,7 +318,7 @@
             };
             
             ws.onclose = function(event) {
-                console.log('WebSocket 연결 해제됨');
+                console.log('❌ WebSocket 연결 해제됨');
                 isConnected = false;
                 updateConnectionStatus('disconnected', '연결이 해제되었습니다.');
                 
@@ -253,14 +326,14 @@
                 if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                     reconnectAttempts++;
                     setTimeout(() => {
-                        console.log(`재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
+                        console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
                         connectWebSocket();
                     }, RECONNECT_DELAY);
                 }
             };
             
             ws.onerror = function(error) {
-                console.error('WebSocket 오류:', error);
+                console.error('❌ WebSocket 오류:', error);
                 updateConnectionStatus('disconnected', '연결 오류가 발생했습니다.');
             };
         }
@@ -588,6 +661,13 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('💬 WebSocket 채팅 탭 로드됨');
             
+            // 채널 정보 먼저 설정
+            const { workspace, channel } = getWorkspaceAndChannelInfo();
+            updateChannelInfo(workspace, channel);
+            
+            // 현재 채널을 localStorage에 저장
+            localStorage.setItem('current_channel_name', channel);
+            
             // WebSocket 연결 시작
             connectWebSocket();
             
@@ -633,4 +713,4 @@
         });
     </script>
 </body>
-</html> 
+</html>
