@@ -12,6 +12,7 @@ from app.core.permission_utils import verify_channel_access
 from app.core.date_utils import get_current_datetime, get_hours_ago
 from datetime import datetime
 import json
+import asyncio
 from jose.exceptions import JWTError
 
 router = APIRouter()
@@ -146,10 +147,11 @@ async def websocket_endpoint(
             # print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
             pass
         
-        # 메시지 수신 루프
+        # 메시지 수신 루프 (타임아웃 추가)
         while True:
             try:
-                data = await websocket.receive_text()
+                # 타임아웃을 추가하여 시그널 처리가 가능하도록 함
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
                 message_data = json.loads(data)
                 
                 # 메시지 타입에 따른 처리
@@ -263,6 +265,13 @@ async def websocket_endpoint(
                     # 읽음 확인 처리 (추후 구현)
                     pass
                     
+            except asyncio.TimeoutError:
+                # 타임아웃 발생 시 계속 진행 (시그널 처리를 위해)
+                continue
+            except asyncio.CancelledError:
+                # 서버 종료 시 WebSocket 연결이 취소됨
+                # print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
+                break
             except json.JSONDecodeError:
                 # 잘못된 JSON 형식
                 await manager.send_personal_message(websocket, {
@@ -280,10 +289,15 @@ async def websocket_endpoint(
                 
     except WebSocketDisconnect:
         # WebSocket 연결 해제 처리
+        print(f"🔌 WebSocket 연결 해제: {user_context.get('user_name', 'Unknown')}")
+        manager.disconnect(websocket)
+    except asyncio.CancelledError:
+        # 서버 종료 시 WebSocket 연결이 취소됨
+        print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
         manager.disconnect(websocket)
     except Exception as e:
         # 기타 예외 처리
-        print(f"WebSocket 오류: {e}")
+        print(f"❌ WebSocket 오류: {e}")
         try:
             await websocket.close(code=1011, reason="Internal error")
         except:
@@ -294,4 +308,4 @@ async def websocket_endpoint(
             try:
                 await db.close()
             except Exception as e:
-                print(f"데이터베이스 세션 정리 오류: {e}")
+                print(f"❌ 데이터베이스 세션 정리 오류: {e}")
