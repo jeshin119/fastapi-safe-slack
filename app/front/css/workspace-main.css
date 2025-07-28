@@ -418,11 +418,10 @@ body {
     /* flex-shrink 제거하여 스크롤 영역에 포함 */
     position: relative;
     z-index: 10;
-    /* 환영 섹션을 맨 아래에 표시하되 스크롤 가능하도록 */
-    margin-top: auto;
-    align-self: flex-end;
     /* 스크롤이 생기도록 최소 높이 설정 */
     min-height: 600px;
+    /* 중앙 정렬을 위해 width 설정 */
+    width: 100%;
 }
 
 .welcome-icon {
@@ -486,8 +485,8 @@ body {
     min-height: 100%;
     /* 스크롤이 생기도록 최소 높이 설정 */
     min-height: 600px;
-    /* 기본적으로 스크롤을 맨 아래로 설정 */
-    align-items: flex-end;
+    /* 메시지들이 전체 너비를 사용하도록 설정 */
+    align-items: stretch;
 }
 
 .message {

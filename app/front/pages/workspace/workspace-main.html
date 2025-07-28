@@ -397,14 +397,6 @@
                     globalData.messages[currentChannelName].push(newMessage);
                     renderMessages();
                     updateChannelContent();
-                    
-                    // 새 메시지가 왔을 때 스크롤을 맨 아래로 이동 (더 확실하게)
-                    setTimeout(() => {
-                        const messagesContainer = document.getElementById('chat-messages');
-                        if (messagesContainer) {
-                            forceScrollToBottom(messagesContainer);
-                        }
-                    }, 100);
                     break;
                     
                 case 'message_history':
@@ -424,14 +416,6 @@
                         renderMessages();
                         updateChannelContent();
                         setupScrollHandler(); // 스크롤 핸들러 설정
-                        
-                        // 메시지 히스토리 로드 후 스크롤을 맨 아래로 이동 (더 확실하게)
-                        setTimeout(() => {
-                            const messagesContainer = document.getElementById('chat-messages');
-                            if (messagesContainer) {
-                                forceScrollToBottom(messagesContainer);
-                            }
-                        }, 200);
                     }
                     break;
                     
@@ -1047,18 +1031,10 @@
             
             // 채팅 탭으로 전환 시 스크롤 핸들러 재설정 및 맨 아래로 스크롤
             if (tabName === 'chat') {
+                setupScrollHandler();
                 setTimeout(() => {
-                    setupScrollHandler();
                     forceScrollToBottom(document.getElementById('chat-messages'));
-                    
-                    // 추가적으로 DOM이 완전히 렌더링된 후 스크롤을 맨 아래로 이동
-                    setTimeout(() => {
-                        const messagesContainer = document.getElementById('chat-messages');
-                        if (messagesContainer) {
-                            forceScrollToBottom(messagesContainer);
-                        }
-                    }, 200);
-                }, 100);
+                }, 0);
             }
         }
     
@@ -1075,27 +1051,10 @@
             }, 10);
         }
 
-        // 강제로 스크롤을 맨 아래로 이동하는 함수 (즉시 실행)
+        // 간단하게 스크롤을 맨 아래로 이동하는 함수
         function forceScrollToBottom(container) {
             if (!container) return;
-            
-            // 즉시 스크롤을 맨 아래로 이동 (애니메이션 없음)
             container.scrollTop = container.scrollHeight;
-            
-            // 추가적으로 DOM이 완전히 렌더링된 후 다시 한 번 스크롤
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 50);
-            
-            // 추가적으로 더 늦게 한 번 더 스크롤 (이미지나 리소스 로딩 완료 후)
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 150);
-            
-            // 마지막으로 한 번 더 확인
-            setTimeout(() => {
-                container.scrollTop = container.scrollHeight;
-            }, 300);
         }
 
         // 메시지 렌더링 (스크롤 최적화)
@@ -1115,9 +1074,7 @@
                     </div>
                 `;
                 // 환영 메시지도 맨 아래로 스크롤
-                setTimeout(() => {
-                    forceScrollToBottom(messagesContainer);
-                }, 100);
+                setTimeout(() => forceScrollToBottom(messagesContainer), 0);
                 return;
             }
             
@@ -1144,15 +1101,8 @@
                 `;
             }).join('');
             
-            // DOM 렌더링 완료 후 맨 아래로 스크롤 (더 확실하게)
-            setTimeout(() => {
-                forceScrollToBottom(messagesContainer);
-            }, 100);
-            
-            // 추가적으로 이미지나 다른 리소스 로딩 완료 후 다시 스크롤
-            setTimeout(() => {
-                forceScrollToBottom(messagesContainer);
-            }, 300);
+            // 메시지 렌더링 후 맨 아래로 스크롤 (DOM 업데이트 후 실행)
+            setTimeout(() => forceScrollToBottom(messagesContainer), 0);
         }
 
         // 스크롤 이벤트 처리
@@ -1230,14 +1180,6 @@
                 input.value = '';
                 input.style.height = 'auto';
                 updateSendButton();
-                
-                // 메시지 전송 후 스크롤을 맨 아래로 이동
-                setTimeout(() => {
-                    const messagesContainer = document.getElementById('chat-messages');
-                    if (messagesContainer) {
-                        forceScrollToBottom(messagesContainer);
-                    }
-                }, 50);
                 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
@@ -1749,15 +1691,9 @@
                 document.getElementById('upload-submit-btn').addEventListener('click', handleFileUpload);
                 
                 // 페이지 로드 완료 후 스크롤을 맨 아래로 이동
-                forceScrollToBottom(document.getElementById('chat-messages'));
-                
-                // 추가적으로 DOM이 완전히 렌더링된 후 스크롤을 맨 아래로 이동
                 setTimeout(() => {
-                    const messagesContainer = document.getElementById('chat-messages');
-                    if (messagesContainer) {
-                        forceScrollToBottom(messagesContainer);
-                    }
-                }, 200);
+                    forceScrollToBottom(document.getElementById('chat-messages'));
+                }, 0);
             });
             
 
