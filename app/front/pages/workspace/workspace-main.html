@@ -497,58 +497,85 @@
                 return;
             }
             
-            window.location.href = `workspace-admin.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
+            window.location.href = `admin/admin-main.htmll?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
         }
     
         // 채널 목록 로딩
         async function loadChannels() {
-            try {
-                const workspaceName = globalData.workspace?.name;
-                if (!workspaceName) {
-                    console.error('워크스페이스 이름이 없습니다.');
-                    return;
-                }
-
-                // POST /channels/list로 변경
-                const channels = await apiCall('/channels/list', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        workspace_name: workspaceName
-                    })
-                });
-
-                console.log('📋 채널 목록 응답:', channels);
-
-                // 응답이 배열인지 객체인지 확인하고 처리
-                let channelArray = [];
-                if (Array.isArray(channels)) {
-                    channelArray = channels;
-                } else if (channels.channels && Array.isArray(channels.channels)) {
-                    channelArray = channels.channels;
-                } else {
-                    console.error('예상하지 못한 응답 구조:', channels);
-                    channelArray = [];
-                }
-                
-                // 채널 데이터 변환
-                globalData.channels = channelArray.map(channel => ({
-                    id: channel.channel_id || channel.id,
-                    name: channel.name || channel.channel_name,
-                    is_public: channel.is_public !== false, // 기본값을 true로
-                    is_default: channel.name === 'general' || channel.is_default
-        }));
-
-                console.log('✅ 변환된 채널 목록:', globalData.channels);
-                
-                renderChannelList();
-            } catch (error) {
-                console.error('채널 로딩 실패:', error);
-            }
+    try {
+        const workspaceName = globalData.workspace?.name;
+        if (!workspaceName) {
+            console.error('워크스페이스 이름이 없습니다.');
+            return;
         }
 
-         // 에러 발생 시 빈 배열로 설정하고 렌더링
+        console.log('🔍 채널 로딩 시작 - 워크스페이스:', workspaceName);
+
+        // POST /channels/list로 API 호출
+        const channels = await apiCall('/channels/list', {
+            method: 'POST',
+            body: JSON.stringify({
+                workspace_name: workspaceName
+            })
+        });
+
+        console.log('📋 채널 목록 응답:', channels);
+        console.log('📋 응답 타입:', typeof channels);
+        console.log('📋 배열 여부:', Array.isArray(channels));
+
+        // 응답이 배열인지 확인하고 처리
+        let channelArray = [];
+        if (Array.isArray(channels)) {
+            channelArray = channels;
+            console.log('✅ 직접 배열 처리 - 채널 개수:', channelArray.length);
+        } else if (channels && channels.channels && Array.isArray(channels.channels)) {
+            channelArray = channels.channels;
+            console.log('✅ channels 속성 처리 - 채널 개수:', channelArray.length);
+        } else {
+            console.error('❌ 예상하지 못한 응답 구조:', channels);
+            channelArray = [];
+        }
+
+        // 각 채널 데이터 로그 출력
+        channelArray.forEach((channel, index) => {
+            console.log(`📋 채널 ${index + 1}:`, channel);
+        });
+
+        // 채널 데이터 변환
+        globalData.channels = channelArray.map(channel => {
+            const transformedChannel = {
+                id: channel.channel_id || channel.id,
+                name: channel.name || channel.channel_name,
+                is_public: channel.is_public !== false, // 기본값을 true로
+                is_default: channel.name === 'general' || channel.is_default
+            };
+            console.log('🔄 채널 변환:', channel, '→', transformedChannel);
+            return transformedChannel;
+        });
+
+        console.log('✅ 최종 변환된 채널 목록:', globalData.channels);
+        console.log('✅ 최종 채널 개수:', globalData.channels.length);
+
+        // 채널이 없는 경우 경고
+        if (globalData.channels.length === 0) {
+            console.warn('⚠️ 변환된 채널이 없습니다.');
+        }
+
+        renderChannelList();
+        
+    } catch (error) {
+        console.error('❌ 채널 로딩 실패:', error);
+        console.error('❌ 에러 상세:', error.message);
+        console.error('❌ 에러 스택:', error.stack);
+        
+        // 에러 발생 시에만 빈 배열로 설정
         globalData.channels = [];
         renderChannelList();
+        
+        // 사용자에게 알림
+        alert('채널 목록을 불러오는데 실패했습니다: ' + error.message);
+    }
+}
         
         // 팀원 목록 로딩 (실제 워크스페이스 멤버 API 사용)
         async function loadTeamMembers() {
