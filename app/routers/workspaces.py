@@ -12,6 +12,7 @@ from typing import List
 from app.models.workspace import RequestStatus
 from pydantic import BaseModel
 
+
 router = APIRouter()
 
 class WorkspaceRequest(BaseModel):
@@ -50,6 +51,7 @@ class WorkspaceSelectResponse(BaseModel):
 class WorkspaceKickRequest(BaseModel):
     workspace_name: str
     user_id: int  # 추방 대상
+
 
 @router.post("/create")
 async def create_workspace(
@@ -458,3 +460,23 @@ async def kick_workspace_member(
     await db.commit()
 
     return {"message": "해당 사용자를 워크스페이스 및 채널에서 추방했습니다."}
+
+@router.get("/roles", response_model=List[dict])
+async def get_roles(
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    모든 역할 목록을 가져옵니다.
+    """
+    result = await db.execute(select(Role).order_by(Role.level))
+    roles = result.scalars().all()
+    
+    return [
+        {
+            "id": role.id,
+            "name": role.name,
+            "level": role.level
+        }
+        for role in roles
+    ]

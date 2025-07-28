@@ -36,12 +36,7 @@
                     <label class="form-label" for="min-role">최소 접근 직급 (선택)</label>
                     <select class="form-select" id="min-role">
                         <option value="">모든 직급</option>
-                        <option value="사원">사원 이상</option>
-                        <option value="대리">대리 이상</option>
-                        <option value="과장">과장 이상</option>
-                        <option value="팀장">팀장 이상</option>
-                        <option value="부장">부장 이상</option>
-                        <option value="이사">이사 이상</option>
+                        <!-- 역할 목록이 여기에 동적으로 추가됩니다 -->
                     </select>
                 </div>
 
@@ -56,10 +51,7 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="description">파일 설명 (선택)</label>
-                    <input type="text" class="form-input" id="description" placeholder="파일에 대한 간단한 설명을 입력하세요">
-                </div>
+
             </div>
 
             <!-- 업로드 진행률 -->
@@ -250,6 +242,42 @@
             } catch (error) {
                 console.error(`API 호출 오류 (${endpoint}):`, error);
                 throw error;
+            }
+        }
+
+        // ============================
+        // 역할 목록 로드
+        // ============================
+        async function loadRoles() {
+            try {
+                const roles = await apiCall('/workspaces/roles');
+                const roleSelect = document.getElementById('min-role');
+                
+                // 기존 옵션 제거 (첫 번째 "모든 직급" 옵션 제외)
+                while (roleSelect.children.length > 1) {
+                    roleSelect.removeChild(roleSelect.lastChild);
+                }
+                
+                // 역할 목록 추가
+                roles.forEach(role => {
+                    const option = document.createElement('option');
+                    option.value = role.name;
+                    option.textContent = `${role.name} 이상`;
+                    roleSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('역할 목록 로딩 실패:', error);
+                // 에러 시 기본 역할 목록 사용
+                const roleSelect = document.getElementById('min-role');
+                const defaultRoles = ['사원', '대리', '과장', '팀장', '부장', '이사'];
+                
+                defaultRoles.forEach(roleName => {
+                    const option = document.createElement('option');
+                    option.value = roleName;
+                    option.textContent = `${roleName} 이상`;
+                    roleSelect.appendChild(option);
+                });
             }
         }
 
@@ -473,7 +501,6 @@
             const minRole = document.getElementById('min-role').value;
             const validFrom = document.getElementById('valid-from').value;
             const validTo = document.getElementById('valid-to').value;
-            const description = document.getElementById('description').value;
 
             // 진행률 표시
             uploadProgress.style.display = 'block';
@@ -499,7 +526,6 @@
                         if (minRole) formData.append('min_role_name', minRole);
                         if (validFrom) formData.append('valid_from', validFrom);
                         if (validTo) formData.append('valid_to', validTo);
-                        if (description) formData.append('description', description);
 
                         // 워크스페이스와 채널 정보 추가
                         if (workspaceId) formData.append('workspace_id', workspaceId);
@@ -562,7 +588,6 @@
             document.getElementById('min-role').value = '';
             document.getElementById('valid-from').value = '';
             document.getElementById('valid-to').value = '';
-            document.getElementById('description').value = '';
         }
 
         // 드래그 앤 드롭 이벤트
@@ -717,6 +742,9 @@
                 }
             }
 
+            // 역할 목록 로드
+            loadRoles();
+            
             // 파일 목록 로드
             loadFiles();
 

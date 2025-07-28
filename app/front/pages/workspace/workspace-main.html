@@ -79,17 +79,10 @@
         <!-- 채팅 탭 (기본) -->
         <div class="tab-content active" id="chat-content">
             <div class="chat-content">
-                <div class="welcome-section" id="welcome-message">
-                    <div class="welcome-icon">🏠</div>
-                    <div class="welcome-title">채널에 오신 것을 환영합니다</div>
-                    <div class="welcome-description">
-                        자유롭게 소통하고 파일을 공유하세요. ⭐
-                    </div>
-                </div>
-
                 <!-- 채팅 메시지에 스크롤 컨테이너 추가 -->
                 <div class="chat-messages-container">
                     <div class="chat-messages" id="chat-messages">
+                        <!-- 환영 메시지가 여기에 동적으로 추가됩니다 -->
                         <!-- 메시지들이 여기에 동적으로 표시됩니다 -->
                     </div>
                 </div>
@@ -112,14 +105,6 @@
         <!-- 파일 탭 -->
         <div class="tab-content" id="files-content">
             <div class="chat-content">
-                <div class="welcome-section" id="files-welcome-message">
-                    <div class="welcome-icon">📁</div>
-                    <div class="welcome-title">파일 관리</div>
-                    <div class="welcome-description">
-                        파일을 업로드하고 팀원들과 공유하세요. ⭐ 
-                    </div>
-                </div>
-
                 <!-- 파일 목록에 스크롤 컨테이너 추가 -->
                 <div class="chat-messages-container">
                     <div class="chat-messages" id="files-messages">
@@ -138,11 +123,39 @@
                             <button class="upload-button">📤 파일 선택</button>
                         </div>
 
+                        <!-- 파일 업로드 옵션 (숨김) -->
+                        <div class="upload-options" id="upload-options" style="display: none;">
+                            <div class="options-title">📋 파일 접근 권한 설정</div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="min-role">최소 접근 직급 (선택)</label>
+                                <select class="form-select" id="min-role">
+                                    <option value="">모든 직급</option>
+                                    <!-- 역할 목록이 여기에 동적으로 추가됩니다 -->
+                                </select>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label" for="valid-from">접근 시작일 (선택)</label>
+                                    <input type="date" class="form-input" id="valid-from">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="valid-to">접근 종료일 (선택)</label>
+                                    <input type="date" class="form-input" id="valid-to">
+                                </div>
+                            </div>
+
+                            
+
+                            <button class="upload-button" id="upload-submit-btn" style="width: 100%; margin-top: 16px;">📤 선택된 파일 업로드</button>
+                        </div>
+
                         <!-- 파일 목록에 스크롤 컨테이너 추가 -->
                         <div class="files-list-container">
                             <div class="files-list-box">
                                 <div id="files-list">
-                                    <!-- 파일 목록이 여기에 동적으로 추가됩니다 -->
+                                    <!-- 환영 메시지와 파일 목록이 여기에 동적으로 추가됩니다 -->
                                 </div>
                             </div>
                         </div>
@@ -153,8 +166,7 @@
                     <textarea class="message-input" id="file-input-text" placeholder="파일 관련 메시지를 입력하세요..." rows="1" style="display: none;"></textarea>
                     <div class="input-toolbar">
                         <div class="input-actions">
-                            <button class="input-btn" onclick="triggerFileUpload()" title="파일 업로드">📁</button>
-                            <button class="input-btn" onclick="refreshFiles()" title="파일 목록 새로고침">🔄</button>
+                            <!-- 파일 업로드와 새로고침 버튼 제거 -->
                         </div>
                         <button class="send-btn" id="file-send-btn" onclick="triggerFileUpload()" style="display: none;">업로드</button>
                     </div>
@@ -872,15 +884,6 @@
         function updateChannelContent() {
             const channel = globalData.currentChannel;
             if (!channel) return;
-            
-            const welcomeMessage = document.getElementById('welcome-message');
-            welcomeMessage.innerHTML = `
-                <div class="welcome-icon">🏠</div>
-                <div class="welcome-title"># ${channel.name} 채널에 오신 것을 환영합니다</div>
-                <div class="welcome-description">
-                    ${channel.is_public ? '모든 멤버가 참여할 수 있는 공개 채널입니다.' : '초대받은 멤버만 참여할 수 있는 비공개 채널입니다.'} 자유롭게 소통하고 파일을 공유하세요. ⭐
-                </div>
-            `;
     
             const messages = globalData.messages[channel.name] || [];
             const files = globalData.files[channel.name] || [];
@@ -908,19 +911,29 @@
                     setupDragAndDrop();
                 }, 100);
             }
+            
+            // 채팅 탭으로 전환 시 스크롤 핸들러 재설정
+            if (tabName === 'chat') {
+                setTimeout(() => {
+                    setupScrollHandler();
+                }, 100);
+            }
         }
     
         // 메시지 렌더링
         function renderMessages() {
             const messagesContainer = document.getElementById('chat-messages');
             const messages = globalData.messages[currentChannelName] || [];
+            const channel = globalData.currentChannel;
             
             if (messages.length === 0) {
                 messagesContainer.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <div class="empty-title">아직 메시지가 없습니다</div>
-                        <div class="empty-description">첫 번째 메시지를 보내보세요!</div>
+                    <div class="welcome-section" id="welcome-message">
+                        <div class="welcome-icon">🏠</div>
+                        <div class="welcome-title"># ${channel?.name || '채널'}에 오신 것을 환영합니다</div>
+                        <div class="welcome-description">
+                            ${channel?.is_public ? '모든 멤버가 참여할 수 있는 공개 채널입니다.' : '초대받은 멤버만 참여할 수 있는 비공개 채널입니다.'} 자유롭게 소통하고 파일을 공유하세요. ⭐
+                        </div>
                     </div>
                 `;
                 return;
@@ -960,7 +973,7 @@
 
         // 스크롤 이벤트 처리
         function setupScrollHandler() {
-            const messagesContainer = document.getElementById('chat-messages');
+            const messagesContainer = document.querySelector('.chat-messages-container');
             if (!messagesContainer) return;
             
             // 기존 이벤트 리스너 제거
@@ -984,7 +997,10 @@
                             loadingDiv.innerHTML = `
                                 <div class="loading-spinner"></div>
                             `;
-                            messagesContainer.insertBefore(loadingDiv, messagesContainer.firstChild);
+                            const chatMessages = document.getElementById('chat-messages');
+                            if (chatMessages) {
+                                chatMessages.insertBefore(loadingDiv, chatMessages.firstChild);
+                            }
                             
                             // WebSocket으로 이전 메시지 요청
                             if (websocket && websocket.readyState === WebSocket.OPEN) {
@@ -998,6 +1014,8 @@
                 }
             }
         }
+        
+
     
         // 메시지 전송 (WebSocket 사용)
         async function sendMessage() {
@@ -1039,10 +1057,12 @@
             
             if (files.length === 0) {
                 filesContainer.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">📁</div>
-                        <div class="empty-title">아직 업로드된 파일이 없습니다</div>
-                        <div class="empty-description">파일을 업로드하여 팀원들과 공유해보세요!</div>
+                    <div class="welcome-section" id="files-welcome-message">
+                        <div class="welcome-icon">📁</div>
+                        <div class="welcome-title">파일 관리</div>
+                        <div class="welcome-description">
+                            파일을 업로드하고 팀원들과 공유하세요. ⭐ 
+                        </div>
                     </div>
                 `;
                 return;
@@ -1165,6 +1185,40 @@
             sendBtn.disabled = !hasText || !isConnected;
         }
     
+        // 역할 목록 로드
+        async function loadRoles() {
+            try {
+                const roles = await apiCall('/workspaces/roles');
+                const roleSelect = document.getElementById('min-role');
+                
+                // 기존 옵션 제거 (첫 번째 "모든 직급" 옵션 제외)
+                while (roleSelect.children.length > 1) {
+                    roleSelect.removeChild(roleSelect.lastChild);
+                }
+                
+                // 역할 목록 추가
+                roles.forEach(role => {
+                    const option = document.createElement('option');
+                    option.value = role.name;
+                    option.textContent = `${role.name} 이상`;
+                    roleSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('역할 목록 로딩 실패:', error);
+                // 에러 시 기본 역할 목록 사용
+                const roleSelect = document.getElementById('min-role');
+                const defaultRoles = ['사원', '대리', '과장', '팀장', '부장', '이사'];
+                
+                defaultRoles.forEach(roleName => {
+                    const option = document.createElement('option');
+                    option.value = roleName;
+                    option.textContent = `${roleName} 이상`;
+                    roleSelect.appendChild(option);
+                });
+            }
+        }
+
         // 파일 업로드 관련
         function triggerFileUpload() {
             document.getElementById('file-input').click();
@@ -1173,31 +1227,38 @@
         function attachFile() {
             triggerFileUpload();
         }
-    
+
+        // 선택된 파일들
+        let selectedFiles = [];
+
         // 파일 업로드 처리
-        document.getElementById('file-input').addEventListener('change', async function(event) {
-            const files = event.target.files;
-            if (!files.length || !currentChannelName) return;
-    
-            for (const file of files) {
-                try {
-                    await uploadFile(file);
-                } catch (error) {
-                    console.error('파일 업로드 실패:', error);
-                    alert(`파일 업로드에 실패했습니다: ${file.name}`);
-                }
+        document.getElementById('file-input').addEventListener('change', function(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) {
+                selectedFiles = files;
+                showUploadOptions();
             }
-            
-            // 파일 입력 초기화
-            event.target.value = '';
         });
-    
+
+        // 업로드 옵션 표시
+        function showUploadOptions() {
+            const uploadOptions = document.getElementById('upload-options');
+            uploadOptions.style.display = 'block';
+            uploadOptions.scrollIntoView({ behavior: 'smooth' });
+        }
+
         // 파일 업로드 함수
         async function uploadFile(file) {
+            const minRole = document.getElementById('min-role').value;
+            const validFrom = document.getElementById('valid-from').value;
+            const validTo = document.getElementById('valid-to').value;
+
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('channel', currentChannelName);
-    
+            if (minRole) formData.append('min_role_name', minRole);
+            if (validFrom) formData.append('valid_from', validFrom);
+            if (validTo) formData.append('valid_to', validTo);
+
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
             const workspaceName = localStorage.getItem('current_workspace_name');
             const response = await fetch(`${API_BASE_URL}/channels/${currentChannelName}/files?workspace_name=${encodeURIComponent(workspaceName)}`, {
@@ -1207,17 +1268,45 @@
                 },
                 body: formData
             });
-    
+
             if (!response.ok) {
                 throw new Error(`파일 업로드 실패: ${response.status}`);
             }
-    
+
             const result = await response.json();
             
             // 파일 업로드 후 파일 목록 새로고침
             await loadChannelFiles(currentChannelName);
             renderFiles();
             updateChannelContent();
+        }
+
+        // 선택된 파일들 업로드
+        async function handleFileUpload() {
+            if (selectedFiles.length === 0) return;
+
+            try {
+                for (const file of selectedFiles) {
+                    await uploadFile(file);
+                }
+                
+                // 업로드 완료 후 초기화
+                selectedFiles = [];
+                document.getElementById('upload-options').style.display = 'none';
+                document.getElementById('file-input').value = '';
+                resetUploadForm();
+                
+            } catch (error) {
+                console.error('파일 업로드 실패:', error);
+                alert(`파일 업로드에 실패했습니다: ${error.message}`);
+            }
+        }
+
+        // 업로드 폼 초기화
+        function resetUploadForm() {
+            document.getElementById('min-role').value = '';
+            document.getElementById('valid-from').value = '';
+            document.getElementById('valid-to').value = '';
         }
     
         // 파일 크기 포맷팅
@@ -1279,6 +1368,20 @@
                 fileInput.files = files;
                 fileInput.dispatchEvent(new Event('change'));
             }
+            
+            // 파일 탭 스크롤 이벤트 처리
+            setupFilesScrollHandler();
+        }
+        
+        // 파일 탭 스크롤 이벤트 처리
+        function setupFilesScrollHandler() {
+            const filesMessages = document.querySelector('.chat-messages-container');
+            if (!filesMessages) return;
+            
+            // 파일 탭에서는 스크롤 이벤트만 감지 (환영 섹션 숨김/표시 제거)
+            filesMessages.addEventListener('scroll', function() {
+                // 필요시 파일 관련 스크롤 처리 추가 가능
+            });
         }
     
         // 기타 기능들
@@ -1428,6 +1531,22 @@
             initializeWorkspace().then(() => {
                 restoreDraftMessage();
                 setupDragAndDrop();
+                
+                // 역할 목록 로드
+                loadRoles();
+                
+                // 날짜 입력 기본값 설정
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('valid-from').min = today;
+                document.getElementById('valid-to').min = today;
+
+                // 종료일은 시작일 이후로 제한
+                document.getElementById('valid-from').addEventListener('change', function() {
+                    document.getElementById('valid-to').min = this.value;
+                });
+
+                // 업로드 버튼 이벤트 리스너
+                document.getElementById('upload-submit-btn').addEventListener('click', handleFileUpload);
             });
             
 
