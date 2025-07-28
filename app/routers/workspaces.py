@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
-from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode
+from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode, ChannelMember
 from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse
 from app.schemas.channel import ChannelResponse
 from app.core.utils import get_current_user_with_context
@@ -162,7 +162,7 @@ async def approve_workspace_join(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="대기 중인 가입 요청을 찾을 수 없습니다."
         )
-    
+
     # 요청한 사용자 정보 확인
     result = await db.execute(select(User).where(User.id == join_request.user_id))
     request_user = result.scalars().first()
@@ -171,14 +171,14 @@ async def approve_workspace_join(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="요청한 사용자를 찾을 수 없습니다."
         )
-    
+
     # user_name 검증
     if request_user.name != approve_data.user_name:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="요청한 사용자 이름이 일치하지 않습니다."
         )
-    
+
     # 초대 코드를 통해 워크스페이스 정보 얻기
     result = await db.execute(select(InviteCode).where(InviteCode.id == join_request.invite_code_id))
     invite_code = result.scalars().first()
@@ -187,7 +187,7 @@ async def approve_workspace_join(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="초대 코드를 찾을 수 없습니다."
         )
-    
+
     # 워크스페이스 관리자 권한 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == user_context["user_id"],
@@ -200,7 +200,7 @@ async def approve_workspace_join(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="워크스페이스 관리자만 승인할 수 있습니다."
         )
-    
+
     # 역할 찾기 (승인 시 설정할 역할)
     result = await db.execute(select(Role).where(Role.name == approve_data.role_name))
     role = result.scalars().first()
@@ -209,7 +209,7 @@ async def approve_workspace_join(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="유효하지 않은 직급명입니다."
         )
-    
+
     # 이미 멤버인지 확인
     result = await db.execute(select(WorkspaceMember).where(
         WorkspaceMember.user_id == join_request.user_id,
@@ -221,7 +221,7 @@ async def approve_workspace_join(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="이미 워크스페이스 멤버입니다."
         )
-    
+
     # 멤버로 추가
     member = WorkspaceMember(
         user_id=join_request.user_id,
@@ -232,20 +232,34 @@ async def approve_workspace_join(
         end_date=approve_data.expires_at
     )
     db.add(member)
-    
+
     # 요청 상태를 승인으로 변경
     join_request.status = "approved"
     join_request.processed_at = datetime.utcnow()
-    join_request.role_name = approve_data.role_name  # ✅ 관리자 승인값으로 role_name 덮어쓰기
-    join_request.role_id = role.id  # ✅ 이 줄이 핵심입니다
-    db.add(join_request)  # ✅ 세션에 반영
-    
+    join_request.role_name = approve_data.role_name  # ✅ 관리자 승인값으로 덮어쓰기
+    join_request.role_id = role.id
+    db.add(join_request)
+
     # 초대 코드를 사용됨으로 표시
     invite_code.used = True
     invite_code.used_at = datetime.utcnow()
-    
+
+    # ✅ 기본 채널에 자동 참여 처리
+    default_channel_result = await db.execute(select(Channel).where(
+        Channel.workspace_id == invite_code.workspace_id,
+        Channel.is_default == True
+    ))
+    default_channel = default_channel_result.scalars().first()
+
+    if default_channel:
+        db.add(ChannelMember(
+            channel_id=default_channel.id,
+            user_id=join_request.user_id
+        ))
+
     await db.commit()
     return {"message": "사용자가 워크스페이스에 추가되었습니다."}
+
 
 @router.post("/members")
 async def get_workspace_members(
