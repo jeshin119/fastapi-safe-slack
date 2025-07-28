@@ -74,6 +74,11 @@
                 📁 파일
                 <span class="tab-count" id="file-count">0</span>
             </button>
+
+            <!-- ✅ 나가기 버튼 추가 -->
+            <button class="tab-button leave-tab-button" onclick="leaveChannel()" title="채널 나가기" style="margin-left:auto;">
+                🚪 나가기
+            </button>
         </nav>
 
         <!-- 채팅 탭 (기본) -->
@@ -746,6 +751,50 @@
             if (currentChannelName) {
                 await loadChannelData(currentChannelName);
                 updateChannelContent();
+            }
+        }
+
+        // 채널 나가기
+        async function leaveChannel() {
+            const workspaceName = localStorage.getItem("current_workspace_name");
+            const channelName = localStorage.getItem("current_channel_name");
+
+            if (!workspaceName || !channelName) {
+                alert("워크스페이스 또는 채널 정보가 없습니다.");
+                return;
+            }
+
+            const confirmLeave = confirm(`정말 '${channelName}' 채널에서 나가시겠습니까?`);
+            if (!confirmLeave) return;
+
+            try {
+                const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
+
+                const response = await fetch(`${API_BASE_URL}/channels/leave`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        workspace_name: workspaceName,
+                        channel_name: channelName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert(data.message || "채널에서 나갔습니다.");
+                    // 현재 채널에서 나간 후 처리: 리다이렉트하거나 채널 목록 새로고침
+                    localStorage.removeItem("current_channel_name"); // 현재 채널 초기화
+                    location.reload(); // 또는 다른 페이지로 이동
+                } else {
+                    alert(`❌ ${data.detail || "채널 나가기 실패"}`);
+                }
+            } catch (error) {
+                console.error("채널 나가기 중 오류:", error);
+                alert("채널 나가기 중 오류가 발생했습니다.");
             }
         }
     
