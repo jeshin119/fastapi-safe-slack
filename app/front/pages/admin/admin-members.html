@@ -764,6 +764,45 @@
             }
         }
 
+        async function kickWorkspaceMember(userId) {
+            const workspaceName = localStorage.getItem("current_workspace_name");
+            if (!workspaceName || !userId) {
+                alert("유효하지 않은 요청입니다.");
+                return;
+            }
+
+            if (!confirm("정말 이 멤버를 워크스페이스에서 추방하시겠습니까?")) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/workspaces/kick`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                    },
+                    body: JSON.stringify({
+                        workspace_name: workspaceName,
+                        user_id: userId
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "추방 실패");
+                }
+
+                const data = await res.json();
+                alert(`✅ ${data.message}`);
+                // 멤버 목록 다시 로드
+                loadMembers(); // 또는 updateActiveMembersFromAPI(...) 호출
+            } catch (error) {
+                console.error("추방 에러:", error);
+                alert("❌ 추방에 실패했습니다: " + error.message);
+            }
+        }
+
         // 통계 실시간 업데이트
         function updateStatsAfterAction(action) {
             if (action === 'approve' || action === 'reject') {
@@ -924,7 +963,14 @@
 
 
         function exportMembers() {
-            alert('📤 멤버 목록 내보내기 기능은 개발 중입니다.');
+            const inputId = prompt("추방할 사용자 ID를 입력하세요:");
+            const userId = parseInt(inputId);
+            if (isNaN(userId)) {
+                alert("숫자 ID를 입력해주세요.");
+                return;
+            }
+
+            kickWorkspaceMember(userId);
         }
 
         // 초기화
