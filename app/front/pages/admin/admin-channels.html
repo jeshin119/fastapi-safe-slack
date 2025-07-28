@@ -37,12 +37,6 @@
         <div class="stats-section">
             <div class="section-title">📊 채널 현황</div>
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">💬</div>
-                    <div class="stat-number">-</div>
-                    <div class="stat-label">전체 채널</div>
-                    <div class="stat-change neutral">로딩 중</div>
-                </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">🌍</div>
@@ -55,13 +49,6 @@
                     <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🔒</div>
                     <div class="stat-number">-</div>
                     <div class="stat-label">비공개 채널</div>
-                    <div class="stat-change neutral">로딩 중</div>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #6b7280, #4b5563);">📦</div>
-                    <div class="stat-number">-</div>
-                    <div class="stat-label">보관된 채널</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
             </div>
@@ -110,9 +97,6 @@
                 <button class="tab-button active" onclick="switchTab('active')" id="active-tab">
                     활성 채널
                 </button>
-                <button class="tab-button" onclick="switchTab('archived')" id="archived-tab">
-                    보관된 채널
-                </button>
             </div>
 
             <!-- 활성 채널 탭 -->
@@ -142,14 +126,6 @@
                 </div>
             </div>
 
-            <!-- 보관된 채널 탭 -->
-            <div class="tab-content" id="archived-content">
-                <div class="empty-state">
-                    <div class="empty-icon">📦</div>
-                    <div class="empty-title">보관된 채널이 없습니다</div>
-                    <div class="empty-description">보관된 채널이 없습니다.<br>필요시 채널 관리에서 채널을 보관할 수 있습니다.</div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -172,6 +148,27 @@
     </div>
 
     <script>
+        // 워크스페이스 정보 로드 함수 추가
+        async function loadWorkspaceInfo() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch('http://localhost:8000/workspaces/workspaces_list', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const workspaces = await response.json();
+                const workspace = workspaces[0]; // 첫 번째 워크스페이스 사용
+                
+                // UI 업데이트
+                document.querySelector('.workspace-name').textContent = workspace.name;
+                document.querySelector('.workspace-meta').textContent = 
+                    `${workspace.member_count}명의 멤버 • ${workspace.is_workspace_admin ? '관리자' : '멤버'}`;
+                    
+                return workspace.name;
+            } catch {
+                return "기본 워크스페이스"; // 에러시 기본값
+            }
+        }
         // API 설정
         const API_BASE_URL = 'http://localhost:8000';
         let currentAction = null;
@@ -186,71 +183,42 @@
 
         // 채널 목록 로드
         async function loadChannels() {
-            try {
-                console.log('채널 목록을 불러오는 중...');
-                
-                // 실제 API 호출
-                const token = localStorage.getItem('access_token');
-                const headers = {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                };
-                
-                const [channelsResponse, statsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}/channels`, { headers }),
-                    fetch(`${API_BASE_URL}/channels/stats`, { headers })
-                ]);
-                
-                const channels = await channelsResponse.json();
-                const stats = await statsResponse.json();
-                
-                updateChannelStats(stats);
-                renderChannelCards(channels);
-                
-                console.log('채널 목록 로드 완료');
-                
-            } catch (error) {
-                console.error('채널 목록 로드 실패:', error);
-                showLoadError();
-            }
+    try {
+        const workspaceName = await loadWorkspaceInfo();
+        
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`${API_BASE_URL}/channels/list`, {
+            method: 'POST',  // 🆕 POST로 변경
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                workspace_name: workspaceName  // 워크스페이스 이름 전송
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        // 채널 통계 업데이트
-        function updateChannelStats(stats) {
-            const statNumbers = document.querySelectorAll('.stat-number');
-            const statChanges = document.querySelectorAll('.stat-change');
-            
-            if (statNumbers[0]) statNumbers[0].textContent = stats.totalChannels;
-            if (statNumbers[1]) statNumbers[1].textContent = stats.publicChannels;
-            if (statNumbers[2]) statNumbers[2].textContent = stats.privateChannels;
-            if (statNumbers[3]) statNumbers[3].textContent = stats.archivedChannels;
-            
-            // 변화량 업데이트
-            if (statChanges[0]) {
-                statChanges[0].textContent = stats.weeklyChange > 0 ? `+${stats.weeklyChange} 이번 주` : '변화 없음';
-                statChanges[0].className = `stat-change ${stats.weeklyChange > 0 ? 'positive' : 'neutral'}`;
-            }
-            if (statChanges[1]) {
-                const publicRate = stats.totalChannels > 0 ? ((stats.publicChannels / stats.totalChannels) * 100).toFixed(1) : 0;
-                statChanges[1].textContent = `${publicRate}%`;
-                statChanges[1].className = 'stat-change positive';
-            }
-            if (statChanges[2]) {
-                const privateRate = stats.totalChannels > 0 ? ((stats.privateChannels / stats.totalChannels) * 100).toFixed(1) : 0;
-                statChanges[2].textContent = `${privateRate}%`;
-                statChanges[2].className = 'stat-change neutral';
-            }
-            if (statChanges[3]) {
-                statChanges[3].textContent = '변화 없음';
-                statChanges[3].className = 'stat-change neutral';
-            }
-            
-            // 워크스페이스 메타 정보 업데이트
-            const workspaceMeta = document.querySelector('.workspace-meta');
-            if (workspaceMeta) {
-                workspaceMeta.textContent = `총 ${stats.totalChannels}개의 채널 • ${stats.publicChannels}개 공개, ${stats.privateChannels}개 비공개`;
-            }
+        const channels = await response.json();
+        
+        // 배열인지 확인
+        if (Array.isArray(channels)) {
+            renderChannelCards(channels);  
+            updateChannelStats(channels);
+        } else {
+            console.error('channels가 배열이 아닙니다:', channels);
+            throw new Error('잘못된 데이터 형식');
         }
+        
+    } catch (error) {
+        console.error('채널 목록 로드 실패:', error);
+        showLoadError();
+    }
+}
+      
 
         // 로드 에러 표시
         function showLoadError() {
@@ -287,44 +255,77 @@
         // 채널 카드 렌더링
         function renderChannelCards(channels) {
             const container = document.getElementById('channels-list');
-            
-            if (channels.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-icon">💬</div>
-                        <div class="empty-title">채널이 없습니다</div>
-                        <div class="empty-description">새로운 채널을 만들어 팀 소통을 시작해보세요.</div>
-                    </div>
-                `;
+            if (!channels || channels.length === 0) {
+                container.innerHTML = `<div class="empty-state">채널이 없습니다</div>`;
                 return;
             }
 
-            container.innerHTML = channels.map(channel => {
-                const statusBadge = getChannelStatusBadge(channel);
-                const actions = getChannelActions(channel);
-                const metaInfo = getChannelMetaInfo(channel);
-                
-                return `
-                    <div class="channel-card" data-channel-id="${channel.id}">
-                        <div class="channel-header">
-                            <div class="channel-icon ${channel.is_public ? 'public' : 'private'}">
-                                ${channel.is_public ? '#' : '🔒'}
-                            </div>
-                            <div class="channel-info">
-                                <div class="channel-name">${channel.name}</div>
-                                <div class="channel-description">${channel.description || '설명이 없습니다.'}</div>
-                                <div class="channel-status">${statusBadge}</div>
-                            </div>
-                        </div>
-                        <div class="channel-meta">
-                            ${metaInfo}
-                        </div>
-                        <div class="channel-actions">
-                            ${actions}
-                        </div>
+            container.innerHTML = channels.map(channel => `
+        <div class="channel-card" data-channel-id="${channel.channel_id}">
+            <div class="channel-header">
+                <div class="channel-icon ${channel.is_public ? 'public' : 'private'}">
+                    ${channel.is_public ? '#' : '🔒'}
+                </div>
+                <div class="channel-info">
+                    <div class="channel-name">${channel.name}</div>
+                    <div class="channel-status">
+                        <span class="status-badge ${channel.is_public ? 'status-public' : 'status-private'}">
+                            ${channel.is_public ? '🌍 공개 채널' : '🔒 비공개 채널'}
+                        </span>
                     </div>
-                `;
-            }).join('');
+                </div>
+            </div>
+            <div class="channel-actions">
+                <button class="action-btn action-delete" onclick="deleteChannel(${channel.channel_id}, '${channel.name}')">
+                    🗑️ 삭제
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+        // 채널 통계 업데이트 (실제 데이터 기반)
+        function updateChannelStats(channels) {
+            if (!channels || !Array.isArray(channels)) return;
+            
+            // 통계 계산
+            const publicCount = channels.filter(ch => ch.is_public).length;
+            const privateCount = channels.filter(ch => !ch.is_public).length;
+            
+            // DOM 업데이트
+            const statNumbers = document.querySelectorAll('.stat-number');
+            const statChanges = document.querySelectorAll('.stat-change');
+            
+            // 공개 채널 수 (첫 번째 카드)
+            if (statNumbers[0]) {
+                statNumbers[0].textContent = publicCount;
+            }
+            
+            // 비공개 채널 수 (두 번째 카드)
+            if (statNumbers[1]) {
+                statNumbers[1].textContent = privateCount;
+            }
+            
+            // 비율 계산 및 표시
+            const totalChannels = channels.length;
+            
+            if (statChanges[0]) {
+                const publicRate = totalChannels > 0 ? ((publicCount / totalChannels) * 100).toFixed(1) : 0;
+                statChanges[0].textContent = `${publicRate}%`;
+                statChanges[0].className = 'stat-change positive';
+            }
+            
+            if (statChanges[1]) {
+                const privateRate = totalChannels > 0 ? ((privateCount / totalChannels) * 100).toFixed(1) : 0;
+                statChanges[1].textContent = `${privateRate}%`;
+                statChanges[1].className = 'stat-change neutral';
+            }
+            
+            // 워크스페이스 메타 정보도 업데이트
+            const workspaceMeta = document.querySelector('.workspace-meta');
+            if (workspaceMeta && !workspaceMeta.textContent.includes('멤버')) {
+                workspaceMeta.textContent += ` • 총 ${totalChannels}개 채널`;
+            }
         }
 
         // 채널 상태 배지 생성
@@ -371,7 +372,7 @@
             return metaItems.join('');
         }
 
-        // 채널 액션 버튼 생성 (수정 및 보관 기능 제거)
+        // 채널 액션 버튼 생성
         function getChannelActions(channel) {
             const actions = [
                 `<button class="action-btn action-members" onclick="manageMembers(${channel.id}, '${channel.name}')">
@@ -468,7 +469,7 @@
                     },
                     body: JSON.stringify({
                         channel_name: name,
-                        workspace_name: "오픈AI", // 실제 워크스페이스명
+                        workspace_name: workspaceName, // 실제 워크스페이스명
                         is_public: !isPrivate
                       
                         
