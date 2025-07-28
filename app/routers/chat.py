@@ -149,6 +149,9 @@ async def websocket_endpoint(
             pass
         
         # 메시지 수신 루프 (시그널 처리를 위한 개선)
+        error_count = 0  # 에러 카운터 추가
+        max_errors = 5   # 최대 허용 에러 횟수
+        
         while True:
             try:
                 # 타임아웃 없이 메시지 수신 (실시간 채팅을 위해)
@@ -157,6 +160,8 @@ async def websocket_endpoint(
                 
                 # 메시지 타입에 따른 처리
                 if message_data.get("type") == "message":
+                    # 성공적인 메시지 처리 시 에러 카운터 리셋
+                    error_count = 0
                     content = message_data.get("content", "").strip()
                     if not content:
                         continue
@@ -208,21 +213,23 @@ async def websocket_endpoint(
                         }
                     )
                 
-                elif message_data.get("type") == "typing":
-                    # 타이핑 상태 브로드캐스트
-                    await manager.broadcast_to_channel(
-                        workspace.id,
-                        channel.id,
-                        {
-                            "type": "typing",
-                            "user_id": user_context["user_id"],
-                            "user_name": user_context["user_name"],
-                            "timestamp": get_current_datetime().isoformat()
-                        },
-                        exclude_websocket=websocket
-                    )
+                # elif message_data.get("type") == "typing":
+                #     # 타이핑 상태 브로드캐스트
+                #     await manager.broadcast_to_channel(
+                #         workspace.id,
+                #         channel.id,
+                #         {
+                #             "type": "typing",
+                #             "user_id": user_context["user_id"],
+                #             "user_name": user_context["user_name"],
+                #             "timestamp": get_current_datetime().isoformat()
+                #         },
+                #         exclude_websocket=websocket
+                #     )
                 
                 elif message_data.get("type") == "load_older_messages":
+                    # 성공적인 메시지 처리 시 에러 카운터 리셋
+                    error_count = 0
                     # 더 이전 메시지 요청 처리
                     try:
                         before_timestamp = message_data.get("before_timestamp")
@@ -262,9 +269,9 @@ async def websocket_endpoint(
                             "timestamp": get_current_datetime().isoformat()
                         })
                 
-                elif message_data.get("type") == "read_receipt":
-                    # 읽음 확인 처리 (추후 구현)
-                    pass
+                # elif message_data.get("type") == "read_receipt":
+                #     # 읽음 확인 처리 (추후 구현)
+                #     pass
                     
             except asyncio.CancelledError:
                 # 서버 종료 시 WebSocket 연결이 취소됨 (SIGINT 강제종료 포함)
@@ -272,19 +279,34 @@ async def websocket_endpoint(
                 break
             except json.JSONDecodeError:
                 # 잘못된 JSON 형식
+                error_count += 1
+                # print(f"❌ 잘못된 JSON 형식: {user_context.get('user_name', 'Unknown')} (에러 횟수: {error_count})")
                 await manager.send_personal_message(websocket, {
                     "type": "error",
                     "message": "잘못된 메시지 형식입니다.",
                     "timestamp": get_current_datetime().isoformat()
                 })
+                
+                # 에러 횟수가 최대 허용 횟수를 초과하면 연결 해제
+                if error_count >= max_errors:
+                    print(f"🚫 최대 에러 횟수 초과로 연결 해제: {user_context.get('user_name', 'Unknown')}")
+                    await websocket.close(code=1007, reason="Too many invalid messages")
+                    break
             except Exception as e:
                 # 기타 오류 처리
-                print(f"❌ 메시지 처리 중 오류: {e}")
+                error_count += 1
+                # print(f"❌ 메시지 처리 중 오류: {e} (사용자: {user_context.get('user_name', 'Unknown')}, 에러 횟수: {error_count})")
                 await manager.send_personal_message(websocket, {
                     "type": "error",
                     "message": f"메시지 처리 중 오류가 발생했습니다: {str(e)}",
                     "timestamp": get_current_datetime().isoformat()
                 })
+                
+                # 에러 횟수가 최대 허용 횟수를 초과하거나 심각한 오류인 경우 연결 해제
+                if error_count >= max_errors or isinstance(e, (ValueError, TypeError, AttributeError)):
+                    print(f"🚫 최대 에러 횟수 초과 또는 심각한 오류로 연결 해제: {user_context.get('user_name', 'Unknown')}")
+                    await websocket.close(code=1011, reason="Internal error")
+                    break
                 
     except WebSocketDisconnect:
         # WebSocket 연결 해제 처리
