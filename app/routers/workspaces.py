@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.db.session import get_db
 from app.models.models import User, Workspace, WorkspaceMember, WorkspaceJoinRequest, Channel, Role, InviteCode, ChannelMember
-from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse
+from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRequest, WorkspaceCreateRequest, WorkspaceCreateResponse, WorkspaceRejectRequest
 from app.schemas.channel import ChannelResponse
 from app.core.utils import get_current_user_with_context
 from app.core.business_utils import create_workspace_with_admin, get_workspace_join_requests_for_admin, get_user_workspaces_with_member_count
@@ -47,6 +47,9 @@ class WorkspaceSelectResponse(BaseModel):
     is_workspace_admin: bool
     message: str
 
+class WorkspaceKickRequest(BaseModel):
+    workspace_name: str
+    user_id: int  # 추방 대상
 
 @router.post("/create")
 async def create_workspace(
@@ -348,3 +351,101 @@ async def select_workspace(
         "is_workspace_admin": is_admin,
         "message": f'"{name}" 워크스페이스에 입장했습니다.'
     }
+
+@router.post("/reject")
+async def reject_workspace_join(
+    reject_data: WorkspaceRejectRequest,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    # 가입 요청 찾기
+    result = await db.execute(select(WorkspaceJoinRequest).where(
+        WorkspaceJoinRequest.id == reject_data.request_id,
+        WorkspaceJoinRequest.status == "pending"
+    ))
+    join_request = result.scalars().first()
+    if not join_request:
+        raise HTTPException(status_code=404, detail="대기 중인 가입 요청이 없습니다.")
+
+    # 요청한 사용자 정보 확인
+    result = await db.execute(select(User).where(User.id == join_request.user_id))
+    request_user = result.scalars().first()
+    if not request_user or request_user.name != reject_data.user_name:
+        raise HTTPException(status_code=400, detail="요청 사용자 정보가 일치하지 않습니다.")
+
+    # 초대 코드 조회 → 워크스페이스 확인
+    result = await db.execute(select(InviteCode).where(InviteCode.id == join_request.invite_code_id))
+    invite_code = result.scalars().first()
+    if not invite_code:
+        raise HTTPException(status_code=404, detail="초대 코드가 유효하지 않습니다.")
+
+    # 현재 유저가 워크스페이스 관리자 권한인지 확인
+    result = await db.execute(select(WorkspaceMember).where(
+        WorkspaceMember.user_id == user_context["user_id"],
+        WorkspaceMember.workspace_id == invite_code.workspace_id,
+        WorkspaceMember.is_workspace_admin == True
+    ))
+    membership = result.scalars().first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="관리자만 거부할 수 있습니다.")
+
+    # 상태 거부로 변경
+    join_request.status = "rejected"
+    join_request.processed_at = datetime.utcnow()
+    db.add(join_request)
+
+    await db.commit()
+    return {"message": "가입 요청이 거부되었습니다."}
+
+@router.post("/kick")
+async def kick_workspace_member(
+    request_data: WorkspaceKickRequest,
+    user_context: dict = Depends(get_current_user_with_context),
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. 워크스페이스 조회
+    result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
+    workspace = result.scalars().first()
+    if not workspace:
+        raise HTTPException(status_code=404, detail="해당 워크스페이스를 찾을 수 없습니다.")
+
+    # 2. 관리자 권한 확인
+    result = await db.execute(select(WorkspaceMember).where(
+        WorkspaceMember.user_id == user_context["user_id"],
+        WorkspaceMember.workspace_id == workspace.id,
+        WorkspaceMember.is_workspace_admin == True
+    ))
+    admin = result.scalars().first()
+    if not admin:
+        raise HTTPException(status_code=403, detail="관리자만 멤버를 추방할 수 있습니다.")
+
+    # 3. 추방 대상 확인
+    result = await db.execute(select(WorkspaceMember).where(
+        WorkspaceMember.user_id == request_data.user_id,
+        WorkspaceMember.workspace_id == workspace.id
+    ))
+    target_member = result.scalars().first()
+    if not target_member:
+        raise HTTPException(status_code=404, detail="추방 대상 사용자는 워크스페이스의 멤버가 아닙니다.")
+
+    # 4. 자기 자신 추방 방지
+    if request_data.user_id == user_context["user_id"]:
+        raise HTTPException(status_code=400, detail="자기 자신은 추방할 수 없습니다.")
+
+    # ✅ 5. 채널 멤버에서 해당 사용자 전부 삭제
+    await db.execute(
+        ChannelMember.__table__.delete().where(
+            ChannelMember.user_id == request_data.user_id,
+            ChannelMember.channel_id.in_(
+                select(Channel.id).where(Channel.workspace_id == workspace.id)
+            )
+        )
+    )
+
+    # ✅ 6. 워크스페이스 멤버 삭제
+    await db.delete(target_member)
+
+    # 7. 커밋
+    await db.commit()
+
+    return {"message": "해당 사용자를 워크스페이스 및 채널에서 추방했습니다."}
