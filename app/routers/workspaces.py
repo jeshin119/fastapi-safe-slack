@@ -7,7 +7,7 @@ from app.schemas.workspace import WorkspaceJoinRequestCreate, WorkspaceApproveRe
 from app.schemas.channel import ChannelResponse
 from app.core.utils import get_current_user_with_context
 from app.core.business_utils import create_workspace_with_admin, get_workspace_join_requests_for_admin, get_user_workspaces_with_member_count
-from datetime import datetime
+from datetime import datetime, date
 from typing import List
 from app.models.workspace import RequestStatus
 from pydantic import BaseModel
@@ -328,7 +328,9 @@ async def select_workspace(
     result = await db.execute(
         select(
             Workspace.name,
-            WorkspaceMember.is_workspace_admin
+            WorkspaceMember.is_workspace_admin,
+            WorkspaceMember.is_contractor,
+            WorkspaceMember.end_date
         )
         .join(WorkspaceMember, Workspace.id == WorkspaceMember.workspace_id)
         .where(
@@ -344,7 +346,14 @@ async def select_workspace(
             detail="해당 워크스페이스에 접근할 수 없습니다."
         )
 
-    name, is_admin = data
+    name, is_admin, is_contractor, end_date = data
+
+    # ✅ 파견자 + 만료일 검사
+    if is_contractor and end_date and end_date < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"해당 워크스페이스의 파견 기간이 {end_date.strftime('%Y-%m-%d')}에 만료되어 입장할 수 없습니다."
+        )
 
     return {
         "workspace_name": name,
