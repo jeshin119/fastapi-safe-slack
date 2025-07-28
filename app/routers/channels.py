@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import and_
 from app.db.session import get_db
 from app.models.models import User, Channel, ChannelMember, WorkspaceMember, Workspace, Role
 from app.schemas.channel import ChannelCreate, ChannelResponse, ChannelJoinRequestResponse, ChannelJoinRequest, ChannelApproveRequest
@@ -66,7 +67,7 @@ async def create_channel(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    result = await create_channel_with_creator(db, channel_data.workspace_name, channel_data.channel_name, user_context["user_id"])
+    result = await create_channel_with_creator(db, channel_data.workspace_name, channel_data.channel_name, user_context["user_id"], channel_data.is_public)
     return result
 
 @router.post("/list")
@@ -254,22 +255,19 @@ async def get_channel_join_requests(
     result = await db.execute(
         select(ChannelMember, User, WorkspaceMember, Role, Channel)
         .join(User, ChannelMember.user_id == User.id)
-        .join(WorkspaceMember, User.id == WorkspaceMember.user_id)
+        .join(WorkspaceMember, and_(
+            User.id == WorkspaceMember.user_id,
+            WorkspaceMember.workspace_id == workspace.id
+        ))
         .join(Role, WorkspaceMember.role_id == Role.id)
         .join(Channel, ChannelMember.channel_id == Channel.id)
         .where(
             Channel.workspace_id == workspace.id,
-            ChannelMember.status == RequestStatus.PENDING
+            ChannelMember.status == RequestStatus.PENDING,
+            Channel.created_by == user_context["user_id"]
         )
     )
     requests_data = result.all()
-    
-    # 현재 사용자가 관리자인 채널들만 필터링
-    admin_channels = []
-    for member, user, workspace_member, role, channel in requests_data:
-        # 현재 사용자가 이 채널의 생성자인지 확인
-        if channel.created_by == user_context["user_id"]:
-            admin_channels.append((member, user, role, channel))
     
     return [
         {
@@ -280,7 +278,7 @@ async def get_channel_join_requests(
             "status": member.status,
             "channel_name": channel.name
         }
-        for member, user, role, channel in admin_channels
+        for member, user, workspace_member, role, channel in requests_data
     ]
 
 @router.post("/approve")
