@@ -3,117 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>관리자 페이지 - 회원 관리 (승인 모달 개선)</title>
+    <title>관리자 페이지 - 회원 관리</title>
     
     <!-- CSS 파일들 임포트 -->
     <link rel="stylesheet" href="/static/css/common.css">
     <link rel="stylesheet" href="/static/css/admin-members.css">
     
-    <style>
-        /* 승인 모달 전용 스타일 추가 */
-        .approval-modal {
-            width: 90%;
-            max-width: 520px;
-        }
-        
-        .applicant-info {
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 24px;
-        }
-        
-        .applicant-info > div {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            color: #374151;
-        }
-        
-        .applicant-info > div:last-child {
-            margin-bottom: 0;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 8px;
-        }
-        
-        .form-label .required {
-            color: #ef4444;
-        }
-        
-        .radio-group {
-            display: flex;
-            gap: 16px;
-            margin-top: 8px;
-        }
-        
-        .radio-group label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 14px;
-            color: #374151;
-            cursor: pointer;
-        }
-        
-        .radio-group input[type="radio"] {
-            margin: 0;
-        }
-        
-        .date-inputs {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        
-        .date-inputs select {
-            padding: 8px 12px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
-            min-width: 70px;
-        }
-        
-        .date-inputs select:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-        }
-        
-        .expires-section {
-            background: #fef3c7;
-            border: 2px solid #fbbf24;
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 12px;
-        }
-        
-        .role-select {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
-        }
-        
-        .role-select:focus {
-            outline: none;
-            border-color: #0ea5e9;
-            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
-        }
-    </style>
 </head>
 <body>
     <!-- 배경 장식 -->
@@ -135,42 +30,40 @@
             <div class="workspace-icon">🚀</div>
             <div class="workspace-details">
                 <div class="workspace-name">스타트업팀</div>
-                <div class="workspace-meta">총 24명의 멤버 • 3명 승인 대기 중</div>
+                <div class="workspace-meta">데이터 로딩 중...</div>
             </div>
         </div>
 
         <!-- 통계 섹션 -->
         <div class="stats-section">
-            <div class="section-title">
-                📊 멤버 현황
-            </div>
+            <div class="section-title">📊 멤버 현황</div>
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">👥</div>
-                    <div class="stat-number">24</div>
+                    <div class="stat-number">-</div>
                     <div class="stat-label">전체 멤버</div>
-                    <div class="stat-change positive">+3 이번 주</div>
+                    <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">⏳</div>
-                    <div class="stat-number">3</div>
+                    <div class="stat-number">-</div>
                     <div class="stat-label">승인 대기</div>
-                    <div class="stat-change neutral">새 요청</div>
+                    <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">✅</div>
-                    <div class="stat-number">21</div>
+                    <div class="stat-number">-</div>
                     <div class="stat-label">활성 멤버</div>
-                    <div class="stat-change positive">87.5%</div>
+                    <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">🚫</div>
-                    <div class="stat-number">0</div>
+                    <div class="stat-number">-</div>
                     <div class="stat-label">정지된 멤버</div>
-                    <div class="stat-change neutral">변화 없음</div>
+                    <div class="stat-change neutral">로딩 중</div>
                 </div>
             </div>
         </div>
@@ -180,7 +73,6 @@
             <div class="tab-buttons">
                 <button class="tab-button active" onclick="switchTab('pending')" id="pending-tab">
                     승인 대기
-                    <span class="tab-badge">3</span>
                 </button>
                 <button class="tab-button" onclick="switchTab('active')" id="active-tab">
                     활성 멤버
@@ -207,75 +99,9 @@
                 </div>
 
                 <div class="members-grid" id="pending-list">
-                    <!-- 테스트용 승인 대기 멤버 -->
-                    <div class="member-card" data-member-id="1">
-                        <div class="member-header">
-                            <div class="member-avatar">김</div>
-                            <div class="member-info">
-                                <div class="member-name">김신입</div>
-                                <div class="member-email">newbie@example.com</div>
-                                <div class="member-status">
-                                    <span class="status-badge status-pending">⏳ 승인 대기</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="member-meta">
-                            <div class="meta-row">
-                                <span class="meta-label">신청 직급</span>
-                                <span class="meta-value">🏷️ 사원</span>
-                            </div>
-                            <div class="meta-row">
-                                <span class="meta-label">요청일</span>
-                                <span class="meta-value">📅 2024-01-15</span>
-                            </div>
-                            <div class="meta-row">
-                                <span class="meta-label">초대 코드</span>
-                                <span class="meta-value">🔗 ABC123</span>
-                            </div>
-                        </div>
-                        <div class="member-actions">
-                            <button class="action-btn action-approve" onclick="approveMember(1, '김신입', 'newbie@example.com', '사원', 'ABC123')">
-                                ✅ 승인
-                            </button>
-                            <button class="action-btn action-reject" onclick="rejectMember(1, '김신입')">
-                                ❌ 거부
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="member-card" data-member-id="2">
-                        <div class="member-header">
-                            <div class="member-avatar">이</div>
-                            <div class="member-info">
-                                <div class="member-name">이파견</div>
-                                <div class="member-email">contractor@example.com</div>
-                                <div class="member-status">
-                                    <span class="status-badge status-pending">⏳ 승인 대기</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="member-meta">
-                            <div class="meta-row">
-                                <span class="meta-label">신청 직급</span>
-                                <span class="meta-value">🏷️ 대리</span>
-                            </div>
-                            <div class="meta-row">
-                                <span class="meta-label">요청일</span>
-                                <span class="meta-value">📅 2024-01-16</span>
-                            </div>
-                            <div class="meta-row">
-                                <span class="meta-label">초대 코드</span>
-                                <span class="meta-value">🔗 DEF456</span>
-                            </div>
-                        </div>
-                        <div class="member-actions">
-                            <button class="action-btn action-approve" onclick="approveMember(2, '이파견', 'contractor@example.com', '대리', 'DEF456')">
-                                ✅ 승인
-                            </button>
-                            <button class="action-btn action-reject" onclick="rejectMember(2, '이파견')">
-                                ❌ 거부
-                            </button>
-                        </div>
+                    <div class="loading-state">
+                        <div class="loading-spinner-large"></div>
+                        <div>승인 대기 멤버를 불러오고 있습니다...</div>
                     </div>
                 </div>
             </div>
@@ -320,7 +146,7 @@
         </div>
     </div>
 
-    <!-- 승인 모달 (개선된 버전) -->
+    <!-- 승인 모달 -->
     <div class="modal-overlay" id="approval-modal">
         <div class="modal approval-modal">
             <div class="modal-header">
@@ -332,16 +158,16 @@
             <!-- 신청자 정보 -->
             <div class="applicant-info" id="applicant-info">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span><strong>• 이름:</strong> <span id="applicant-name">김신입</span></span>
+                    <span><strong>• 이름:</strong> <span id="applicant-name">-</span></span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span><strong>• 이메일:</strong> <span id="applicant-email">newbie@example.com</span></span>
+                    <span><strong>• 이메일:</strong> <span id="applicant-email">-</span></span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span><strong>• 신청 직급:</strong> <span id="applicant-role">사원</span></span>
+                    <span><strong>• 신청 직급:</strong> <span id="applicant-role">-</span></span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <span><strong>• 초대 코드:</strong> <span id="applicant-code">ABC123</span></span>
+                    <span><strong>• 초대 코드:</strong> <span id="applicant-code">-</span></span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <span><strong>• 파견직:</strong></span>
@@ -356,7 +182,7 @@
                         </label>
                     </div>
                 </div>
-                <!-- 만료일 설정 (파견직 Yes 선택 시만 표시) -->
+                <!-- 만료일 설정 -->
                 <div id="expires-section" style="display: none; margin-top: 8px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span><strong>• 만료일:</strong></span>
@@ -455,7 +281,7 @@
         </div>
     </div>
 
-    <!-- 기존 확인 모달 -->
+    <!-- 확인 모달 -->
     <div class="modal-overlay" id="confirm-modal">
         <div class="modal">
             <div class="modal-header">
@@ -474,83 +300,219 @@
     </div>
 
     <script>
-        // ============================
         // 전역 변수
-        // ============================
         const API_BASE_URL = 'http://localhost:8000';
         let currentAction = null;
         let targetMember = null;
         let approvalMember = null;
 
-        // ============================
-        // 초기화
-        // ============================
-        document.addEventListener('DOMContentLoaded', function() {
-            setupContractorToggle();
-            setupModalClose();
-        });
-
-        // ============================
-        // 파견직 토글 설정
-        // ============================
-        function setupContractorToggle() {
-            const contractorRadios = document.querySelectorAll('input[name="is_contractor"]');
-            const expiresSection = document.getElementById('expires-section');
+        // API에서 받은 실제 데이터로 통계 업데이트
+        function updateStatisticsFromAPI(stats) {
+            // 워크스페이스 메타 정보 업데이트
+            const workspaceMeta = document.querySelector('.workspace-meta');
+            if (workspaceMeta) {
+                workspaceMeta.textContent = `총 ${stats.totalMembers}명의 멤버 • ${stats.pendingCount}명 승인 대기 중`;
+            }
             
-            contractorRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    if (this.value === 'true') {
-                        expiresSection.style.display = 'block';
-                        // 필수 입력으로 설정
-                        document.getElementById('expire-year').required = true;
-                        document.getElementById('expire-month').required = true;
-                        document.getElementById('expire-day').required = true;
-                    } else {
-                        expiresSection.style.display = 'none';
-                        // 필수 해제
-                        document.getElementById('expire-year').required = false;
-                        document.getElementById('expire-month').required = false;
-                        document.getElementById('expire-day').required = false;
-                        // 값 초기화
-                        document.getElementById('expire-year').value = '';
-                        document.getElementById('expire-month').value = '';
-                        document.getElementById('expire-day').value = '';
-                    }
-                });
+            // 통계 카드들 업데이트
+            const statNumbers = document.querySelectorAll('.stat-number');
+            const statChanges = document.querySelectorAll('.stat-change');
+            
+            if (statNumbers[0]) statNumbers[0].textContent = stats.totalMembers;
+            if (statNumbers[1]) statNumbers[1].textContent = stats.pendingCount;
+            if (statNumbers[2]) statNumbers[2].textContent = stats.activeMembers;
+            if (statNumbers[3]) statNumbers[3].textContent = stats.suspendedMembers;
+            
+            // 변화량 업데이트
+            if (statChanges[0]) {
+                statChanges[0].textContent = stats.weeklyChange > 0 ? `+${stats.weeklyChange} 이번 주` : '변화 없음';
+                statChanges[0].className = `stat-change ${stats.weeklyChange > 0 ? 'positive' : 'neutral'}`;
+            }
+            if (statChanges[1]) {
+                statChanges[1].textContent = stats.pendingCount > 0 ? '새 요청' : '대기 없음';
+                statChanges[1].className = 'stat-change neutral';
+            }
+            if (statChanges[2]) {
+                const activeRate = stats.totalMembers > 0 ? ((stats.activeMembers / stats.totalMembers) * 100).toFixed(1) : 0;
+                statChanges[2].textContent = `${activeRate}%`;
+                statChanges[2].className = `stat-change ${activeRate > 80 ? 'positive' : 'neutral'}`;
+            }
+            if (statChanges[3]) {
+                statChanges[3].textContent = '변화 없음';
+                statChanges[3].className = 'stat-change neutral';
+            }
+            
+            // 승인 대기 탭 배지 업데이트
+            const pendingTab = document.getElementById('pending-tab');
+            const existingBadge = pendingTab.querySelector('.tab-badge');
+            
+            if (stats.pendingCount > 0) {
+                if (!existingBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'tab-badge';
+                    badge.textContent = stats.pendingCount;
+                    pendingTab.appendChild(badge);
+                } else {
+                    existingBadge.textContent = stats.pendingCount;
+                }
+            } else if (existingBadge) {
+                existingBadge.remove();
+            }
+        }
+
+        // API에서 받은 승인 대기 멤버들로 목록 업데이트
+        function updatePendingMembersFromAPI(members) {
+            const pendingList = document.getElementById('pending-list');
+            
+            if (members.length === 0) {
+                pendingList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⏳</div>
+                        <div class="empty-title">승인 대기 중인 멤버가 없습니다</div>
+                        <div class="empty-description">새로운 가입 요청이 있으면 여기에 표시됩니다.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            pendingList.innerHTML = '';
+            
+            members.forEach(member => {
+                const memberCard = createMemberCard(member);
+                pendingList.appendChild(memberCard);
             });
         }
 
-        // ============================
-        // 승인 모달 관리
-        // ============================
-        function approveMember(memberId, memberName, memberEmail, memberRole, inviteCode) {
+        // 멤버 카드 생성
+        function createMemberCard(member) {
+            const card = document.createElement('div');
+            card.className = 'member-card';
+            card.setAttribute('data-member-id', member.request_id || member.id);
+            
+            const firstChar = member.user_name ? member.user_name.charAt(0) : member.name.charAt(0);
+            const requestDate = new Date(member.requested_at || member.created_at).toLocaleDateString('ko-KR');
+            
+            card.innerHTML = `
+                <div class="member-header">
+                    <div class="member-avatar">${firstChar}</div>
+                    <div class="member-info">
+                        <div class="member-name">${member.user_name || member.name}</div>
+                        <div class="member-email">${member.user_email || member.email}</div>
+                        <div class="member-status">
+                            <span class="status-badge status-pending">⏳ 승인 대기</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="member-meta">
+                    <div class="meta-row">
+                        <span class="meta-label">신청 직급</span>
+                        <span class="meta-value">🏷️ ${member.role_name || member.requested_role}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">요청일</span>
+                        <span class="meta-value">📅 ${requestDate}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">파견직</span>
+                        <span class="meta-value">${member.is_contractor ? '✅ Yes' : '❌ No'}</span>
+                    </div>
+                </div>
+                <div class="member-actions">
+                    <button class="action-btn action-approve" onclick="approveMember(${member.request_id || member.id}, '${member.user_name || member.name}', '${member.user_email || member.email}', '${member.role_name || member.requested_role}')">
+                        ✅ 승인
+                    </button>
+                    <button class="action-btn action-reject" onclick="rejectMember(${member.request_id || member.id}, '${member.user_name || member.name}')">
+                        ❌ 거부
+                    </button>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // 초기 데이터 로드 - 엔드포인트 수정됨!
+        async function loadInitialData() {
+            try {
+                console.log('서버에서 데이터를 불러오는 중...');
+                
+                const token = localStorage.getItem('access_token');
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                };
+                
+                // 가입 요청 목록 조회 (POST 방식으로 변경)
+                const pendingResponse = await fetch(`${API_BASE_URL}/workspaces/join-requests-list`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({
+                        "workspace_name": "오픈AI"  // 실제 워크스페이스 이름으로 변경 필요
+                    })
+                });
+                
+                // 멤버 목록 조회 (POST 방식으로 변경)
+                const membersResponse = await fetch(`${API_BASE_URL}/workspaces/members`, {
+                    method: 'POST', 
+                    headers: headers,
+                    body: JSON.stringify({
+                        "workspace_name": "오픈AI"  // 실제 워크스페이스 이름으로 변경 필요
+                    })
+                });
+                
+                const pendingData = await pendingResponse.json();
+                const membersData = await membersResponse.json();
+                
+                // 통계 계산
+                const stats = {
+                    totalMembers: Array.isArray(membersData) ? membersData.length : 0,
+                    pendingCount: Array.isArray(pendingData) ? pendingData.length : 0,
+                    activeMembers: Array.isArray(membersData) ? membersData.length : 0,
+                    suspendedMembers: 0,
+                    weeklyChange: 0
+                };
+                
+                updateStatisticsFromAPI(stats);
+                updatePendingMembersFromAPI(Array.isArray(pendingData) ? pendingData : []);
+                
+                console.log('초기 데이터 로드 완료');
+                
+            } catch (error) {
+                console.error('데이터 로드 실패:', error);
+                showErrorState();
+            }
+        }
+
+        // 탭 전환
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-content`).classList.add('active');
+        }
+
+        // 승인 모달
+        function approveMember(memberId, memberName, memberEmail, memberRole) {
             approvalMember = { 
                 id: memberId, 
                 name: memberName, 
                 email: memberEmail, 
-                role: memberRole,
-                inviteCode: inviteCode
+                role: memberRole
             };
             
-            // 신청자 정보 설정
             document.getElementById('applicant-name').textContent = memberName;
             document.getElementById('applicant-email').textContent = memberEmail;
             document.getElementById('applicant-role').textContent = memberRole;
-            document.getElementById('applicant-code').textContent = inviteCode;
-            
-            // 최종 직급을 신청 직급과 같게 기본 설정
+            document.getElementById('applicant-code').textContent = '-';
             document.getElementById('final-role').value = memberRole;
             
-            // 파견직 설정 초기화
             document.querySelector('input[name="is_contractor"][value="false"]').checked = true;
             document.getElementById('expires-section').style.display = 'none';
             
-            // 만료일 초기화
             document.getElementById('expire-year').value = '';
             document.getElementById('expire-month').value = '';
             document.getElementById('expire-day').value = '';
             
-            // 모달 표시
             document.getElementById('approval-modal').style.display = 'flex';
         }
 
@@ -559,6 +521,7 @@
             approvalMember = null;
         }
 
+        // 승인 처리 - 엔드포인트 수정됨!
         async function confirmApproval() {
             if (!approvalMember) return;
 
@@ -588,41 +551,38 @@
             const confirmText = document.getElementById('approval-text');
             const spinner = document.getElementById('approval-spinner');
 
-            // 로딩 상태
             confirmBtn.disabled = true;
             confirmText.textContent = '승인 처리 중...';
             spinner.style.display = 'inline-block';
 
             try {
-                // API 호출 데이터 준비
                 const approvalData = {
-                    status: "approved",
+                    user_name: approvalMember.name,
                     role_name: finalRole,
                     is_contractor: isContractor,
                     expires_at: expiresAt
                 };
 
-                console.log('승인 데이터:', approvalData);
-
-                // 실제 API 호출 (임시로 성공 처리)
                 const result = await approveMemberAPI(approvalMember.id, approvalData);
                 
                 if (result.success) {
                     const contractorText = isContractor ? ` (파견직, ~${year}.${month}.${day})` : ' (정규직)';
                     alert(`✅ ${approvalMember.name}님이 ${finalRole}${contractorText}으로 승인되었습니다!`);
                     
-                    // 해당 멤버 카드 제거
                     const memberCard = document.querySelector(`[data-member-id="${approvalMember.id}"]`);
                     if (memberCard) {
                         memberCard.style.animation = 'fadeOut 0.3s ease-out forwards';
                         setTimeout(() => {
                             memberCard.remove();
+                            
+                            const remainingCards = document.querySelectorAll('#pending-list .member-card');
+                            if (remainingCards.length === 0) {
+                                updatePendingMembersFromAPI([]);
+                            }
                         }, 300);
                     }
                     
-                    // 통계 업데이트
-                    updateStats('approve');
-                    
+                    updateStatsAfterAction('approve');
                     closeApprovalModal();
                 } else {
                     alert(`❌ 승인 실패: ${result.error}`);
@@ -631,60 +591,13 @@
                 console.error('승인 처리 오류:', error);
                 alert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
-                // 로딩 상태 원복
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
                 spinner.style.display = 'none';
             }
         }
 
-        // ============================
-        // API 호출
-        // ============================
-        async function approveMemberAPI(memberId, approvalData) {
-            try {
-                // 실제 API 호출 코드
-                /*
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/admin/requests/${memberId}/approve`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(approvalData)
-                });
-
-                if (response.ok) {
-                    return { success: true };
-                } else {
-                    const data = await response.json();
-                    return { success: false, error: data.detail || '승인에 실패했습니다.' };
-                }
-                */
-                
-                // 임시 성공 처리 (개발용)
-                await new Promise(resolve => setTimeout(resolve, 1000)); // 1초 대기
-                return { success: true };
-                
-            } catch (error) {
-                return { success: false, error: '서버 연결에 실패했습니다.' };
-            }
-        }
-
-        // ============================
-        // 기존 기능들
-        // ============================
-        function switchTab(tabName) {
-            // 탭 버튼 활성화
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`${tabName}-tab`).classList.add('active');
-
-            // 탭 콘텐츠 전환
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            document.getElementById(`${tabName}-content`).classList.add('active');
-        }
-
+        // 거부 모달
         function rejectMember(memberId, memberName) {
             currentAction = 'reject';
             targetMember = { id: memberId, name: memberName };
@@ -718,7 +631,6 @@
             const confirmText = document.getElementById('confirm-text');
             const spinner = document.getElementById('modal-spinner');
 
-            // 로딩 상태
             confirmBtn.disabled = true;
             confirmText.textContent = '처리 중...';
             spinner.style.display = 'inline-block';
@@ -737,18 +649,20 @@
                 if (result.success) {
                     alert(`❌ ${targetMember.name}님의 가입 요청이 거부되었습니다.`);
                     
-                    // 해당 멤버 카드 제거
                     const memberCard = document.querySelector(`[data-member-id="${targetMember.id}"]`);
                     if (memberCard) {
                         memberCard.style.animation = 'fadeOut 0.3s ease-out forwards';
                         setTimeout(() => {
                             memberCard.remove();
+                            
+                            const remainingCards = document.querySelectorAll('#pending-list .member-card');
+                            if (remainingCards.length === 0) {
+                                updatePendingMembersFromAPI([]);
+                            }
                         }, 300);
                     }
                     
-                    // 통계 업데이트
-                    updateStats('reject');
-                    
+                    updateStatsAfterAction('reject');
                     closeModal();
                 } else {
                     alert(`❌ 오류: ${result.error}`);
@@ -756,54 +670,177 @@
             } catch (error) {
                 alert('❌ 처리 중 오류가 발생했습니다.');
             } finally {
-                // 로딩 상태 원복
                 confirmBtn.disabled = false;
                 confirmText.textContent = '거부하기';
                 spinner.style.display = 'none';
             }
         }
 
+        // API 호출 함수들 - 엔드포인트 수정됨!
+        async function approveMemberAPI(memberId, approvalData) {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/workspaces/approve`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "request_id": parseInt(memberId),
+                        "user_name": approvalData.user_name,
+                        "role_name": approvalData.role_name,
+                        "is_contractor": approvalData.is_contractor,
+                        "expires_at": approvalData.expires_at
+                    })
+                });
+
+                if (response.ok) {
+                    return { success: true };
+                } else {
+                    const data = await response.json();
+                    return { success: false, error: data.detail || '승인에 실패했습니다.' };
+                }
+            } catch (error) {
+                return { success: false, error: '서버 연결에 실패했습니다.' };
+            }
+        }
+
         async function rejectMemberAPI(memberId) {
             try {
-                // 임시 성공 처리 (개발용)
-                await new Promise(resolve => setTimeout(resolve, 800));
-                return { success: true };
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/workspaces/reject`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "request_id": parseInt(memberId),
+                        "user_name": "김윤수",  // 실제 사용자명으로 변경 필요
+                        "reason": "기준 구성원 승인 기간 미충족"
+                    })
+                });
+
+                if (response.ok) {
+                    return { success: true };
+                } else {
+                    const data = await response.json();
+                    return { success: false, error: data.detail || '거부에 실패했습니다.' };
+                }
             } catch (error) {
                 return { success: false, error: '거부 처리에 실패했습니다.' };
             }
         }
 
-        // 통계 업데이트
-        function updateStats(action) {
+        // 통계 실시간 업데이트
+        function updateStatsAfterAction(action) {
             if (action === 'approve' || action === 'reject') {
-                // 승인 대기 -1
+                const pendingStatNumber = document.querySelectorAll('.stat-number')[1];
+                const currentPending = parseInt(pendingStatNumber.textContent) - 1;
+                pendingStatNumber.textContent = Math.max(0, currentPending);
+                
                 const pendingBadge = document.querySelector('#pending-tab .tab-badge');
-                const currentPending = parseInt(pendingBadge.textContent) - 1;
-                if (currentPending > 0) {
+                if (currentPending > 0 && pendingBadge) {
                     pendingBadge.textContent = currentPending;
-                } else {
+                } else if (pendingBadge) {
                     pendingBadge.remove();
+                }
+                
+                const workspaceMeta = document.querySelector('.workspace-meta');
+                if (workspaceMeta) {
+                    const totalMembers = parseInt(document.querySelectorAll('.stat-number')[0].textContent);
+                    workspaceMeta.textContent = `총 ${totalMembers}명의 멤버 • ${Math.max(0, currentPending)}명 승인 대기 중`;
+                }
+                
+                if (action === 'approve') {
+                    const activeStatNumber = document.querySelectorAll('.stat-number')[2];
+                    const currentActive = parseInt(activeStatNumber.textContent) + 1;
+                    activeStatNumber.textContent = currentActive;
+                    
+                    const totalStatNumber = document.querySelectorAll('.stat-number')[0];
+                    const currentTotal = parseInt(totalStatNumber.textContent) + 1;
+                    totalStatNumber.textContent = currentTotal;
+                    
+                    const activeRate = ((currentActive / currentTotal) * 100).toFixed(1);
+                    const activeChangeElement = document.querySelectorAll('.stat-change')[2];
+                    activeChangeElement.textContent = `${activeRate}%`;
+                    activeChangeElement.className = `stat-change ${activeRate > 80 ? 'positive' : 'neutral'}`;
                 }
             }
         }
 
+        // 에러 상태 표시
+        function showErrorState() {
+            const pendingList = document.getElementById('pending-list');
+            pendingList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <div class="empty-title">데이터를 불러올 수 없습니다</div>
+                    <div class="empty-description">
+                        서버 연결에 문제가 있습니다.<br>
+                        <button class="btn btn-primary" onclick="loadInitialData()" style="margin-top: 12px;">
+                            🔄 다시 시도
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // 통계를 에러 상태로 설정
+            const statNumbers = document.querySelectorAll('.stat-number');
+            const statChanges = document.querySelectorAll('.stat-change');
+            
+            statNumbers.forEach(stat => stat.textContent = '오류');
+            statChanges.forEach(change => {
+                change.textContent = '연결 실패';
+                change.className = 'stat-change neutral';
+            });
+            
+            const workspaceMeta = document.querySelector('.workspace-meta');
+            if (workspaceMeta) {
+                workspaceMeta.textContent = '데이터 연결 실패 - 새로고침 후 다시 시도하세요';
+            }
+        }
+
+        // 파견직 토글 설정
+        function setupContractorToggle() {
+            const contractorRadios = document.querySelectorAll('input[name="is_contractor"]');
+            const expiresSection = document.getElementById('expires-section');
+            
+            contractorRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    if (this.value === 'true') {
+                        expiresSection.style.display = 'block';
+                        document.getElementById('expire-year').required = true;
+                        document.getElementById('expire-month').required = true;
+                        document.getElementById('expire-day').required = true;
+                    } else {
+                        expiresSection.style.display = 'none';
+                        document.getElementById('expire-year').required = false;
+                        document.getElementById('expire-month').required = false;
+                        document.getElementById('expire-day').required = false;
+                        document.getElementById('expire-year').value = '';
+                        document.getElementById('expire-month').value = '';
+                        document.getElementById('expire-day').value = '';
+                    }
+                });
+            });
+        }
+
         // 모달 외부 클릭 및 ESC 키 처리
         function setupModalClose() {
-            // 승인 모달 외부 클릭시 닫기
             document.getElementById('approval-modal').addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeApprovalModal();
                 }
             });
 
-            // 확인 모달 외부 클릭시 닫기
             document.getElementById('confirm-modal').addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeModal();
                 }
             });
 
-            // ESC 키로 모달 닫기
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     closeApprovalModal();
@@ -831,49 +868,14 @@
             alert('📤 멤버 목록 내보내기 기능은 개발 중입니다.');
         }
 
-        // 애니메이션 추가
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes fadeOut {
-                from {
-                    opacity: 1;
-                    transform: scale(1);
-                }
-                to {
-                    opacity: 0;
-                    transform: scale(0.9);
-                }
-            }
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('관리자 페이지 초기화 시작...');
             
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `;
-        document.head.appendChild(style);
-
-        // 개발자 도구용 디버깅
-        window.debugAdmin = {
-            switchToTab: (tab) => switchTab(tab),
-            simulateApproval: (memberId) => {
-                const memberCard = document.querySelector(`[data-member-id="${memberId}"]`);
-                if (memberCard) {
-                    memberCard.remove();
-                    updateStats('approve');
-                }
-                console.log(`멤버 ${memberId} 승인이 시뮬레이션되었습니다.`);
-            },
-            openApprovalModal: () => {
-                approveMember(1, '김신입', 'newbie@example.com', '사원', 'ABC123');
-            },
-            testContractorToggle: () => {
-                document.querySelector('input[name="is_contractor"][value="true"]').click();
-                console.log('파견직 토글 테스트 완료');
-            }
-        };
-        
-        console.log('🔧 개발자 도구에서 debugAdmin 객체를 사용하여 테스트할 수 있습니다.');
-        console.log('예: debugAdmin.openApprovalModal(), debugAdmin.testContractorToggle()');
+            setupContractorToggle();
+            setupModalClose();
+            loadInitialData();
+        });
     </script>
 </body>
 </html>
