@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.routers import auth, workspaces, channels, files, chat
-from app.routers import websocket 
 import os
 from pathlib import Path
 
@@ -32,7 +31,6 @@ app.include_router(channels.router, prefix="/channels", tags=["채널"])
 
 app.include_router(files.router, prefix="/channels", tags=["파일"])
 app.include_router(chat.router, tags=["채팅"])
-app.include_router(websocket.router, tags=["WebSocket"])
 
 @app.get("/")
 async def serve_root():

@@ -73,6 +73,46 @@ class ConnectionManager:
                 }
             )
     
+    async def shutdown_all_connections(self):
+        """서버 종료 시 모든 WebSocket 연결 정리"""
+        connections_to_close = list(self.connection_info.keys())
+        
+        for websocket in connections_to_close:
+            try:
+                # 서버 종료 알림 메시지 전송
+                await self.send_personal_message(websocket, {
+                    "type": "server_shutdown",
+                    "message": "서버가 종료됩니다. 잠시 후 다시 연결해주세요.",
+                    "timestamp": get_current_datetime().isoformat()
+                })
+                
+                # 정상 종료 코드로 연결 해제
+                await websocket.close(code=1000, reason="Server shutdown")
+                
+            except Exception as e:
+                print(f"WebSocket 종료 실패: {e}")
+        
+        # 연결 정보 초기화
+        self.active_connections.clear()
+        self.connection_info.clear()
+    
+    def get_connection_count(self) -> int:
+        """현재 활성 연결 수 반환"""
+        return len(self.connection_info)
+    
+    def get_connection_summary(self) -> dict:
+        """연결 상태 요약 반환"""
+        total_connections = len(self.connection_info)
+        workspace_count = len(self.active_connections)
+        channel_count = sum(len(channels) for channels in self.active_connections.values())
+        
+        return {
+            "total_connections": total_connections,
+            "workspace_count": workspace_count,
+            "channel_count": channel_count,
+            "active_workspaces": list(self.active_connections.keys())
+        }
+    
     async def send_personal_message(self, websocket: WebSocket, message: dict):
         try:
             await websocket.send_text(json.dumps(message, ensure_ascii=False))
