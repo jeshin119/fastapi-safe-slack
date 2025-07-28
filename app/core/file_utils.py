@@ -1,5 +1,6 @@
 import os
 import boto3
+import urllib.parse
 from fastapi import UploadFile, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.core.config import settings
@@ -162,10 +163,15 @@ def download_file_from_s3(filename: str) -> StreamingResponse:
         s3_obj = s3.get_object(Bucket=settings.S3_BUCKET_NAME, Key=filename)
         file_stream = s3_obj["Body"]
         
+        # 한글 파일명을 위한 URL 인코딩 처리
+        encoded_filename = urllib.parse.quote(filename)
+        
         return StreamingResponse(
             file_stream,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+            }
         )
         
     except Exception as e:

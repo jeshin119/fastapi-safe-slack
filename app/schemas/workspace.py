@@ -36,6 +36,11 @@ class WorkspaceApproveRequest(BaseModel):
     is_contractor: bool
     expires_at: Optional[datetime] = None
 
+class WorkspaceRejectRequest(BaseModel):
+    request_id: int
+    user_name: str
+    reason: str | None = None  # 선택 사항
+
 class WorkspaceJoinRequestResponse(BaseModel):
     id: int
     user_id: int
