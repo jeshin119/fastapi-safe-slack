@@ -34,7 +34,7 @@
             </div>
             
             <div class="add-channel-button">
-                <button class="add-channel-btn" onclick="location.href='channel-add.html'">
+                <button class="add-channel-btn" onclick="goToChannelAdd()">
                     ➕ 채널 추가
                 </button>
             </div>
@@ -264,6 +264,9 @@
     
         // 인증 오류 처리 함수
         function handleAuthError() {
+            // 웹소켓 연결 안전하게 종료
+            cleanupWebSocketOnNavigation();
+            
             localStorage.removeItem('jwt_token');
             localStorage.removeItem('access_token');
             localStorage.removeItem('current_workspace_name');
@@ -286,43 +289,67 @@
                     return;
                 }
 
-                // 기존 연결이 있으면 먼저 닫기
-                if (websocket) {
-                    websocket.close();
+                // 이미 연결 중이거나 연결된 상태인지 확인
+                if (websocket && (websocket.readyState === WebSocket.CONNECTING || websocket.readyState === WebSocket.OPEN)) {
+                    console.log('WebSocket이 이미 연결 중이거나 연결된 상태입니다.');
+                    return;
                 }
 
-                // chat.py 방식으로 WebSocket URL 구성
-                const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
-                console.log('WebSocket 연결 시도:', wsUrl);
-                
-                websocket = new WebSocket(wsUrl);
-                
-                websocket.onopen = function() {
-                    console.log('✅ WebSocket 연결됨:', currentChannelName);
-                    updateConnectionStatus('online');
-                    reconnectAttempts = 0;
-                };
-    
-                websocket.onmessage = function(event) {
-                    const data = JSON.parse(event.data);
-                    console.log('📨 WebSocket 메시지 수신:', data);
-                    handleWebSocketMessage(data);
-                };
-    
-                websocket.onclose = function(event) {
-                    console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
-                    updateConnectionStatus('offline');
-                    
-                    // 정상적인 종료가 아닌 경우에만 재연결 시도
-                    if (event.code !== 1000) {
-                        attemptReconnect();
+                // 기존 연결이 있으면 안전하게 닫기
+                if (websocket) {
+                    // 연결 상태 확인 후 안전하게 닫기
+                    if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
+                        try {
+                            websocket.close(1000, 'Channel switch');
+                            // 연결 해제 완료 대기
+                            setTimeout(() => {
+                                websocket = null;
+                            }, 100);
+                        } catch (e) {
+                            console.log('기존 WebSocket 연결 닫기 실패:', e);
+                            websocket = null;
+                        }
+                    } else {
+                        websocket = null;
                     }
-                };
-    
-                websocket.onerror = function(error) {
-                    console.error('❌ WebSocket 오류:', error);
-                    updateConnectionStatus('offline');
-                };
+                }
+
+                // 잠시 대기 후 새 연결 시도 (이전 연결이 완전히 닫힐 시간 확보)
+                setTimeout(() => {
+                    // chat.py 방식으로 WebSocket URL 구성
+                    const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
+                    console.log('WebSocket 연결 시도:', wsUrl);
+                    
+                    websocket = new WebSocket(wsUrl);
+                    
+                    websocket.onopen = function() {
+                        console.log('✅ WebSocket 연결됨:', currentChannelName);
+                        updateConnectionStatus('online');
+                        reconnectAttempts = 0;
+                    };
+        
+                    websocket.onmessage = function(event) {
+                        const data = JSON.parse(event.data);
+                        console.log('📨 WebSocket 메시지 수신:', data);
+                        handleWebSocketMessage(data);
+                    };
+        
+                    websocket.onclose = function(event) {
+                        console.log('❌ WebSocket 연결 종료:', event.code, event.reason);
+                        updateConnectionStatus('offline');
+                        
+                        // 정상적인 종료가 아닌 경우에만 재연결 시도
+                        if (event.code !== 1000) {
+                            attemptReconnect();
+                        }
+                    };
+        
+                    websocket.onerror = function(error) {
+                        console.error('❌ WebSocket 오류:', error);
+                        updateConnectionStatus('offline');
+                    };
+                }, 300); // 300ms 대기로 증가
+
             } catch (error) {
                 console.error('WebSocket 연결 실패:', error);
                 updateConnectionStatus('offline');
@@ -330,13 +357,16 @@
         }
     
         function attemptReconnect() {
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName) {
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName && !websocket) {
                 reconnectAttempts++;
                 updateConnectionStatus('reconnecting');
                 setTimeout(() => {
                     console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
                     connectWebSocket();
                 }, 3000 * reconnectAttempts);
+            } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.log('최대 재연결 시도 횟수에 도달했습니다.');
+                updateConnectionStatus('offline');
             }
         }
     
@@ -493,6 +523,8 @@
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
             if (!token) {
                 alert('로그인이 필요합니다.');
+                // 웹소켓 연결 안전하게 종료
+                cleanupWebSocketOnNavigation();
                 window.location.href = '/login.html';
                 return null;
             }
@@ -576,6 +608,8 @@
     
             } catch (error) {
                 console.error('워크스페이스 초기화 실패:', error);
+                // 웹소켓 연결 안전하게 종료
+                cleanupWebSocketOnNavigation();
                 alert('워크스페이스 로딩에 실패했습니다. 워크스페이스 선택 페이지로 돌아갑니다.');
                 window.location.href = '/workspace-select.html';
             } finally {
@@ -590,7 +624,18 @@
                 return;
             }
             
+            // 웹소켓 연결 안전하게 종료
+            cleanupWebSocketOnNavigation();
+            
             window.location.href = `/static/pages/admin/admin-main.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
+        }
+
+        // 채널 추가 페이지 이동
+        function goToChannelAdd() {
+            // 웹소켓 연결 안전하게 종료
+            cleanupWebSocketOnNavigation();
+            
+            window.location.href = 'channel-add.html';
         }
     
         // 채널 목록 로딩
@@ -833,11 +878,8 @@
         // 채널 전환
         async function switchChannel(channelName) {
             try {
-                // 이전 WebSocket 연결 종료
-                if (websocket) {
-                    websocket.close();
-                    websocket = null;
-                }
+                // 이전 WebSocket 연결 안전하게 종료
+                cleanupWebSocketOnNavigation();
                 
                 currentChannelName = channelName;
 
@@ -871,10 +913,10 @@
                 document.getElementById('message-input').placeholder = `# ${channel.name} 채널에 메시지 보내기`;
                 updateChannelContent();
 
-                // 새 채널로 WebSocket 연결
+                // 새 채널로 WebSocket 연결 (더 긴 지연 시간)
                 setTimeout(() => {
                     connectWebSocket();
-                }, 100);
+                }, 300);
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
@@ -1581,12 +1623,51 @@
             }, 5000); // 5초마다 확인
         });
     
+        // 안전한 웹소켓 연결 해제 함수
+        function safeCloseWebSocket() {
+            if (websocket) {
+                if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
+                    try {
+                        websocket.close(1000, 'Page navigation');
+                        console.log('✅ WebSocket 연결 안전하게 종료됨');
+                    } catch (e) {
+                        console.log('WebSocket 연결 종료 실패:', e);
+                    }
+                }
+                websocket = null;
+                // 연결 상태 초기화
+                updateConnectionStatus('offline');
+                reconnectAttempts = 0;
+            }
+        }
+
         // 페이지 언로드 시 WebSocket 연결 해제
         window.addEventListener('beforeunload', function() {
-            if (websocket) {
-                websocket.close();
+            safeCloseWebSocket();
+        });
+
+        // 페이지 가시성 변경 시 WebSocket 연결 관리
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // 페이지가 숨겨질 때 WebSocket 연결 안전하게 종료
+                safeCloseWebSocket();
+            } else {
+                // 페이지가 다시 보일 때 WebSocket 재연결
+                if (currentChannelName && !websocket) {
+                    setTimeout(() => {
+                        connectWebSocket();
+                    }, 500);
+                }
             }
         });
+
+        // 페이지 전환 시 웹소켓 연결 정리
+        function cleanupWebSocketOnNavigation() {
+            console.log('🔄 페이지 전환으로 인한 웹소켓 연결 정리');
+            safeCloseWebSocket();
+            // 재연결 시도 중지
+            reconnectAttempts = MAX_RECONNECT_ATTEMPTS + 1;
+        }
     </script>
 </body>
 </html>

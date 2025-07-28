@@ -290,7 +290,7 @@ async def websocket_endpoint(
                 # 에러 횟수가 최대 허용 횟수를 초과하면 연결 해제
                 if error_count >= max_errors:
                     print(f"🚫 최대 에러 횟수 초과로 연결 해제: {user_context.get('user_name', 'Unknown')}")
-                    await websocket.close(code=1007, reason="Too many invalid messages")
+                    await manager.safe_close_websocket(websocket, code=1007, reason="Too many invalid messages")
                     break
             except Exception as e:
                 # 기타 오류 처리
@@ -305,24 +305,37 @@ async def websocket_endpoint(
                 # 에러 횟수가 최대 허용 횟수를 초과하거나 심각한 오류인 경우 연결 해제
                 if error_count >= max_errors or isinstance(e, (ValueError, TypeError, AttributeError)):
                     print(f"🚫 최대 에러 횟수 초과 또는 심각한 오류로 연결 해제: {user_context.get('user_name', 'Unknown')}")
-                    await websocket.close(code=1011, reason="Internal error")
+                    await manager.safe_close_websocket(websocket, code=1011, reason="Internal error")
                     break
                 
     except WebSocketDisconnect:
         # WebSocket 연결 해제 처리
         print(f"🔌 WebSocket 연결 해제: {user_context.get('user_name', 'Unknown')}")
-        manager.disconnect(websocket)
+        try:
+            await manager.safe_disconnect(websocket)
+        except Exception as e:
+            print(f"❌ WebSocket 연결 해제 중 오류: {e}")
     except asyncio.CancelledError:
         # 서버 종료 시 WebSocket 연결이 취소됨 (SIGINT 강제종료 포함)
         print(f"🔌 WebSocket 연결 취소됨: {user_context.get('user_name', 'Unknown')}")
-        manager.disconnect(websocket)
+        try:
+            await manager.safe_disconnect(websocket)
+        except Exception as e:
+            print(f"❌ WebSocket 연결 취소 중 오류: {e}")
     except Exception as e:
         # 기타 예외 처리
         print(f"❌ WebSocket 오류: {e}")
         try:
-            await websocket.close(code=1011, reason="Internal error")
-        except:
-            pass
+            # 안전한 웹소켓 닫기
+            await manager.safe_close_websocket(websocket, code=1011, reason="Internal error")
+        except Exception as close_error:
+            print(f"❌ WebSocket 강제 종료 실패: {close_error}")
+        finally:
+            # 연결 정보 정리
+            try:
+                await manager.safe_disconnect(websocket)
+            except:
+                pass
     finally:
         # 데이터베이스 세션 정리
         if db:
