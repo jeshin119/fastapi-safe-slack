@@ -63,8 +63,17 @@
         </div>
 
         <style>
+            body {
+            overflow-y: auto; /* 세로 스크롤 허용 */
+        }
+
+        .dashboard-container {
+            height: auto; /* 자동 높이 */
+            min-height: 100vh;
+        }
         .admin-menu-cards {
             display: flex;
+            overflow-y: auto;
             flex-direction: column;
             gap: 20px;
             width: 90%;
