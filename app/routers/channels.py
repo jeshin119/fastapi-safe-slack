@@ -76,7 +76,7 @@ async def get_channels(
     user_context: dict = Depends(get_current_user_with_context),
     db: AsyncSession = Depends(get_db)
 ):
-    # workspace_name으로 workspace_id 찾기
+    # 1. 워크스페이스 조회
     result = await db.execute(select(Workspace).where(Workspace.name == request_data.workspace_name))
     workspace = result.scalars().first()
     if not workspace:
@@ -84,11 +84,45 @@ async def get_channels(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="워크스페이스를 찾을 수 없습니다."
         )
-    
-    # 사용자가 접근 가능한 채널 조회 (public + 가입된 private)
+
     user_id = user_context["user_id"]
-    
-    # 사용자가 멤버인 채널들 조회
+
+    # 2. 사용자가 이미 가입한 채널 ID 목록 조회
+    result = await db.execute(
+        select(Channel.id)
+        .join(ChannelMember, Channel.id == ChannelMember.channel_id)
+        .where(
+            ChannelMember.user_id == user_id,
+            ChannelMember.status == RequestStatus.APPROVED,
+            Channel.workspace_id == workspace.id
+        )
+    )
+    joined_channel_ids = [row[0] for row in result.all()]
+
+    # 3. 아직 가입하지 않은 공개 채널 조회
+    result = await db.execute(
+        select(Channel)
+        .where(
+            Channel.workspace_id == workspace.id,
+            Channel.is_public == True,
+            ~Channel.id.in_(joined_channel_ids)
+        )
+    )
+    public_channels_to_join = result.scalars().all()
+
+    # 4. 해당 공개 채널에 자동 가입 처리
+    for channel in public_channels_to_join:
+        new_member = ChannelMember(
+            user_id=user_id,
+            channel_id=channel.id,
+            status=RequestStatus.APPROVED
+        )
+        db.add(new_member)
+
+    # 5. DB에 저장
+    await db.commit()
+
+    # 6. 모든 가입된 채널을 다시 조회
     result = await db.execute(
         select(Channel)
         .join(ChannelMember, Channel.id == ChannelMember.channel_id)
@@ -98,29 +132,16 @@ async def get_channels(
             Channel.workspace_id == workspace.id
         )
     )
-    member_channels = result.scalars().all()
-    
-    # 공개 채널들 조회 (멤버가 아닌 것들)
-    member_channel_ids = [ch.id for ch in member_channels]
-    result = await db.execute(
-        select(Channel)
-        .where(
-            Channel.workspace_id == workspace.id,
-            Channel.is_public == True,
-            ~Channel.id.in_(member_channel_ids)
-        )
-    )
-    public_channels = result.scalars().all()
-    
-    all_channels = list(member_channels) + list(public_channels)
-    
+    all_joined_channels = result.scalars().all()
+
+    # 7. 반환
     return [
         {
-            "channel_id": channel.id,
-            "name": channel.name,
-            "is_public": channel.is_public
+            "channel_id": ch.id,
+            "name": ch.name,
+            "is_public": ch.is_public
         }
-        for channel in all_channels
+        for ch in all_joined_channels
     ]
 
 @router.delete("/{channel_name}")
