@@ -627,7 +627,14 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = filename;
+                
+                // 한글 파일명을 위한 디코딩 처리
+                try {
+                    a.download = decodeURIComponent(filename);
+                } catch (e) {
+                    a.download = filename;
+                }
+                
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
