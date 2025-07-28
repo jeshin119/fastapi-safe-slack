@@ -167,15 +167,7 @@
                     </div>
                 </div>
 
-                <div class="message-input-container">
-                    <textarea class="message-input" id="file-input-text" placeholder="파일 관련 메시지를 입력하세요..." rows="1" style="display: none;"></textarea>
-                    <div class="input-toolbar">
-                        <div class="input-actions">
-                            <!-- 파일 업로드와 새로고침 버튼 제거 -->
-                        </div>
-                        <button class="send-btn" id="file-send-btn" onclick="triggerFileUpload()" style="display: none;">업로드</button>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -280,7 +272,7 @@
             window.location.href = '/login.html';
         }
     
-        // WebSocket 연결 관리 (chat.py 방식으로 수정)
+        // WebSocket 연결 관리 (안정성 개선)
         function connectWebSocket() {
             try {
                 if (!currentChannelName || !globalData.workspace?.name) {
@@ -294,36 +286,29 @@
                     return;
                 }
 
-                // 이미 연결 중이거나 연결된 상태인지 확인
-                if (websocket && (websocket.readyState === WebSocket.CONNECTING || websocket.readyState === WebSocket.OPEN)) {
-                    console.log('WebSocket이 이미 연결 중이거나 연결된 상태입니다.');
+                // 이미 연결 중이거나 연결된 상태인지 확인 (더 엄격한 체크)
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    console.log('✅ WebSocket이 이미 연결된 상태입니다.');
                     return;
                 }
 
-                // 기존 연결이 있으면 안전하게 닫기
-                if (websocket) {
-                    // 연결 상태 확인 후 안전하게 닫기
-                    if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
-                        try {
-                            websocket.close(1000, 'Channel switch');
-                            // 연결 해제 완료 대기
-                            setTimeout(() => {
-                                websocket = null;
-                            }, 100);
-                        } catch (e) {
-                            console.log('기존 WebSocket 연결 닫기 실패:', e);
-                            websocket = null;
-                        }
-                    } else {
+                // 기존 연결이 있으면 안전하게 닫기 (더 안전한 방식)
+                if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                    try {
+                        console.log('🔄 기존 WebSocket 연결 정리 중...');
+                        websocket.close(1000, 'New connection');
+                        websocket = null;
+                    } catch (e) {
+                        console.log('기존 WebSocket 연결 닫기 실패:', e);
                         websocket = null;
                     }
                 }
 
-                // 잠시 대기 후 새 연결 시도 (이전 연결이 완전히 닫힐 시간 확보)
+                // 잠시 대기 후 새 연결 시도
                 setTimeout(() => {
                     // chat.py 방식으로 WebSocket URL 구성
                     const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
-                    console.log('WebSocket 연결 시도:', wsUrl);
+                    console.log('🔄 WebSocket 연결 시도:', wsUrl);
                     
                     websocket = new WebSocket(wsUrl);
                     
@@ -334,9 +319,13 @@
                     };
         
                     websocket.onmessage = function(event) {
-                        const data = JSON.parse(event.data);
-                        console.log('📨 WebSocket 메시지 수신:', data);
-                        handleWebSocketMessage(data);
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('📨 WebSocket 메시지 수신:', data);
+                            handleWebSocketMessage(data);
+                        } catch (e) {
+                            console.error('WebSocket 메시지 파싱 오류:', e);
+                        }
                     };
         
                     websocket.onclose = function(event) {
@@ -344,8 +333,12 @@
                         updateConnectionStatus('offline');
                         
                         // 정상적인 종료가 아닌 경우에만 재연결 시도
-                        if (event.code !== 1000) {
+                        if (event.code !== 1000 && event.code !== 1001) {
+                            console.log('🔄 비정상 종료로 인한 재연결 시도');
                             attemptReconnect();
+                        } else {
+                            console.log('✅ 정상적인 WebSocket 종료');
+                            reconnectAttempts = 0;
                         }
                     };
         
@@ -353,7 +346,7 @@
                         console.error('❌ WebSocket 오류:', error);
                         updateConnectionStatus('offline');
                     };
-                }, 300); // 300ms 대기로 증가
+                }, 500); // 500ms 대기로 증가
 
             } catch (error) {
                 console.error('WebSocket 연결 실패:', error);
@@ -362,13 +355,13 @@
         }
     
         function attemptReconnect() {
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName && !websocket) {
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
                 reconnectAttempts++;
                 updateConnectionStatus('reconnecting');
                 setTimeout(() => {
                     console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
                     connectWebSocket();
-                }, 3000 * reconnectAttempts);
+                }, 2000 * reconnectAttempts); // 더 짧은 대기 시간
             } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
                 console.log('최대 재연결 시도 횟수에 도달했습니다.');
                 updateConnectionStatus('offline');
@@ -404,6 +397,14 @@
                     globalData.messages[currentChannelName].push(newMessage);
                     renderMessages();
                     updateChannelContent();
+                    
+                    // 새 메시지가 왔을 때 스크롤을 맨 아래로 이동 (더 확실하게)
+                    setTimeout(() => {
+                        const messagesContainer = document.getElementById('chat-messages');
+                        if (messagesContainer) {
+                            forceScrollToBottom(messagesContainer);
+                        }
+                    }, 100);
                     break;
                     
                 case 'message_history':
@@ -423,6 +424,14 @@
                         renderMessages();
                         updateChannelContent();
                         setupScrollHandler(); // 스크롤 핸들러 설정
+                        
+                        // 메시지 히스토리 로드 후 스크롤을 맨 아래로 이동 (더 확실하게)
+                        setTimeout(() => {
+                            const messagesContainer = document.getElementById('chat-messages');
+                            if (messagesContainer) {
+                                forceScrollToBottom(messagesContainer);
+                            }
+                        }, 200);
                     }
                     break;
                     
@@ -498,7 +507,7 @@
             }
         }
     
-        // 연결 상태 업데이트
+        // 연결 상태 업데이트 (개선됨)
         function updateConnectionStatus(status) {
             // 연결 상태 표시 요소가 있다면 업데이트
             const statusElement = document.getElementById('connection-status');
@@ -521,6 +530,12 @@
                         break;
                 }
             }
+            
+            // 전송 버튼 상태 업데이트
+            updateSendButton();
+            
+            // 연결 상태를 콘솔에 로그
+            console.log(`🔗 연결 상태 변경: ${status}`);
         }
     
         // JWT 토큰에서 사용자 정보 추출
@@ -924,11 +939,27 @@
             }
         }
     
-        // 채널 전환
+        // 채널 전환 (안정성 개선)
         async function switchChannel(channelName) {
             try {
+                // 같은 채널로의 전환은 무시
+                if (currentChannelName === channelName) {
+                    console.log('🔄 같은 채널로의 전환 무시:', channelName);
+                    return;
+                }
+
+                console.log('🔄 채널 전환:', currentChannelName, '→', channelName);
+                
                 // 이전 WebSocket 연결 안전하게 종료
-                cleanupWebSocketOnNavigation();
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                    try {
+                        websocket.close(1000, 'Channel switch');
+                        websocket = null;
+                    } catch (e) {
+                        console.log('기존 WebSocket 연결 닫기 실패:', e);
+                        websocket = null;
+                    }
+                }
                 
                 currentChannelName = channelName;
 
@@ -962,10 +993,13 @@
                 document.getElementById('message-input').placeholder = `# ${channel.name} 채널에 메시지 보내기`;
                 updateChannelContent();
 
+                // 채널 전환 후 스크롤을 맨 아래로 이동
+                forceScrollToBottom(document.getElementById('chat-messages'));
+
                 // 새 채널로 WebSocket 연결 (더 긴 지연 시간)
                 setTimeout(() => {
                     connectWebSocket();
-                }, 300);
+                }, 1000); // 1초 대기로 증가
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
@@ -984,6 +1018,14 @@
     
             renderMessages();
             renderFiles();
+            
+            // 채널 콘텐츠 업데이트 후 스크롤을 맨 아래로 이동
+            setTimeout(() => {
+                const messagesContainer = document.getElementById('chat-messages');
+                if (messagesContainer) {
+                    forceScrollToBottom(messagesContainer);
+                }
+            }, 100);
         }
     
         // 탭 전환
@@ -1003,15 +1045,60 @@
                 }, 100);
             }
             
-            // 채팅 탭으로 전환 시 스크롤 핸들러 재설정
+            // 채팅 탭으로 전환 시 스크롤 핸들러 재설정 및 맨 아래로 스크롤
             if (tabName === 'chat') {
                 setTimeout(() => {
                     setupScrollHandler();
+                    forceScrollToBottom(document.getElementById('chat-messages'));
+                    
+                    // 추가적으로 DOM이 완전히 렌더링된 후 스크롤을 맨 아래로 이동
+                    setTimeout(() => {
+                        const messagesContainer = document.getElementById('chat-messages');
+                        if (messagesContainer) {
+                            forceScrollToBottom(messagesContainer);
+                        }
+                    }, 200);
                 }, 100);
             }
         }
     
-        // 메시지 렌더링
+        // 스크롤을 맨 아래로 이동하는 함수
+        function scrollToBottom(container, behavior = 'smooth') {
+            if (!container) return;
+            
+            // DOM이 완전히 렌더링될 때까지 대기
+            setTimeout(() => {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: behavior
+                });
+            }, 10);
+        }
+
+        // 강제로 스크롤을 맨 아래로 이동하는 함수 (즉시 실행)
+        function forceScrollToBottom(container) {
+            if (!container) return;
+            
+            // 즉시 스크롤을 맨 아래로 이동 (애니메이션 없음)
+            container.scrollTop = container.scrollHeight;
+            
+            // 추가적으로 DOM이 완전히 렌더링된 후 다시 한 번 스크롤
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 50);
+            
+            // 추가적으로 더 늦게 한 번 더 스크롤 (이미지나 리소스 로딩 완료 후)
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 150);
+            
+            // 마지막으로 한 번 더 확인
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 300);
+        }
+
+        // 메시지 렌더링 (스크롤 최적화)
         function renderMessages() {
             const messagesContainer = document.getElementById('chat-messages');
             const messages = globalData.messages[currentChannelName] || [];
@@ -1027,6 +1114,10 @@
                         </div>
                     </div>
                 `;
+                // 환영 메시지도 맨 아래로 스크롤
+                setTimeout(() => {
+                    forceScrollToBottom(messagesContainer);
+                }, 100);
                 return;
             }
             
@@ -1053,13 +1144,15 @@
                 `;
             }).join('');
             
-            // 스크롤을 맨 아래로 이동 (부드러운 애니메이션)
+            // DOM 렌더링 완료 후 맨 아래로 스크롤 (더 확실하게)
             setTimeout(() => {
-                messagesContainer.scrollTo({
-                    top: messagesContainer.scrollHeight,
-                    behavior: 'smooth'
-                });
+                forceScrollToBottom(messagesContainer);
             }, 100);
+            
+            // 추가적으로 이미지나 다른 리소스 로딩 완료 후 다시 스크롤
+            setTimeout(() => {
+                forceScrollToBottom(messagesContainer);
+            }, 300);
         }
 
         // 스크롤 이벤트 처리
@@ -1104,6 +1197,9 @@
                     }
                 }
             }
+            
+            // 스크롤이 제대로 작동하는지 확인
+            console.log('🔍 스크롤 핸들러 설정됨:', messagesContainer.scrollHeight, messagesContainer.clientHeight);
         }
         
 
@@ -1134,6 +1230,14 @@
                 input.value = '';
                 input.style.height = 'auto';
                 updateSendButton();
+                
+                // 메시지 전송 후 스크롤을 맨 아래로 이동
+                setTimeout(() => {
+                    const messagesContainer = document.getElementById('chat-messages');
+                    if (messagesContainer) {
+                        forceScrollToBottom(messagesContainer);
+                    }
+                }, 50);
                 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
@@ -1618,6 +1722,11 @@
             setupKeyboardShortcuts();
             handleUrlParameters();
             
+            // 페이지 로드 시 즉시 스크롤을 맨 아래로 이동
+            setTimeout(() => {
+                forceScrollToBottom(document.getElementById('chat-messages'));
+            }, 100);
+            
             // 워크스페이스 초기화 후 드래그 앤 드롭 설정
             initializeWorkspace().then(() => {
                 restoreDraftMessage();
@@ -1638,6 +1747,17 @@
 
                 // 업로드 버튼 이벤트 리스너
                 document.getElementById('upload-submit-btn').addEventListener('click', handleFileUpload);
+                
+                // 페이지 로드 완료 후 스크롤을 맨 아래로 이동
+                forceScrollToBottom(document.getElementById('chat-messages'));
+                
+                // 추가적으로 DOM이 완전히 렌더링된 후 스크롤을 맨 아래로 이동
+                setTimeout(() => {
+                    const messagesContainer = document.getElementById('chat-messages');
+                    if (messagesContainer) {
+                        forceScrollToBottom(messagesContainer);
+                    }
+                }, 200);
             });
             
 
@@ -1659,17 +1779,19 @@
                 }
             });
             
-            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링
+            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링 (수정됨)
             setInterval(() => {
                 updateSendButton(); // WebSocket 상태에 따라 전송 버튼 업데이트
                 
-                if (websocket && websocket.readyState !== WebSocket.OPEN && currentChannelName) {
+                // 연결이 끊어진 경우에만 재연결 시도 (더 보수적으로)
+                if (currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
+                    console.log('🔍 WebSocket 상태 확인 - 재연결 필요');
                     updateConnectionStatus('offline');
                     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                         attemptReconnect();
                     }
                 }
-            }, 5000); // 5초마다 확인
+            }, 10000); // 10초마다 확인 (더 긴 간격)
         });
     
         // 안전한 웹소켓 연결 해제 함수
@@ -1695,17 +1817,20 @@
             safeCloseWebSocket();
         });
 
-        // 페이지 가시성 변경 시 WebSocket 연결 관리
+        // 페이지 가시성 변경 시 WebSocket 연결 관리 (수정됨)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
-                // 페이지가 숨겨질 때 WebSocket 연결 안전하게 종료
-                safeCloseWebSocket();
+                // 페이지가 숨겨질 때는 연결을 유지 (탭 전환 시에도 연결 유지)
+                console.log('📱 페이지 숨김 - WebSocket 연결 유지');
             } else {
-                // 페이지가 다시 보일 때 WebSocket 재연결
-                if (currentChannelName && !websocket) {
+                // 페이지가 다시 보일 때 연결 상태 확인
+                if (currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
+                    console.log('📱 페이지 복원 - WebSocket 연결 상태 확인');
                     setTimeout(() => {
-                        connectWebSocket();
-                    }, 500);
+                        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                            connectWebSocket();
+                        }
+                    }, 1000);
                 }
             }
         });

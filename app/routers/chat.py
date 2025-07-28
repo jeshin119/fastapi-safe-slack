@@ -150,7 +150,7 @@ async def websocket_endpoint(
         
         # 메시지 수신 루프 (시그널 처리를 위한 개선)
         error_count = 0  # 에러 카운터 추가
-        max_errors = 5   # 최대 허용 에러 횟수
+        max_errors = 10  # 최대 허용 에러 횟수 증가 (더 관대하게)
         
         while True:
             try:

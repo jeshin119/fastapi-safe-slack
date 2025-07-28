@@ -406,6 +406,8 @@ body {
     flex-direction: column;
     min-height: 0; /* 플렉스 축소 허용 */
     overflow: hidden; /* 오버플로우 방지 */
+    /* 스크롤이 생기도록 최소 높이 설정 */
+    min-height: calc(100vh - 200px);
 }
 
 .welcome-section {
@@ -416,6 +418,11 @@ body {
     /* flex-shrink 제거하여 스크롤 영역에 포함 */
     position: relative;
     z-index: 10;
+    /* 환영 섹션을 맨 아래에 표시하되 스크롤 가능하도록 */
+    margin-top: auto;
+    align-self: flex-end;
+    /* 스크롤이 생기도록 최소 높이 설정 */
+    min-height: 600px;
 }
 
 .welcome-icon {
@@ -440,12 +447,47 @@ body {
     flex: 1;
     overflow-y: auto;
     min-height: 0; /* 플렉스 축소 허용 */
-    /* max-height 제거 - flex로 자동 조정 */
+    /* 스크롤 기본값을 맨 아래로 설정 */
+    scroll-behavior: smooth;
+    /* 스크롤바 스타일링 */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+    /* 스크롤이 생기도록 최소 높이 설정 */
+    min-height: 400px;
+    max-height: calc(100vh - 300px);
+    /* 기본적으로 스크롤을 맨 아래로 설정 */
+    scroll-snap-type: y proximity;
+    /* 스크롤을 맨 아래로 강제 */
+    scroll-snap-align: end;
+    /* 스크롤 위치를 맨 아래로 초기화 */
+    scroll-padding-bottom: 0;
+}
+
+/* 파일 탭에서 채팅 메시지 컨테이너 높이 조정 */
+#files-content .chat-messages-container {
+    max-height: calc(100vh - 120px);
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+/* 파일 탭에서 채팅 콘텐츠 영역 높이 조정 */
+#files-content .chat-content {
+    height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px);
 }
 
 .chat-messages {
     padding: 20px 24px;
     /* overflow-y 제거 - 컨테이너가 스크롤 처리 */
+    /* 메시지들이 맨 아래부터 표시되도록 설정 */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    min-height: 100%;
+    /* 스크롤이 생기도록 최소 높이 설정 */
+    min-height: 600px;
+    /* 기본적으로 스크롤을 맨 아래로 설정 */
+    align-items: flex-end;
 }
 
 .message {
@@ -454,6 +496,10 @@ body {
     padding: 8px 0;
     transition: background-color 0.1s;
     animation: fadeIn 0.3s ease-out;
+    /* 메시지가 스크롤 가능하도록 설정 */
+    flex-shrink: 0;
+    /* 메시지들이 세로로 쌓이도록 */
+    width: 100%;
 }
 
 .message:hover {
@@ -626,6 +672,7 @@ body {
     margin: 0;
     padding: 16px 0 12px 0;
     border-bottom: 1px solid #e2e8f0;
+    width: 100%;
 }
 
 .files-title {
@@ -646,6 +693,7 @@ body {
     cursor: pointer;
     transition: all 0.3s;
     flex-shrink: 0; /* 고정 크기 */
+    width: 100%;
 }
 
 .upload-area:hover {
@@ -694,18 +742,29 @@ body {
 /* 파일 목록 스크롤 컨테이너 */
 .files-list-container {
     flex: 1;
-    padding: 0 24px 24px 24px;
+    padding: 0 24px 24px 40px;
     min-height: 0; /* 플렉스 축소 허용 */
+    width: 100%;
+}
+
+/* 파일 탭 전용 메시지 컨테이너 스타일 */
+#files-messages {
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
 }
 
 .files-list-box {
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 12px;
-    overflow-y: auto;
+    overflow: visible;
     min-height: 200px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     margin-top: 16px;
+    width: 100%;
 }
 
 /* 파일 아이템 */
@@ -851,6 +910,7 @@ body {
     border-radius: 8px;
     margin: 16px 0;
     flex-shrink: 0; /* 고정 크기 */
+    width: 100%;
 }
 
 .options-title {
@@ -902,7 +962,8 @@ body {
 .channel-list-container::-webkit-scrollbar,
 .team-members-container::-webkit-scrollbar,
 .chat-messages::-webkit-scrollbar,
-.files-list-container::-webkit-scrollbar {
+.files-list-container::-webkit-scrollbar,
+#files-content .chat-messages-container::-webkit-scrollbar {
     width: 6px;
 }
 
@@ -913,7 +974,8 @@ body {
 }
 
 .chat-messages::-webkit-scrollbar-track,
-.files-list-container::-webkit-scrollbar-track {
+.files-list-container::-webkit-scrollbar-track,
+#files-content .chat-messages-container::-webkit-scrollbar-track {
     background: #f1f5f9;
     border-radius: 3px;
 }
@@ -925,7 +987,8 @@ body {
 }
 
 .chat-messages::-webkit-scrollbar-thumb,
-.files-list-container::-webkit-scrollbar-thumb {
+.files-list-container::-webkit-scrollbar-thumb,
+#files-content .chat-messages-container::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 3px;
 }
@@ -933,7 +996,8 @@ body {
 .channel-list-container::-webkit-scrollbar-thumb:hover,
 .team-members-container::-webkit-scrollbar-thumb:hover,
 .chat-messages::-webkit-scrollbar-thumb:hover,
-.files-list-container::-webkit-scrollbar-thumb:hover {
+.files-list-container::-webkit-scrollbar-thumb:hover,
+#files-content .chat-messages-container::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
 
