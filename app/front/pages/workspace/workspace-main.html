@@ -116,7 +116,7 @@
                     <div class="welcome-icon">📁</div>
                     <div class="welcome-title">파일 관리</div>
                     <div class="welcome-description">
-                        파일을 업로드하고 팀원들과 공유하세요. 🔄
+                        파일을 업로드하고 팀원들과 공유하세요. ⭐ 
                     </div>
                 </div>
 
@@ -1051,7 +1051,7 @@
             filesContainer.innerHTML = files.map(file => {
                 const uploadTime = new Date(file.uploaded_at).toLocaleString('ko-KR');
                 const currentUser = globalData.user?.user_email;
-                const canDelete = file.uploaded_by === currentUser || globalData.user?.is_workspace_admin;
+                const canDelete = file.uploaded_by === currentUser; // 업로더만 삭제 가능
                 
                 // 권한 정보 표시
                 let permissionInfo = '';
@@ -1115,7 +1115,7 @@
             }
         }
 
-        // 파일 삭제
+        // 파일 삭제 (업로더만 가능)
         async function deleteFile(fileId, filename) {
             if (!confirm(`"${filename}" 파일을 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`)) {
                 return;
