@@ -8,6 +8,10 @@
     <!-- CSS 파일들 임포트 -->
     <link rel="stylesheet" href="/static/css/common.css">
     <link rel="stylesheet" href="/static/css/admin-main.css">
+
+    <link rel="stylesheet" href="/static/css/admin-channels.css">
+    <link rel="stylesheet" href="/static/css/admin-members.css">
+    <link rel="stylesheet" href="/static/css/workspace-settings.css">
     
 </head>
 <body>
@@ -45,15 +49,11 @@
         <!-- 탭 콘텐츠들 -->
         <div class="tab-content active" id="members-content">
             <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <div>멤버 관리 페이지를 불러오는 중...</div>
             </div>
         </div>
 
         <div class="tab-content" id="channels-content">
             <div class="loading-content">
-                <div class="loading-spinner"></div>
-                <div>채널 관리 페이지를 불러오는 중...</div>
             </div>
         </div>
 
@@ -299,8 +299,10 @@
             // 알림 배지 업데이트
             updateNotificationBadges();
             
-            // 첫 번째 탭 로드
-            loadTabContent(currentTab);
+            // 모든 탭을 바로 로드
+            loadTabContent('members');
+            loadTabContent('channels'); 
+            loadTabContent('settings');
             
             // 개발 모드 체크
             const urlParams = new URLSearchParams(window.location.search);
