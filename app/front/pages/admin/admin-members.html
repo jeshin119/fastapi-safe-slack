@@ -29,7 +29,7 @@
         <div class="workspace-info">
             <div class="workspace-icon">🚀</div>
             <div class="workspace-details">
-                <div class="workspace-name">스타트업팀</div>
+                <div class="workspace-name" id="workspace-name"></div>
                 <div class="workspace-meta">데이터 로딩 중...</div>
             </div>
         </div>
@@ -260,11 +260,9 @@
                 </label>
                 <select class="role-select" id="final-role">
                     <option value="">직급을 선택하세요</option>
-                    <option value="인턴">인턴</option>
                     <option value="사원">사원</option>
                     <option value="대리">대리</option>
                     <option value="과장">과장</option>
-                    <option value="차장">차장</option>
                     <option value="팀장">팀장</option>
                     <option value="부장">부장</option>
                     <option value="이사">이사</option>
@@ -437,6 +435,12 @@
                 
                 const token = localStorage.getItem('access_token');
                 const workspaceName = localStorage.getItem("current_workspace_name");
+                if (workspaceName) {
+                    document.getElementById("workspace-name").textContent = workspaceName;
+                } else {
+                    document.getElementById("workspace-name").textContent = "워크스페이스 이름 없음";
+                    console.warn("⚠️ 로컬스토리지에서 current_workspace_name을 찾을 수 없습니다.");
+                }
                 const headers = {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
