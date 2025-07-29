@@ -588,7 +588,7 @@
                 });
                 
                 if (result.success) {
-                    alert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
+                    showAlert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${approvalMember.id}"]`);
@@ -608,11 +608,11 @@
                     
                     closeApprovalModal();
                 } else {
-                    alert(`❌ 승인 실패: ${result.error}`);
+                    showAlert(`❌ 승인 실패: ${result.error}`);
                 }
             } catch (error) {
                 console.error('승인 처리 오류:', error);
-                alert('❌ 승인 처리 중 오류가 발생했습니다.');
+                showAlert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
@@ -719,7 +719,7 @@
 
                 if (result.success) {
                     const actionText = currentAction === 'reject' ? '거부' : '추방';
-                    alert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
+                    showAlert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${targetMember.id}"]`);
@@ -744,10 +744,10 @@
                     
                     closeModal();
                 } else {
-                    alert(`❌ 오류: ${result.error}`);
+                    showAlert(`❌ 오류: ${result.error}`);
                 }
             } catch (error) {
-                alert('❌ 처리 중 오류가 발생했습니다.');
+                showAlert('❌ 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = currentAction === 'reject' ? '거부하기' : '추방하기';
@@ -816,6 +816,8 @@
         function setupSearch() {
             const pendingSearch = document.getElementById('pending-search');
             const activeSearch = document.getElementById('active-search');
+            const activeFilter = document.getElementById('active-filter');
+            
             
             if (pendingSearch) {
                 pendingSearch.addEventListener('input', () => filterMembers('pending'));
@@ -824,6 +826,9 @@
             if (activeSearch) {
                 activeSearch.addEventListener('input', () => filterMembers('active'));
             }
+            if (activeFilter) {
+                activeFilter.addEventListener('change', () => filterMembersByRole());
+    }
         }
 
         function filterMembers(type) {
@@ -841,6 +846,99 @@
                     card.style.display = 'none';
                 }
             });
+            filterMembersByRole();
+        }
+        function filterMembersByRole() {
+            const activeFilter = document.getElementById('active-filter');
+            const filterValue = activeFilter.value;
+            const memberCards = document.querySelectorAll('#active-members-list .member-card');
+            
+            memberCards.forEach(card => {
+                // 현재 검색어로 숨겨진 카드는 건드리지 않음
+                if (card.style.display === 'none') return;
+                
+                const statusBadge = card.querySelector('.status-badge');
+                const isAdmin = statusBadge && statusBadge.textContent.includes('관리자');
+                
+                let shouldShow = true;
+                
+                switch (filterValue) {
+                    case 'admin':
+                        shouldShow = isAdmin;
+                        break;
+                    case 'member':
+                        shouldShow = !isAdmin;
+                        break;
+                    case 'all':
+                    default:
+                        shouldShow = true;
+                        break;
+                }
+                
+                if (shouldShow) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+        function applyAllFilters() {
+            const activeSearch = document.getElementById('active-search');
+            const activeFilter = document.getElementById('active-filter');
+            const searchTerm = activeSearch.value.toLowerCase();
+            const filterValue = activeFilter.value;
+            const memberCards = document.querySelectorAll('#active-members-list .member-card');
+            
+            memberCards.forEach(card => {
+                const name = card.querySelector('.member-name').textContent.toLowerCase();
+                const email = card.querySelector('.member-email').textContent.toLowerCase();
+                const statusBadge = card.querySelector('.status-badge');
+                const isAdmin = statusBadge && statusBadge.textContent.includes('관리자');
+                
+                // 검색어 조건
+                const matchesSearch = name.includes(searchTerm) || email.includes(searchTerm);
+                
+                // 역할 조건
+                let matchesRole = true;
+                switch (filterValue) {
+                    case 'admin':
+                        matchesRole = isAdmin;
+                        break;
+                    case 'member':
+                        matchesRole = !isAdmin;
+                        break;
+                    case 'all':
+                    default:
+                        matchesRole = true;
+                        break;
+                }
+                
+                // 둘 다 만족해야 표시
+                if (matchesSearch && matchesRole) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // 개선된 setupSearch 함수 (통합 필터링 사용)
+        function setupSearch() {
+            const pendingSearch = document.getElementById('pending-search');
+            const activeSearch = document.getElementById('active-search');
+            const activeFilter = document.getElementById('active-filter');
+            
+            if (pendingSearch) {
+                pendingSearch.addEventListener('input', () => filterMembers('pending'));
+            }
+            
+            if (activeSearch) {
+                activeSearch.addEventListener('input', () => applyAllFilters());
+            }
+            
+            if (activeFilter) {
+                activeFilter.addEventListener('change', () => applyAllFilters());
+            }
         }
 
         // 내보내기 (멤버 강퇴 기능으로 변경)
@@ -848,7 +946,7 @@
             const inputId = prompt("강퇴할 사용자 ID를 입력하세요:");
             const userId = parseInt(inputId);
             if (isNaN(userId)) {
-                alert("숫자 ID를 입력해주세요.");
+                showAlert("숫자 ID를 입력해주세요.");
                 return;
             }
 
@@ -909,5 +1007,5 @@
     <script>
         // API_BASE_URL은 config.js에서 자동으로 설정됨
     </script>
-</body>
-</html>
+<script src="../../js/alert-system.js"></script>
+</body></html>

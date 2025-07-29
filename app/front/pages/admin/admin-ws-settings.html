@@ -223,7 +223,7 @@
         async function loadUserInfo() {
             const token = localStorage.getItem('access_token');
             if (!token) {
-                alert('로그인이 필요합니다.');
+                showAlert('로그인이 필요합니다.');
                 window.location.href = '/login.html';
                 return;
             }
@@ -248,7 +248,7 @@
                 
             } catch (error) {
                 console.error('토큰 파싱 오류:', error);
-                alert('인증 정보가 올바르지 않습니다.');
+                showAlert('인증 정보가 올바르지 않습니다.');
                 localStorage.removeItem('access_token');
                 window.location.href = '/login.html';
             }
@@ -271,7 +271,7 @@
                 });
 
                 if (response.status === 401) {
-                    alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+                    showAlert('인증이 만료되었습니다. 다시 로그인해주세요.');
                     localStorage.removeItem('access_token');
                     window.location.href = '/login.html';
                     return null;
@@ -511,7 +511,7 @@
             const workspaceDescription = document.getElementById('workspace-description').value.trim();
             
             if (!workspaceName) {
-                alert('워크스페이스 이름을 입력해주세요.');
+                showAlert('워크스페이스 이름을 입력해주세요.');
                 return;
             }
 
@@ -536,7 +536,7 @@
                 spinner.style.display = 'none';
                 btn.disabled = false;
                 btn.innerHTML = originalText;
-                alert("✅ 설정이 저장되었습니다!");
+                showAlert("✅ 설정이 저장되었습니다!");
             }, 1000);
         }
 
@@ -548,7 +548,7 @@
             const expiresAt = document.getElementById('invite-expires-at').value;
             
             if (!workspaceName) {
-                alert('워크스페이스 이름을 입력해주세요.');
+                showAlert('워크스페이스 이름을 입력해주세요.');
                 return;
             }
 
@@ -581,14 +581,13 @@
                         `생성일: ${new Date(result.created_at).toLocaleString('ko-KR')} • 만료일: ${result.expires_at ? new Date(result.expires_at).toLocaleString('ko-KR') : '무제한'}`;
                     document.getElementById('generated-invite-section').style.display = 'block';
                     
-                    alert(`✅ 새로운 초대 코드가 생성되었습니다!\n\n🎫 코드: ${result.code}\n📅 만료일: ${result.expires_at ? new Date(result.expires_at).toLocaleString('ko-KR') : '무제한'}`);
-                    
+                  
                     // 폼 초기화
                     document.getElementById('invite-expires-at').value = '';
                 }
                 
             } catch (error) {
-                alert(`❌ 초대 코드 생성 실패:\n${error.message}`);
+                showAlert(`❌ 초대 코드 생성 실패:\n${error.message}`);
             } finally {
                 btn.disabled = false;
                 spinner.style.display = 'none';
@@ -603,7 +602,7 @@
             const workspaceName = document.getElementById('list-workspace-name').value.trim();
             
             if (!workspaceName) {
-                alert('워크스페이스 이름을 입력해주세요.');
+                showAlert('워크스페이스 이름을 입력해주세요.');
                 return;
             }
 
@@ -700,7 +699,7 @@
 
         function copyToClipboard(text) {
             if (!text) {
-                alert('⚠️ 복사할 코드가 없습니다.');
+                showAlert('⚠️ 복사할 코드가 없습니다.');
                 return;
             }
             
@@ -725,7 +724,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                alert(`📋 "${text}" 복사되었습니다!`);
+                showAlert(`📋 "${text}" 복사되었습니다!`);
             }
         }
 
@@ -736,7 +735,7 @@
             if (confirm("⚠️ 정말로 워크스페이스를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.")) {
                 if (confirm("🚨 마지막 확인: 모든 데이터가 영구 삭제됩니다.")) {
                     // 실제 삭제 API 호출 (현재는 알림만)
-                    alert("🗑️ 워크스페이스 삭제 기능은 준비 중입니다.\n실제로는 DELETE /workspaces/{id} API가 필요합니다.");
+                    showAlert("🗑️ 워크스페이스 삭제 기능은 준비 중입니다.\n실제로는 DELETE /workspaces/{id} API가 필요합니다.");
                     // window.location.href = '/';
                 }
             }
@@ -797,5 +796,5 @@
         console.log('🔧 개발자 도구에서 debugSettings 객체를 사용하여 테스트할 수 있습니다.');
         console.log('예: debugSettings.generateTestInvite(), debugSettings.fillTestData()');
     </script>
-</body>
-</html>
+<script src="../../js/alert-system.js"></script>
+</body></html>

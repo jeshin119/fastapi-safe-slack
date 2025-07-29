@@ -117,42 +117,19 @@
             const spinner = document.getElementById('loading-spinner');
 
             if (!displayName.trim()) {
-                alert('표시 이름을 입력해주세요.');
+                showAlert('표시 이름을 입력해주세요.');
                 return;
             }
 
             // 로딩 상태
             setupBtn.disabled = true;
             btnText.textContent = '설정 중...';
-            spinner.style.display = 'inline-block';
-
-            // 가짜 처리 (실제로는 서버에 요청)
-            setTimeout(() => {
-                let message = '';
-                switch(selectedWorkspace) {
-                    case 'create':
-                        message = '🎉 새 워크스페이스가 생성되었습니다!\n팀원들을 초대해보세요.';
-                        break;
-                    case 'join':
-                        message = '🎉 워크스페이스 참여 준비가 완료되었습니다!\n초대 링크를 입력해주세요.';
-                        break;
-                    case 'explore':
-                        message = '🎉 설정이 완료되었습니다!\n워크스페이스를 둘러보세요.';
-                        break;
-                    default:
-                        message = '🎉 기본 설정이 완료되었습니다!\n워크스페이스를 시작해보세요.';
-                }
-                
-                alert(message);
-                // 실제로는 워크스페이스 메인 페이지로 리다이렉트
-                // window.location.href = '/workspace';
-            }, 2000);
-        }
+            spinner.style.display = 'inline-block';}
 
         // 스킵
         function skipSetup() {
             if (confirm('설정을 건너뛰고 바로 시작하시겠습니까?')) {
-                alert('🚀 워크스페이스로 이동합니다!');
+                showAlert('🚀 워크스페이스로 이동합니다!');
                 window.location.href = '../workspace/workspace-select.html';
                 // 실제로는 워크스페이스 메인 페이지로 리다이렉트
             }
@@ -171,5 +148,5 @@
         // 초기 상태 설정
         document.getElementById('setup-btn').disabled = false;
     </script>
-</body>
-</html>
+<script src="../../js/alert-system.js"></script>
+</body></html>

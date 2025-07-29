@@ -244,26 +244,6 @@
             }
         });
 
-        // 소셜 로그인 (기존 가짜 기능 유지)
-        function socialLogin(provider) {
-            const providers = {
-                'google': 'Google',
-                'github': 'GitHub', 
-                'apple': 'Apple'
-            };
-            
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.style.opacity = '0.7';
-            btn.textContent = '...';
-            
-            // TODO: 실제 소셜 로그인 API 연결
-            setTimeout(() => {
-                alert(`${providers[provider]} 소셜 로그인은 아직 구현되지 않았습니다.`);
-                btn.style.opacity = '1';
-                btn.textContent = originalText;
-            }, 1000);
-        }
 
         // 회원가입 페이지로 이동
         function goToSignup() {
@@ -327,5 +307,5 @@
         console.log('🔧 개발자 도구에서 debugAPI 객체를 사용하여 테스트할 수 있습니다.');
         console.log('예: debugAPI.testLogin(), debugAPI.checkToken(), debugAPI.clearTokens()');
     </script>
-</body>
-</html>
+<script src="../../js/alert-system.js"></script>
+</body></html>

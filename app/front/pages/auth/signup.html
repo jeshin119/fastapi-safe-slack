@@ -71,6 +71,7 @@
                         placeholder="8자 이상의 안전한 비밀번호"
                         required
                     >
+              
                     <div class="validation-message" id="password-error"></div>
                 </div>
 
@@ -123,6 +124,15 @@
         </div>
     </div>
 
+    <!-- 성공 애니메이션 -->
+    <div class="success-animation" id="success-animation">
+        <div class="success-content">
+            <div class="success-icon">✅</div>
+            <h2>회원가입 성공!</h2>
+            <p>워크스페이스로 이동중...</p>
+        </div>
+    </div>
+
     <script src="../../js/config.js"></script>
     <script>
         // ============================
@@ -157,9 +167,6 @@
                 console.error('Signup API Error:', error);
                 return { success: false, error: '서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.' };
 
-                // 개발모드에서는 성공으로 처리
-                //alert('🎉 회원가입 완료!\n개발모드에서 가입되었습니다.');
-                //window.location.href = '../index.html';
             }
         }
 
@@ -218,8 +225,12 @@
             const result = await signupUser(payload);
 
             if (result.success) {
-                alert('🎉 회원가입 완료!\n' + result.data.message);
-                window.location.href = '/static/index.html'; // 다음 페이지로 이동
+                document.getElementById('success-animation').style.display = 'flex';
+
+
+                setTimeout(() => {
+            window.location.href = '/static/pages/auth/login.html'; // 또는 적절한 로그인 페이지 경로
+        }, 2000);
             } else {
                 errorBox.textContent = result.error;
                 errorBox.style.display = 'block';
@@ -423,5 +434,5 @@
         });
 
     </script>
-</body>
-</html>
+<script src="../../js/alert-system.js"></script>
+</body></html>

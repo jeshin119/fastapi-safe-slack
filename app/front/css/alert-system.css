@@ -1,0 +1,516 @@
+/* ============================
+   Alert 시스템 CSS - app/front/css/alert-system.css
+   ============================*/
+
+/* 모달 오버레이 */
+.alert-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: alertFadeIn 0.3s ease;
+}
+
+/* 모달 컨텐츠 */
+.alert-modal-content {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    max-width: 420px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    transform: scale(0.8);
+    animation: alertSlideIn 0.3s ease forwards;
+    position: relative;
+}
+
+/* 모달 아이콘 */
+.alert-modal-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    display: block;
+    line-height: 1;
+}
+
+/* 모달 제목 */
+.alert-modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 15px 0;
+    line-height: 1.3;
+}
+
+/* 모달 메시지 */
+.alert-modal-message {
+    color: #64748b;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 30px 0;
+    white-space: pre-line;
+    word-break: break-word;
+}
+
+/* 기본 버튼 */
+.alert-modal-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 14px 32px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    min-width: 100px;
+    margin: 0 5px;
+    font-family: inherit;
+}
+
+.alert-modal-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.alert-modal-button:active {
+    transform: translateY(0);
+}
+
+.alert-modal-button:focus {
+    outline: none;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3), 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+/* 타입별 버튼 색상 */
+.alert-modal-button.success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.alert-modal-button.success:hover {
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.alert-modal-button.error {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.alert-modal-button.error:hover {
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.alert-modal-button.warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.alert-modal-button.warning:hover {
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+/* 취소 버튼 (회색) */
+.alert-modal-button.cancel {
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+}
+
+.alert-modal-button.cancel:hover {
+    box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+}
+
+/* 버튼 그룹 */
+.alert-modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ============================
+   토스트 알림 시스템
+   ============================*/
+
+/* 토스트 컨테이너 */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10001;
+    pointer-events: none;
+    max-height: calc(100vh - 40px);
+    overflow: hidden;
+}
+
+/* 토스트 */
+.toast {
+    background: white;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    margin-bottom: 12px;
+    min-width: 320px;
+    max-width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transform: translateX(400px);
+    animation: toastSlideIn 0.4s ease forwards;
+    border-left: 4px solid #667eea;
+    pointer-events: auto;
+    position: relative;
+    cursor: pointer;
+}
+
+/* 토스트 타입별 색상 */
+.toast.success {
+    border-left-color: #10b981;
+}
+
+.toast.error {
+    border-left-color: #ef4444;
+}
+
+.toast.warning {
+    border-left-color: #f59e0b;
+}
+
+.toast.info {
+    border-left-color: #3b82f6;
+}
+
+/* 토스트 호버 효과 */
+.toast:hover {
+    transform: translateX(-5px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+}
+
+/* 토스트 아이콘 */
+.toast-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* 토스트 메시지 */
+.toast-message {
+    flex: 1;
+    color: #1e293b;
+    font-weight: 500;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* 토스트 닫기 버튼 */
+.toast-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 14px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.toast-close:hover {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* ============================
+   애니메이션
+   ============================*/
+
+@keyframes alertFadeIn {
+    from { 
+        opacity: 0; 
+    }
+    to { 
+        opacity: 1; 
+    }
+}
+
+@keyframes alertSlideIn {
+    from {
+        transform: scale(0.8) translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes toastSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+/* 펄스 애니메이션 (중요한 알림용) */
+@keyframes alertPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.alert-modal-content.pulse {
+    animation: alertSlideIn 0.3s ease forwards, alertPulse 0.6s ease infinite;
+}
+
+/* ============================
+   반응형 디자인
+   ============================*/
+
+/* 태블릿 */
+@media (max-width: 768px) {
+    .alert-modal-content {
+        margin: 20px;
+        padding: 30px 20px;
+        max-width: calc(100vw - 40px);
+    }
+    
+    .alert-modal-icon {
+        font-size: 3rem;
+    }
+    
+    .alert-modal-title {
+        font-size: 1.3rem;
+    }
+    
+    .alert-modal-message {
+        font-size: 0.95rem;
+    }
+    
+    .alert-modal-button {
+        padding: 12px 24px;
+        font-size: 0.95rem;
+    }
+    
+    .toast {
+        min-width: 280px;
+        max-width: calc(100vw - 40px);
+        margin-right: 10px;
+    }
+    
+    .toast-container {
+        right: 10px;
+    }
+}
+
+/* 모바일 */
+@media (max-width: 480px) {
+    .alert-modal-content {
+        margin: 15px;
+        padding: 25px 15px;
+        border-radius: 16px;
+    }
+    
+    .alert-modal-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .alert-modal-title {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+    
+    .alert-modal-message {
+        font-size: 0.9rem;
+        margin-bottom: 25px;
+    }
+    
+    .alert-modal-button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+        min-width: 80px;
+    }
+    
+    .alert-modal-buttons {
+        gap: 8px;
+    }
+    
+    .toast {
+        min-width: 250px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+    }
+    
+    .toast-container {
+        top: 15px;
+        right: 15px;
+    }
+    
+    .toast-icon {
+        font-size: 1.2rem;
+    }
+    
+    .toast-message {
+        font-size: 0.9rem;
+    }
+}
+
+/* ============================
+   다크 모드 지원
+   ============================*/
+
+@media (prefers-color-scheme: dark) {
+    .alert-modal-content {
+        background: #1e293b;
+        color: #f1f5f9;
+    }
+    
+    .alert-modal-title {
+        color: #f1f5f9;
+    }
+    
+    .alert-modal-message {
+        color: #94a3b8;
+    }
+    
+    .toast {
+        background: #1e293b;
+        color: #f1f5f9;
+    }
+    
+    .toast-message {
+        color: #f1f5f9;
+    }
+    
+    .toast-close {
+        color: #64748b;
+    }
+    
+    .toast-close:hover {
+        background: #334155;
+        color: #94a3b8;
+    }
+}
+
+/* ============================
+   접근성 개선
+   ============================*/
+
+/* 포커스 트랩 */
+.alert-modal-overlay:focus-within {
+    outline: none;
+}
+
+/* 감소된 애니메이션 선호 사용자 */
+@media (prefers-reduced-motion: reduce) {
+    .alert-modal-overlay,
+    .alert-modal-content,
+    .toast {
+        animation: none;
+    }
+    
+    .alert-modal-button {
+        transition: none;
+    }
+    
+    .toast:hover {
+        transform: none;
+    }
+}
+
+/* 고대비 모드 */
+@media (prefers-contrast: high) {
+    .alert-modal-content {
+        border: 2px solid #000;
+    }
+    
+    .alert-modal-button {
+        border: 2px solid #000;
+    }
+    
+    .toast {
+        border: 2px solid #000;
+    }
+}
+
+/* ============================
+   유틸리티 클래스
+   ============================*/
+
+/* 숨김 */
+.alert-hidden {
+    display: none !important;
+}
+
+/* 페이드 효과 */
+.alert-fade-out {
+    animation: alertFadeIn 0.2s ease reverse !important;
+}
+
+/* 강조 효과 */
+.alert-highlight {
+    animation: alertPulse 0.6s ease infinite;
+}
+
+/* 긴 메시지용 스크롤 */
+.alert-scrollable .alert-modal-message {
+    max-height: 200px;
+    overflow-y: auto;
+    text-align: left;
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+/* 로딩 스피너 (버튼 내부용) */
+.alert-loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffffff40;
+    border-radius: 50%;
+    border-top: 2px solid #ffffff;
+    animation: alertSpin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes alertSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
