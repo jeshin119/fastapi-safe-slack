@@ -124,7 +124,20 @@
                     return { success: true, data };
                 } else {
                     // 실패: 에러 메시지 반환
-                    return { success: false, error: data.detail || '로그인에 실패했습니다.' };
+                    let errorMessage = data.detail || '로그인에 실패했습니다.';
+                    
+                    // 422 에러 (검증 오류) 처리
+                    if (response.status === 422) {
+                        if (data.detail && Array.isArray(data.detail)) {
+                            // Pydantic 검증 오류 처리
+                            const emailError = data.detail.find(error => error.loc && error.loc.includes('email'));
+                            if (emailError) {
+                                errorMessage = emailError.msg || '올바른 형식을 입력해주세요.';
+                            }
+                        }
+                    }
+                    
+                    return { success: false, error: errorMessage };
                 }
             } catch (error) {
                 console.error('Login API Error:', error);

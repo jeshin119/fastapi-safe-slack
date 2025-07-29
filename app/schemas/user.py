@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from typing import Optional
 from datetime import datetime
+import re
 
 class UserBase(BaseModel):
     name: str
@@ -12,6 +13,14 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    
+    @validator('email')
+    def validate_email_format(cls, v):
+        # 이메일 형식 검증
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, v):
+            raise ValueError('올바른 이메일 형식을 입력해주세요.')
+        return v
 
 class UserResponse(UserBase):
     id: int
