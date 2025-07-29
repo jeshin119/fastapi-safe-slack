@@ -50,24 +50,26 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">👥</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">전체 멤버</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">⏳</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">입장 대기</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">✅</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">활성 멤버</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
+
+                
 
                 
             
@@ -368,7 +370,7 @@
         // 채널 멤버 목록 업데이트
         function updateChannelMembersList(members) {
             const container = document.getElementById('active-members-list');
-            
+
             if (members.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -377,23 +379,25 @@
                         <div class="empty-description">아직 이 채널에 가입한 멤버가 없습니다.</div>
                     </div>
                 `;
-                updateChannelStats(0, 0);
+                updateChannelStats(0, 0);  // 멤버 수: 0, 대기 수: 0
                 return;
             }
-            
+
             container.innerHTML = '';
-            
+
             members.forEach(member => {
                 const memberCard = createMemberCard(member, 'active');
                 container.appendChild(memberCard);
             });
-            
-            updateChannelStats(members.length, 0);
+
+            updateChannelStats(members.length, latestPendingCount);  // 멤버 수 업데이트, 대기 수는 이 함수 내에서 알 수 없음
         }
 
         // 채널 입장 요청 목록 업데이트
         function updateChannelRequestsList(requests) {
             const container = document.getElementById('pending-list');
+
+            latestPendingCount = requests.length; // ✅ 전역 변수에 저장
             
             if (requests.length === 0) {
                 container.innerHTML = `
@@ -415,7 +419,7 @@
             
             // 통계에 요청 수 반영
             const currentMemberCount = document.querySelectorAll('#active-members-list .member-card').length;
-            updateChannelStats(currentMemberCount, requests.length);
+            updateChannelStats(currentMemberCount, latestPendingCount);
         }
 
         // 멤버 카드 생성
@@ -498,6 +502,14 @@
         function updateChannelStats(memberCount, pendingCount) {
             const statNumbers = document.querySelectorAll('.stat-number');
             const statChanges = document.querySelectorAll('.stat-change');
+
+            console.log('statNumbers 길이:', statNumbers.length);
+            console.log('statNumbers[1]:', statNumbers[1]); 
+            if (statNumbers[1]) {
+            console.log('pendingCount 업데이트 전:', statNumbers[1].textContent);
+            statNumbers[1].textContent = pendingCount;
+            console.log('pendingCount 업데이트 후:', statNumbers[1].textContent);
+        }
             
             if (statNumbers[0]) statNumbers[0].textContent = memberCount;
             if (statNumbers[1]) statNumbers[1].textContent = pendingCount;

@@ -783,6 +783,36 @@
                 `;
             }).join('');
         }
+
+        async function checkIfChannelAdmin() {
+            const workspaceName = localStorage.getItem("current_workspace_name");
+            const channelName = localStorage.getItem("current_channel_name");
+            const myUserId = globalData.user?.user_id;
+
+            if (!workspaceName || !channelName || !myUserId) {
+                console.warn("채널 관리자 확인에 필요한 정보가 부족합니다.");
+                return false;
+            }
+
+            try {
+                const members = await apiCall("/channels/members_list", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        workspace_name: workspaceName,
+                        channel_name: channelName
+                    })
+                });
+
+                const myInfo = members.find(member => member.user_id === myUserId);
+                const isAdmin = myInfo?.is_admin === true;
+
+                console.log(`✅ 현재 채널에서의 관리자 여부: ${isAdmin}`);
+                return isAdmin;
+            } catch (error) {
+                console.error("❌ 채널 관리자 여부 확인 실패:", error);
+                return false;
+            }
+        }
     
         // 팀원 목록 렌더링
         function renderTeamMembers() {
@@ -992,6 +1022,10 @@
                 setTimeout(() => {
                     connectWebSocket();
                 }, 300); // 300ms로 단축
+
+                // ✅ 여기에 관리자 여부 확인을 위한 호출 추가
+                const isChannelAdmin = await checkIfChannelAdmin();
+                document.getElementById("channel-manage-btn").style.display = isChannelAdmin ? "block" : "none";
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
