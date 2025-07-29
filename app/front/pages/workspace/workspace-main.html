@@ -61,6 +61,7 @@
             <div class="header-right">
                 <span class="channel-badge public" id="channel-type-badge">🌍 공개</span>
                 <button class="admin-btn" id="workspace-admin-btn" onclick="goToAdminPage()" title="관리자 페이지" style="display: none;">👑 관리자</button>
+                <button class="admin-btn" id="channel-manage-btn" onclick="goToChannelManage()" title="채널 관리" style="display: none;">📋 채널</button>
             </div>
         </header>
 
@@ -592,6 +593,7 @@
                 if (userInfo.is_workspace_admin) {
                     document.getElementById('workspace-admin-btn').style.display = 'block';
                 }
+                document.getElementById('channel-manage-btn').style.display = 'block';  // ← 이 라인 추가
     
                 // URL 파라미터 정리
                 const urlParams = new URLSearchParams(window.location.search);
@@ -631,6 +633,17 @@
             }
             
             window.location.href = `/static/pages/admin/admin-main.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
+        }
+
+        // 채널 관리 페이지 이동
+        function goToChannelManage() {
+            const workspaceName = globalData.workspace?.name;
+            if (!workspaceName) {
+                alert('워크스페이스 정보가 없습니다.');
+                return;
+            }
+
+            window.location.href = `/static/pages/admin/admin-channel-main.html?workspace_name=${encodeURIComponent(workspaceName)}`;
         }
 
         // 채널 추가 페이지 이동
