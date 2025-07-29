@@ -542,7 +542,10 @@
                 return;
             }
 
+            // 여기서 먼저 선언해줍니다
+            let year, month, day;
             let expiresAt = null;
+
             if (isContractor) {
                 const year = document.getElementById('expire-year').value;
                 const month = document.getElementById('expire-month').value;
@@ -598,7 +601,7 @@
                 }
             } catch (error) {
                 console.error('승인 처리 오류:', error);
-                alert('❌ 승인 처리 중 오류가 발생했습니다.');
+                //alert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
@@ -803,7 +806,7 @@
                 loadMembers(); // 또는 updateActiveMembersFromAPI(...) 호출
             } catch (error) {
                 console.error("추방 에러:", error);
-                alert("❌ 추방에 실패했습니다: " + error.message);
+                //alert("❌ 추방에 실패했습니다: " + error.message);
             }
         }
 
