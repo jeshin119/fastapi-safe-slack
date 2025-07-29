@@ -256,7 +256,7 @@
             window.location.href = '/login.html';
         }
     
-        // WebSocket 연결 관리 (chat.py 방식으로 수정)
+        // WebSocket 연결 관리 (최적화)
         function connectWebSocket() {
             try {
                 if (!currentChannelName || !globalData.workspace?.name) {
@@ -270,22 +270,30 @@
                     return;
                 }
 
-                // 기존 연결이 있으면 안전하게 닫기
+                // 이미 연결 중이거나 연결된 상태인지 확인 (개선된 체크)
                 if (websocket) {
-                    // 연결 상태 확인 후 안전하게 닫기
-                    if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
-                        try {
-                            websocket.close(1000, 'Channel switch');
-                        } catch (e) {
-                            console.log('기존 WebSocket 연결 닫기 실패:', e);
-                        }
+                    if (websocket.readyState === WebSocket.OPEN) {
+                        console.log('✅ WebSocket이 이미 연결된 상태입니다.');
+                        return;
+                    }
+                    if (websocket.readyState === WebSocket.CONNECTING) {
+                        console.log('🔄 WebSocket이 이미 연결 중입니다.');
+                        return;
+                    }
+                }
+
+                // 기존 연결이 있으면 안전하게 닫기 (개선된 로직)
+                if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                    try {
+                        websocket.close(1000, 'Channel switch');
+                    } catch (e) {
+                        console.log('기존 WebSocket 연결 닫기 실패:', e);
                     }
                     websocket = null;
                 }
 
-                // 잠시 대기 후 새 연결 시도 (이전 연결이 완전히 닫힐 시간 확보)
+                // 잠시 대기 후 새 연결 시도 (지연 시간 단축)
                 setTimeout(() => {
-                    // chat.py 방식으로 WebSocket URL 구성
                     const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
                     console.log('WebSocket 연결 시도:', wsUrl);
                     
@@ -317,7 +325,7 @@
                         console.error('❌ WebSocket 오류:', error);
                         updateConnectionStatus('offline');
                     };
-                }, 200); // 200ms 대기
+                }, 200); // 200ms로 단축
 
             } catch (error) {
                 console.error('WebSocket 연결 실패:', error);
@@ -326,13 +334,17 @@
         }
     
         function attemptReconnect() {
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName) {
+            // 재연결 조건 개선
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && 
+                currentChannelName && 
+                (!websocket || websocket.readyState === WebSocket.CLOSED)) {
+                
                 reconnectAttempts++;
                 updateConnectionStatus('reconnecting');
                 setTimeout(() => {
                     console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
                     connectWebSocket();
-                }, 3000 * reconnectAttempts);
+                }, 2000 * reconnectAttempts);
             }
         }
     
@@ -445,9 +457,9 @@
                     console.log('⌨️ 타이핑 상태:', data.user_name);
                     break;
                     
-                case 'connected_users':
-                    console.log('👥 연결된 사용자:', data.connected_users);
-                    break;
+                // case 'connected_users':
+                //     console.log('👥 연결된 사용자:', data.connected_users);
+                //     break;
                     
                 case 'error':
                     console.error('❌ WebSocket 에러:', data.message);
@@ -584,18 +596,6 @@
             if (!globalData.user?.is_workspace_admin) {
                 alert('관리자 권한이 필요합니다.');
                 return;
-            }
-            
-            // 웹소켓 연결 안전하게 종료
-            if (websocket) {
-                if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
-                    try {
-                        websocket.close(1000, 'Page navigation');
-                    } catch (e) {
-                        console.log('WebSocket 연결 종료 실패:', e);
-                    }
-                }
-                websocket = null;
             }
             
             window.location.href = `workspace-admin.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
@@ -755,14 +755,12 @@
         // 채널 전환
         async function switchChannel(channelName) {
             try {
-                // 이전 WebSocket 연결 안전하게 종료
-                if (websocket) {
-                    if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
-                        try {
-                            websocket.close(1000, 'Channel switch');
-                        } catch (e) {
-                            console.log('기존 WebSocket 연결 닫기 실패:', e);
-                        }
+                // 이전 WebSocket 연결 안전하게 종료 (개선된 로직)
+                if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                    try {
+                        websocket.close(1000, 'Channel switch');
+                    } catch (e) {
+                        console.log('기존 WebSocket 연결 닫기 실패:', e);
                     }
                     websocket = null;
                 }
@@ -796,10 +794,10 @@
                 document.getElementById('message-input').placeholder = `# ${channel.name} 채널에 메시지 보내기`;
                 updateChannelContent();
 
-                // 새 채널로 WebSocket 연결
+                // 새 채널로 WebSocket 연결 (지연 시간 단축)
                 setTimeout(() => {
                     connectWebSocket();
-                }, 100);
+                }, 300); // 300ms로 단축
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
@@ -1368,22 +1366,24 @@
                 }
             });
             
-            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링
+            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링 (최적화)
             setInterval(() => {
                 updateSendButton(); // WebSocket 상태에 따라 전송 버튼 업데이트
                 
-                if (websocket && websocket.readyState !== WebSocket.OPEN && currentChannelName) {
+                // 연결이 끊어진 경우에만 재연결 시도 (더 정확한 체크)
+                if (currentChannelName && 
+                    (!websocket || websocket.readyState === WebSocket.CLOSED) &&
+                    reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    
                     updateConnectionStatus('offline');
-                    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                        attemptReconnect();
-                    }
+                    attemptReconnect();
                 }
-            }, 5000); // 5초마다 확인
+            }, 15000); // 15초로 증가 (더 긴 간격)
         });
     
-        // 페이지 언로드 시 WebSocket 연결 해제
+        // 페이지 언로드 시 WebSocket 연결 해제 (최적화)
         window.addEventListener('beforeunload', function() {
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
+            if (websocket && websocket.readyState !== WebSocket.CLOSED) {
                 try {
                     websocket.close(1000, 'Page unload');
                 } catch (e) {
@@ -1392,11 +1392,11 @@
             }
         });
 
-        // 페이지 가시성 변경 시 WebSocket 연결 관리
+        // 페이지 가시성 변경 시 WebSocket 연결 관리 (최적화)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 // 페이지가 숨겨질 때 WebSocket 연결 안전하게 종료
-                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                if (websocket && websocket.readyState !== WebSocket.CLOSED) {
                     try {
                         websocket.close(1000, 'Page hidden');
                         websocket = null;
@@ -1405,11 +1405,11 @@
                     }
                 }
             } else {
-                // 페이지가 다시 보일 때 WebSocket 재연결
-                if (currentChannelName && !websocket) {
+                // 페이지가 다시 보일 때 WebSocket 재연결 (개선된 로직)
+                if (currentChannelName && (!websocket || websocket.readyState === WebSocket.CLOSED)) {
                     setTimeout(() => {
                         connectWebSocket();
-                    }, 500);
+                    }, 500); // 500ms로 단축
                 }
             }
         });

@@ -110,13 +110,13 @@ async def websocket_endpoint(
             False  # WebSocket 연결 시에는 입장 메시지 전송하지 않음
         )
         
-        # 연결된 사용자 목록 전송
-        connected_users = manager.get_connected_users(workspace.id, channel.id)
-        await manager.send_personal_message(websocket, {
-            "type": "connected_users",
-            "connected_users": connected_users,
-            "timestamp": datetime.now().isoformat()
-        })
+        # 연결된 사용자 목록 전송 (기능 비활성화)
+        # connected_users = manager.get_connected_users(workspace.id, channel.id)
+        # await manager.send_personal_message(websocket, {
+        #     "type": "connected_users",
+        #     "connected_users": connected_users,
+        #     "timestamp": datetime.now().isoformat()
+        # })
         
         # 채널 가입 시간 이후의 메시지 히스토리 전송
         if channel_membership.joined_at:

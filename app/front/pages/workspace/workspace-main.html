@@ -261,9 +261,6 @@
     
         // 인증 오류 처리 함수
         function handleAuthError() {
-            // 웹소켓 연결 안전하게 종료
-            cleanupWebSocketOnNavigation();
-            
             localStorage.removeItem('jwt_token');
             localStorage.removeItem('access_token');
             localStorage.removeItem('current_workspace_name');
@@ -272,9 +269,10 @@
             window.location.href = '/login.html';
         }
     
-        // WebSocket 연결 관리 (안정성 개선)
+        // WebSocket 연결 관리 (최적화)
         function connectWebSocket() {
             try {
+                // 1. 연결 조건 확인
                 if (!currentChannelName || !globalData.workspace?.name) {
                     console.log('WebSocket 연결 대기: 채널이나 워크스페이스 정보가 없음');
                     return;
@@ -286,27 +284,31 @@
                     return;
                 }
 
-                // 이미 연결 중이거나 연결된 상태인지 확인 (더 엄격한 체크)
-                if (websocket && websocket.readyState === WebSocket.OPEN) {
-                    console.log('✅ WebSocket이 이미 연결된 상태입니다.');
-                    return;
+                // 2. 이미 연결 중이거나 연결된 상태인지 확인 (개선된 체크)
+                if (websocket) {
+                    if (websocket.readyState === WebSocket.OPEN) {
+                        console.log('✅ WebSocket이 이미 연결된 상태입니다.');
+                        return;
+                    }
+                    if (websocket.readyState === WebSocket.CONNECTING) {
+                        console.log('🔄 WebSocket이 이미 연결 중입니다.');
+                        return;
+                    }
                 }
 
-                // 기존 연결이 있으면 안전하게 닫기 (더 안전한 방식)
+                // 3. 기존 연결 정리 (CLOSING 상태도 처리)
                 if (websocket && websocket.readyState !== WebSocket.CLOSED) {
                     try {
                         console.log('🔄 기존 WebSocket 연결 정리 중...');
                         websocket.close(1000, 'New connection');
-                        websocket = null;
                     } catch (e) {
                         console.log('기존 WebSocket 연결 닫기 실패:', e);
-                        websocket = null;
                     }
+                    websocket = null;
                 }
 
-                // 잠시 대기 후 새 연결 시도
+                // 4. 새 연결 생성 (지연 시간 단축)
                 setTimeout(() => {
-                    // chat.py 방식으로 WebSocket URL 구성
                     const wsUrl = `${WEBSOCKET_BASE_URL}/${globalData.workspace.name}/${currentChannelName}?token=${token}`;
                     console.log('🔄 WebSocket 연결 시도:', wsUrl);
                     
@@ -346,7 +348,7 @@
                         console.error('❌ WebSocket 오류:', error);
                         updateConnectionStatus('offline');
                     };
-                }, 500); // 500ms 대기로 증가
+                }, 200); // 200ms로 단축
 
             } catch (error) {
                 console.error('WebSocket 연결 실패:', error);
@@ -355,13 +357,17 @@
         }
     
         function attemptReconnect() {
-            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
+            // 재연결 조건 개선
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS && 
+                currentChannelName && 
+                (!websocket || websocket.readyState === WebSocket.CLOSED)) {
+                
                 reconnectAttempts++;
                 updateConnectionStatus('reconnecting');
                 setTimeout(() => {
                     console.log(`🔄 재연결 시도 ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}`);
                     connectWebSocket();
-                }, 2000 * reconnectAttempts); // 더 짧은 대기 시간
+                }, 2000 * reconnectAttempts);
             } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
                 console.log('최대 재연결 시도 횟수에 도달했습니다.');
                 updateConnectionStatus('offline');
@@ -369,11 +375,11 @@
         }
     
         function handleWebSocketMessage(data) {
-            console.log('🔧 WebSocket 메시지 처리:', data.type, data);
+            // console.log('🔧 WebSocket 메시지 처리:', data.type, data);
             
             switch (data.type) {
                 case 'connection':
-                    console.log('✅ WebSocket 연결 확인:', data.message);
+                    // console.log('✅ WebSocket 연결 확인:', data.message);
                     break;
                     
                 case 'message':
@@ -473,13 +479,13 @@
                     console.log('👋 사용자 퇴장:', data.user_name);
                     break;
                     
-                case 'typing':
-                    console.log('⌨️ 타이핑 상태:', data.user_name);
-                    break;
+                // case 'typing':
+                //     console.log('⌨️ 타이핑 상태:', data.user_name);
+                //     break;
                     
-                case 'connected_users':
-                    console.log('👥 연결된 사용자:', data.connected_users);
-                    break;
+                // case 'connected_users':
+                //     console.log('👥 연결된 사용자:', data.connected_users);
+                //     break;
                     
                 case 'error':
                     console.error('❌ WebSocket 에러:', data.message);
@@ -527,8 +533,6 @@
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
             if (!token) {
                 alert('로그인이 필요합니다.');
-                // 웹소켓 연결 안전하게 종료
-                cleanupWebSocketOnNavigation();
                 window.location.href = '/login.html';
                 return null;
             }
@@ -612,8 +616,6 @@
     
             } catch (error) {
                 console.error('워크스페이스 초기화 실패:', error);
-                // 웹소켓 연결 안전하게 종료
-                cleanupWebSocketOnNavigation();
                 alert('워크스페이스 로딩에 실패했습니다. 워크스페이스 선택 페이지로 돌아갑니다.');
                 window.location.href = '/workspace-select.html';
             } finally {
@@ -628,17 +630,11 @@
                 return;
             }
             
-            // 웹소켓 연결 안전하게 종료
-            cleanupWebSocketOnNavigation();
-            
             window.location.href = `/static/pages/admin/admin-main.html?workspace_name=${encodeURIComponent(globalData.workspace.name)}`;
         }
 
         // 채널 추가 페이지 이동
         function goToChannelAdd() {
-            // 웹소켓 연결 안전하게 종료
-            cleanupWebSocketOnNavigation();
-            
             window.location.href = 'channel-add.html';
         }
     
@@ -923,7 +919,7 @@
             }
         }
     
-        // 채널 전환 (안정성 개선)
+        // 채널 전환 (최적화)
         async function switchChannel(channelName) {
             try {
                 // 같은 채널로의 전환은 무시
@@ -934,15 +930,14 @@
 
                 console.log('🔄 채널 전환:', currentChannelName, '→', channelName);
                 
-                // 이전 WebSocket 연결 안전하게 종료
-                if (websocket && websocket.readyState === WebSocket.OPEN) {
+                // 이전 WebSocket 연결 안전하게 종료 (개선된 로직)
+                if (websocket && websocket.readyState !== WebSocket.CLOSED) {
                     try {
                         websocket.close(1000, 'Channel switch');
-                        websocket = null;
                     } catch (e) {
                         console.log('기존 WebSocket 연결 닫기 실패:', e);
-                        websocket = null;
                     }
+                    websocket = null;
                 }
                 
                 currentChannelName = channelName;
@@ -980,10 +975,10 @@
                 // 채널 전환 후 스크롤을 맨 아래로 이동
                 forceScrollToBottom(document.getElementById('chat-messages'));
 
-                // 새 채널로 WebSocket 연결 (더 긴 지연 시간)
+                // 새 채널로 WebSocket 연결 (지연 시간 단축)
                 setTimeout(() => {
                     connectWebSocket();
-                }, 1000); // 1초 대기로 증가
+                }, 300); // 300ms로 단축
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
@@ -1715,37 +1710,36 @@
                 }
             });
             
-            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링 (수정됨)
+            // 주기적으로 연결 상태 확인 및 WebSocket 상태 모니터링 (최적화)
             setInterval(() => {
                 updateSendButton(); // WebSocket 상태에 따라 전송 버튼 업데이트
                 
-                // 연결이 끊어진 경우에만 재연결 시도 (더 보수적으로)
-                if (currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
+                // 연결이 끊어진 경우에만 재연결 시도 (더 정확한 체크)
+                if (currentChannelName && 
+                    (!websocket || websocket.readyState === WebSocket.CLOSED) &&
+                    reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    
                     console.log('🔍 WebSocket 상태 확인 - 재연결 필요');
                     updateConnectionStatus('offline');
-                    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                        attemptReconnect();
-                    }
+                    attemptReconnect();
                 }
-            }, 10000); // 10초마다 확인 (더 긴 간격)
+            }, 15000); // 15초로 증가 (더 긴 간격)
         });
     
-        // 안전한 웹소켓 연결 해제 함수
+        // 안전한 웹소켓 연결 해제 함수 (최적화)
         function safeCloseWebSocket() {
-            if (websocket) {
-                if (websocket.readyState === WebSocket.OPEN || websocket.readyState === WebSocket.CONNECTING) {
-                    try {
-                        websocket.close(1000, 'Page navigation');
-                        console.log('✅ WebSocket 연결 안전하게 종료됨');
-                    } catch (e) {
-                        console.log('WebSocket 연결 종료 실패:', e);
-                    }
+            if (websocket && websocket.readyState !== WebSocket.CLOSED) {
+                try {
+                    websocket.close(1000, 'Page navigation');
+                    console.log('✅ WebSocket 연결 안전하게 종료됨');
+                } catch (e) {
+                    console.log('WebSocket 연결 종료 실패:', e);
                 }
-                websocket = null;
-                // 연결 상태 초기화
-                updateConnectionStatus('offline');
-                reconnectAttempts = 0;
             }
+            websocket = null;
+            // 연결 상태 초기화
+            updateConnectionStatus('offline');
+            reconnectAttempts = 0;
         }
 
         // 페이지 언로드 시 WebSocket 연결 해제
@@ -1753,31 +1747,27 @@
             safeCloseWebSocket();
         });
 
-        // 페이지 가시성 변경 시 WebSocket 연결 관리 (수정됨)
+        // 페이지 가시성 변경 시 WebSocket 연결 관리 (최적화)
         document.addEventListener('visibilitychange', function() {
             if (document.hidden) {
                 // 페이지가 숨겨질 때는 연결을 유지 (탭 전환 시에도 연결 유지)
                 console.log('📱 페이지 숨김 - WebSocket 연결 유지');
             } else {
-                // 페이지가 다시 보일 때 연결 상태 확인
-                if (currentChannelName && (!websocket || websocket.readyState !== WebSocket.OPEN)) {
+                // 페이지가 다시 보일 때 연결 상태 확인 (개선된 로직)
+                if (currentChannelName && 
+                    (!websocket || websocket.readyState === WebSocket.CLOSED)) {
+                    
                     console.log('📱 페이지 복원 - WebSocket 연결 상태 확인');
                     setTimeout(() => {
-                        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                        if (!websocket || websocket.readyState === WebSocket.CLOSED) {
                             connectWebSocket();
                         }
-                    }, 1000);
+                    }, 500); // 500ms로 단축
                 }
             }
         });
 
-        // 페이지 전환 시 웹소켓 연결 정리
-        function cleanupWebSocketOnNavigation() {
-            console.log('🔄 페이지 전환으로 인한 웹소켓 연결 정리');
-            safeCloseWebSocket();
-            // 재연결 시도 중지
-            reconnectAttempts = MAX_RECONNECT_ATTEMPTS + 1;
-        }
+
     </script>
 </body>
 </html>

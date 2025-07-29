@@ -37,4 +37,4 @@ class WebSocketResponse(BaseModel):
     reply_to: Optional[int] = None
     mentions: Optional[List[int]] = None
     timestamp: str
-    connected_users: Optional[List[dict]] = None 
+    # connected_users: Optional[List[dict]] = None 
