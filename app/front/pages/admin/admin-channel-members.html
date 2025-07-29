@@ -50,21 +50,21 @@
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #2563eb);">👥</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">전체 멤버</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">⏳</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">입장 대기</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon" style="background: linear-gradient(135deg, #10b981, #059669);">✅</div>
-                    <div class="stat-number">-</div>
+                    <div class="stat-number">0</div>
                     <div class="stat-label">활성 멤버</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
@@ -368,7 +368,26 @@
         // 채널 멤버 목록 업데이트
         function updateChannelMembersList(members) {
             const container = document.getElementById('active-members-list');
+            const pendingCount  = requests.length;
+            //통계 업뎃
+            const statNumbers = document.querySelectorAll('.stat-number');
+            if (statNumbers[1]) statNumbers[1].textContent = pendingCount;
+            // 탭 배지 업데이트
+            const pendingTab = document.getElementById('pending-tab');
+            const existingBadge = pendingTab.querySelector('.tab-badge');
             
+            if (pendingCount > 0) {
+                if (!existingBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'tab-badge';
+                    badge.textContent = pendingCount;
+                    pendingTab.appendChild(badge);
+                } else {
+                    existingBadge.textContent = pendingCount;
+                }
+            } else if (existingBadge) {
+                existingBadge.remove();
+            }
             if (members.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -498,6 +517,14 @@
         function updateChannelStats(memberCount, pendingCount) {
             const statNumbers = document.querySelectorAll('.stat-number');
             const statChanges = document.querySelectorAll('.stat-change');
+
+            console.log('statNumbers 길이:', statNumbers.length);
+            console.log('statNumbers[1]:', statNumbers[1]); 
+            if (statNumbers[1]) {
+            console.log('pendingCount 업데이트 전:', statNumbers[1].textContent);
+            statNumbers[1].textContent = pendingCount;
+            console.log('pendingCount 업데이트 후:', statNumbers[1].textContent);
+        }
             
             if (statNumbers[0]) statNumbers[0].textContent = memberCount;
             if (statNumbers[1]) statNumbers[1].textContent = pendingCount;
