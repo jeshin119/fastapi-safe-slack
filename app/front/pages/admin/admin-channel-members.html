@@ -34,12 +34,30 @@
             </div>
         </div>
 
-        <!-- 현재 채널 정보 표시 -->
+
+        <!-- 기존 채널 정보 섹션을 아래 코드로 교체 -->
         <div class="channel-info-section" id="channel-info-section" style="display: none;">
             <div class="section-title">📢 현재 채널</div>
             <div class="channel-info-box">
-                <div><strong>채널 이름:</strong> <span id="current-channel-name">-</span></div>
-                <div><strong>공개 여부:</strong> <span id="current-channel-public">-</span></div>
+                <div class="channel-info-list">
+                    <div class="channel-info-row">
+                        <div class="channel-info-icon">📢</div>
+                        <div class="channel-info-text">
+                            <span class="channel-info-label">채널 이름:</span>
+                            <span class="channel-info-value channel-name-highlight" id="current-channel-name">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="channel-info-divider"></div>
+                    
+                    <div class="channel-info-row">
+                        <div class="channel-info-icon" id="channel-visibility-icon">🌍</div>
+                        <div class="channel-info-text">
+                            <span class="channel-info-label">공개 설정:</span>
+                            <span class="visibility-badge public" id="current-channel-public">-</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
