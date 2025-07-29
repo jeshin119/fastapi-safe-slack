@@ -28,7 +28,7 @@
         <div class="workspace-info">
             <div class="workspace-icon">🚀</div>
             <div class="workspace-details">
-                <div class="workspace-name">스타트업팀</div>
+                <div class="workspace-name">로딩 중</div>
                 <div class="workspace-meta">데이터 로딩 중...</div>
             </div>
         </div>
@@ -93,11 +93,7 @@
 
         <!-- 탭 섹션 -->
         <div class="tab-section">
-            <div class="tab-buttons">
-                <button class="tab-button active" onclick="switchTab('active')" id="active-tab">
-                    활성 채널
-                </button>
-            </div>
+
 
             <!-- 활성 채널 탭 -->
             <div class="tab-content active" id="active-content">
@@ -108,14 +104,7 @@
                         <option value="public">공개 채널</option>
                         <option value="private">비공개 채널</option>
                     </select>
-                    <div class="action-buttons">
-                        <button class="btn btn-secondary" onclick="exportChannels()">
-                            📤 내보내기
-                        </button>
-                        <button class="btn btn-primary" onclick="showCreateForm()">
-                            ➕ 채널 만들기
-                        </button>
-                    </div>
+                    
                 </div>
 
                 <div class="channels-grid" id="channels-list">
@@ -149,38 +138,127 @@
 
     <script>
         // 워크스페이스 정보 로드 함수 추가
-        async function loadWorkspaceInfo() {
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch('http://localhost:8000/workspaces/workspaces_list', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                const workspaces = await response.json();
-                const workspace = workspaces[0]; // 첫 번째 워크스페이스 사용
-                
-                // UI 업데이트
-                document.querySelector('.workspace-name').textContent = workspace.name;
-                document.querySelector('.workspace-meta').textContent = 
-                    `${workspace.member_count}명의 멤버 • ${workspace.is_workspace_admin ? '관리자' : '멤버'}`;
-                    
-                return workspace.name;
-            } catch {
-                return "기본 워크스페이스"; // 에러시 기본값
+      // 🆕 로딩 상태 표시 함수
+    function showWorkspaceLoading() {
+        const iconElement = document.querySelector('.workspace-icon');
+        const nameElement = document.querySelector('.workspace-name');
+        const metaElement = document.querySelector('.workspace-meta');
+        
+        iconElement.innerHTML = '<div class="loading-spinner-small"></div>';
+        nameElement.textContent = '로딩 중...';
+        metaElement.textContent = '워크스페이스 정보를 불러오고 있습니다...';
+    }
+
+    // 🆕 워크스페이스 UI 업데이트 함수
+    function updateWorkspaceUI(workspace) {
+        const iconElement = document.querySelector('.workspace-icon');
+        const nameElement = document.querySelector('.workspace-name');
+        const metaElement = document.querySelector('.workspace-meta');
+        
+        // 아이콘 설정 (API에서 아이콘 정보가 있다면 사용, 없으면 기본값)
+        const workspaceIcon = workspace.icon || getDefaultWorkspaceIcon(workspace.name);
+        iconElement.textContent = workspaceIcon;
+        
+        // 이름 설정
+        nameElement.textContent = workspace.name;
+        
+        // 메타 정보 설정
+        const memberText = `${workspace.member_count || 0}명의 멤버`;
+        const roleText = workspace.is_workspace_admin ? '관리자' : '멤버';
+        metaElement.textContent = `${memberText} • ${roleText}`;
+    }
+
+    // 🆕 기본 아이콘 생성 함수
+    function getDefaultWorkspaceIcon(workspaceName) {
+        // 워크스페이스 이름에 따라 다른 아이콘 반환
+        const iconMap = {
+            'admin': '👑',
+            'dev': '💻',
+            'design': '🎨',
+            'marketing': '📢',
+            'startup': '🚀',
+            'team': '👥'
+        };
+        
+        // 이름에 키워드가 포함되어 있으면 해당 아이콘 사용
+        for (const [keyword, icon] of Object.entries(iconMap)) {
+            if (workspaceName.toLowerCase().includes(keyword)) {
+                return icon;
             }
         }
-        // API 설정
-        const API_BASE_URL = 'http://localhost:8000';
-        let currentAction = null;
-        let targetChannel = null;
+        
+        // 기본 아이콘
+        return '🏢';
+    }
 
-        // 초기화
-        document.addEventListener('DOMContentLoaded', function() {
-            loadChannels();
-            setupSearch();
-            setupFormValidation();
-        });
+    // 🆕 에러 상태 표시 함수
+    function showWorkspaceError() {
+        const iconElement = document.querySelector('.workspace-icon');
+        const nameElement = document.querySelector('.workspace-name');
+        const metaElement = document.querySelector('.workspace-meta');
+        
+        iconElement.textContent = '⚠️';
+        nameElement.textContent = '연결 실패';
+        metaElement.innerHTML = `
+            데이터를 불러올 수 없습니다 
+            <button onclick="loadWorkspaceInfo()" style="margin-left: 8px; padding: 2px 8px; border: none; background: #2196f3; color: white; border-radius: 4px; cursor: pointer;">
+                🔄 재시도
+            </button>
+        `;
+    }
 
+    // 🔧 개선된 워크스페이스 정보 로드 함수
+    async function loadWorkspaceInfo() {
+        try {
+            const token = localStorage.getItem('access_token');
+            
+            // 로딩 상태 표시
+            showWorkspaceLoading();
+            
+            const response = await fetch('http://localhost:8000/workspaces/workspaces_list', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const workspaces = await response.json();
+            
+            if (!workspaces || workspaces.length === 0) {
+                throw new Error('워크스페이스가 없습니다.');
+            }
+            
+            const workspace = workspaces[0]; // 첫 번째 워크스페이스 사용
+            
+            // 🆕 동적으로 UI 업데이트
+            updateWorkspaceUI(workspace);
+            
+            return workspace.name;
+            
+        } catch (error) {
+            console.error('워크스페이스 정보 로드 실패:', error);
+            showWorkspaceError();
+            return "기본 워크스페이스"; // 에러시 기본값
+        }
+    }
+
+    // API 설정
+    const API_BASE_URL = 'http://localhost:8000';
+    let currentAction = null;
+    let targetChannel = null;
+
+    // 🔧 개선된 초기화 - 순서 중요!
+    document.addEventListener('DOMContentLoaded', async function() {
+        // 워크스페이스 정보부터 로드
+        await loadWorkspaceInfo();
+        
+        // 그 다음 채널 로드
+        loadChannels();
+        
+        setupSearch();
+        setupFormValidation();
+    });
         // 채널 목록 로드
         async function loadChannels() {
     try {
@@ -401,92 +479,6 @@
             document.getElementById(`${tabName}-content`).classList.add('active');
         }
 
-        // 채널 생성
-        function showCreateForm() {
-            const form = document.getElementById('create-form');
-            form.classList.add('active');
-            document.getElementById('channel-name').focus();
-        }
-
-        function cancelCreateChannel() {
-            const form = document.getElementById('create-form');
-            form.classList.remove('active');
-            clearCreateForm();
-        }
-
-        function clearCreateForm() {
-            document.getElementById('channel-name').value = '';
-            document.getElementById('channel-description').value = '';
-            document.getElementById('is-private').checked = false;
-        }
-
-        async function createChannel() {
-            const name = document.getElementById('channel-name').value.trim();
-            const description = document.getElementById('channel-description').value.trim();
-            const isPrivate = document.getElementById('is-private').checked;
-            
-            if (!name) {
-                alert('채널 이름을 입력해주세요.');
-                return;
-            }
-
-            const createBtn = event.target;
-            const btnText = document.getElementById('create-btn-text');
-            const spinner = document.getElementById('create-spinner');
-
-            createBtn.disabled = true;
-            btnText.textContent = '생성 중...';
-            spinner.style.display = 'inline-block';
-
-            try {
-                const result = await createChannelAPI(name, description, isPrivate);
-                
-                if (result.success) {
-                    alert(`✅ "${name}" 채널이 생성되었습니다!`);
-                    
-                    await loadChannels();
-                    cancelCreateChannel();
-                } else {
-                    alert(`❌ 오류: ${result.error}`);
-                }
-            } catch (error) {
-                alert('❌ 채널 생성 중 오류가 발생했습니다.');
-            } finally {
-                createBtn.disabled = false;
-                btnText.textContent = '채널 만들기';
-                spinner.style.display = 'none';
-            }
-        }
-
-        async function createChannelAPI(name, description, isPrivate) {
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/channels`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        channel_name: name,
-                        workspace_name: workspaceName, // 실제 워크스페이스명
-                        is_public: !isPrivate
-                      
-                        
-                    })
-                });
-
-                if (response.ok) {
-                    return { success: true };
-                } else {
-                    const data = await response.json();
-                    return { success: false, error: data.detail || '채널 생성에 실패했습니다.' };
-                }
-            } catch (error) {
-                return { success: false, error: '서버 연결에 실패했습니다.' };
-            }
-        }
-
         // 채널 액션 함수들
       
 
@@ -619,10 +611,12 @@
             
             channelCards.forEach(card => {
                 const name = card.querySelector('.channel-name').textContent.toLowerCase();
-                const description = card.querySelector('.channel-description').textContent.toLowerCase();
-                const isPublic = card.querySelector('.channel-icon').classList.contains('public');
+                const channelIcon= card.querySelector('.channel-icon');
+                const isPublic = channelIcon.classList.contains('public');
                 
-                let matchesSearch = name.includes(searchTerm) || description.includes(searchTerm);
+                let matchesSearch = name.includes(searchTerm) ;
+                
+                
                 let matchesFilter = true;
                 
                 if (filterType === 'public') {
