@@ -390,12 +390,14 @@
                 container.appendChild(memberCard);
             });
 
-            updateChannelStats(members.length, 0);  // 멤버 수 업데이트, 대기 수는 이 함수 내에서 알 수 없음
+            updateChannelStats(members.length, latestPendingCount);  // 멤버 수 업데이트, 대기 수는 이 함수 내에서 알 수 없음
         }
 
         // 채널 입장 요청 목록 업데이트
         function updateChannelRequestsList(requests) {
             const container = document.getElementById('pending-list');
+
+            latestPendingCount = requests.length; // ✅ 전역 변수에 저장
             
             if (requests.length === 0) {
                 container.innerHTML = `
@@ -417,7 +419,7 @@
             
             // 통계에 요청 수 반영
             const currentMemberCount = document.querySelectorAll('#active-members-list .member-card').length;
-            updateChannelStats(currentMemberCount, requests.length);
+            updateChannelStats(currentMemberCount, latestPendingCount);
         }
 
         // 멤버 카드 생성
