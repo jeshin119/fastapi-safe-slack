@@ -110,13 +110,13 @@ async def websocket_endpoint(
             False  # WebSocket 연결 시에는 입장 메시지 전송하지 않음
         )
         
-        # 연결된 사용자 목록 전송
-        connected_users = manager.get_connected_users(workspace.id, channel.id)
-        await manager.send_personal_message(websocket, {
-            "type": "connected_users",
-            "connected_users": connected_users,
-            "timestamp": datetime.now().isoformat()
-        })
+        # 연결된 사용자 목록 전송 (기능 비활성화)
+        # connected_users = manager.get_connected_users(workspace.id, channel.id)
+        # await manager.send_personal_message(websocket, {
+        #     "type": "connected_users",
+        #     "connected_users": connected_users,
+        #     "timestamp": datetime.now().isoformat()
+        # })
         
         # 채널 가입 시간 이후의 메시지 히스토리 전송
         if channel_membership.joined_at:
@@ -150,7 +150,7 @@ async def websocket_endpoint(
         
         # 메시지 수신 루프 (시그널 처리를 위한 개선)
         error_count = 0  # 에러 카운터 추가
-        max_errors = 5   # 최대 허용 에러 횟수
+        max_errors = 10  # 최대 허용 에러 횟수 증가 (더 관대하게)
         
         while True:
             try:

@@ -188,7 +188,7 @@ class ConnectionManager:
         self.connection_info.clear()
         self.closing_websockets.clear()
         self.connected_websockets.clear()
-        print("✅ WebSocket 연결 정리 완료")
+        # print("✅ WebSocket 연결 정리 완료")
     
     def get_connection_count(self) -> int:
         """현재 활성 연결 수 반환"""
@@ -236,22 +236,7 @@ class ConnectionManager:
             for websocket in disconnected_websockets:
                 await self.disconnect(websocket)
     
-    def get_connected_users(self, workspace_id: int, channel_id: int) -> List[dict]:
-        """특정 채널에 연결된 사용자 목록 반환"""
-        users = []
-        if workspace_id in self.active_connections and channel_id in self.active_connections[workspace_id]:
-            for websocket in self.active_connections[workspace_id][channel_id]:
-                if (websocket in self.connection_info and 
-                    websocket not in self.closing_websockets and
-                    websocket in self.connected_websockets):
-                    _, _, user_id, user_name = self.connection_info[websocket]
-                    users.append({
-                        "user_id": user_id, 
-                        "user_name": user_name,
-                        "name": user_name,  # 클라이언트 호환성을 위해 추가
-                        "avatar": user_name[0] if user_name else "?"
-                    })
-        return users
+
 
 # 전역 인스턴스
 manager = ConnectionManager() 
