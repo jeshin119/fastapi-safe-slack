@@ -370,26 +370,7 @@
         // 채널 멤버 목록 업데이트
         function updateChannelMembersList(members) {
             const container = document.getElementById('active-members-list');
-            const pendingCount  = requests.length;
-            //통계 업뎃
-            const statNumbers = document.querySelectorAll('.stat-number');
-            if (statNumbers[1]) statNumbers[1].textContent = pendingCount;
-            // 탭 배지 업데이트
-            const pendingTab = document.getElementById('pending-tab');
-            const existingBadge = pendingTab.querySelector('.tab-badge');
-            
-            if (pendingCount > 0) {
-                if (!existingBadge) {
-                    const badge = document.createElement('span');
-                    badge.className = 'tab-badge';
-                    badge.textContent = pendingCount;
-                    pendingTab.appendChild(badge);
-                } else {
-                    existingBadge.textContent = pendingCount;
-                }
-            } else if (existingBadge) {
-                existingBadge.remove();
-            }
+
             if (members.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -398,23 +379,25 @@
                         <div class="empty-description">아직 이 채널에 가입한 멤버가 없습니다.</div>
                     </div>
                 `;
-                updateChannelStats(0, 0);
+                updateChannelStats(0, 0);  // 멤버 수: 0, 대기 수: 0
                 return;
             }
-            
+
             container.innerHTML = '';
-            
+
             members.forEach(member => {
                 const memberCard = createMemberCard(member, 'active');
                 container.appendChild(memberCard);
             });
-            
-            updateChannelStats(members.length, 0);
+
+            updateChannelStats(members.length, latestPendingCount);  // 멤버 수 업데이트, 대기 수는 이 함수 내에서 알 수 없음
         }
 
         // 채널 입장 요청 목록 업데이트
         function updateChannelRequestsList(requests) {
             const container = document.getElementById('pending-list');
+
+            latestPendingCount = requests.length; // ✅ 전역 변수에 저장
             
             if (requests.length === 0) {
                 container.innerHTML = `
@@ -436,7 +419,7 @@
             
             // 통계에 요청 수 반영
             const currentMemberCount = document.querySelectorAll('#active-members-list .member-card').length;
-            updateChannelStats(currentMemberCount, requests.length);
+            updateChannelStats(currentMemberCount, latestPendingCount);
         }
 
         // 멤버 카드 생성
