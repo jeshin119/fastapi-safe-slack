@@ -69,13 +69,8 @@
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
 
-                <div class="stat-card">
-                    <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">🔒</div>
-                    <div class="stat-number">-</div>
-                    <div class="stat-label">채널 유형</div>
-                    <div class="stat-change neutral">로딩 중</div>
-                </div>
-            </div>
+                
+            
         </div>
 
         <!-- 탭 섹션 -->
@@ -93,11 +88,6 @@
             <div class="tab-content active" id="pending-content">
                 <div class="content-header">
                     <input type="text" class="search-input" placeholder="이름, 이메일로 검색..." id="pending-search">
-                    <select class="filter-select" id="pending-filter">
-                        <option value="all">모든 요청</option>
-                        <option value="recent">최근 요청</option>
-                        <option value="old">오래된 요청</option>
-                    </select>
                 </div>
 
                 <div class="members-grid" id="pending-list">
@@ -118,11 +108,7 @@
                         <option value="admin">관리자</option>
                         <option value="member">일반 멤버</option>
                     </select>
-                    <div class="action-buttons">
-                        <button class="btn btn-secondary" onclick="exportMembers()">
-                            📤 멤버 강퇴
-                        </button>
-                    </div>
+                    
                 </div>
 
                 <div class="members-grid" id="active-members-list">
@@ -501,16 +487,10 @@
                             <span class="meta-value">${member.is_admin ? '🔑 관리자' : '👤 일반 멤버'}</span>
                         </div>
                     </div>
-                    <div class="member-actions">
-                        ${!member.is_admin ? `
-                            <button class="action-btn action-reject" onclick="kickFromChannel(${member.user_id}, '${name}')">
-                                🚪 추방
-                            </button>
-                        ` : ''}
-                    </div>
+    
                 `;
             }
-            
+
             return card;
         }
 
@@ -522,7 +502,7 @@
             if (statNumbers[0]) statNumbers[0].textContent = memberCount;
             if (statNumbers[1]) statNumbers[1].textContent = pendingCount;
             if (statNumbers[2]) statNumbers[2].textContent = memberCount;
-            if (statNumbers[3]) statNumbers[3].textContent = currentChannel ? (currentChannel.isPublic ? '공개' : '비공개') : '-';
+            
             
             if (statChanges[0]) {
                 statChanges[0].textContent = `총 ${memberCount}명`;
@@ -536,10 +516,7 @@
                 statChanges[2].textContent = '활성 상태';
                 statChanges[2].className = 'stat-change positive';
             }
-            if (statChanges[3]) {
-                statChanges[3].textContent = currentChannel ? (currentChannel.isPublic ? '🌍 모든 멤버' : '🔒 초대만') : '';
-                statChanges[3].className = 'stat-change neutral';
-            }
+        
             
             // 탭 배지 업데이트
             const pendingTab = document.getElementById('pending-tab');
@@ -912,83 +889,7 @@
             }
         });
 
-        // CSS 스타일 추가
-        const style = document.createElement('style');
-        style.textContent = `
-            .status-admin {
-                background: linear-gradient(135deg, #f59e0b, #d97706);
-                color: white;
-            }
-            
-            .status-active {
-                background: linear-gradient(135deg, #10b981, #059669);
-                color: white;
-            }
-            
-            .tab-badge {
-                background: #ef4444;
-                color: white;
-                border-radius: 10px;
-                padding: 2px 6px;
-                font-size: 12px;
-                margin-left: 8px;
-                min-width: 18px;
-                text-align: center;
-                display: inline-block;
-            }
-            
-            @keyframes fadeOut {
-                from { opacity: 1; transform: translateY(0); }
-                to { opacity: 0; transform: translateY(-10px); }
-            }
-            
-            .form-group {
-                margin-bottom: 20px;
-            }
-            
-            .form-input {
-                width: 100%;
-                padding: 12px 16px;
-                border: 2px solid #e5e7eb;
-                border-radius: 12px;
-                font-size: 16px;
-                transition: all 0.2s ease;
-                background: white;
-            }
-            
-            .form-input:focus {
-                outline: none;
-                border-color: #3b82f6;
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            }
-        `;
         document.head.appendChild(style);
     </script>
 </body>
-</html>서버 연결에 실패했습니다.' };
-            }
-        }
-
-        async function kickFromChannelAPI(userId) {
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/channels/leave`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        workspace_name: currentWorkspace,
-                        channel_name: currentChannel.name
-                    })
-                });
-
-                if (response.ok) {
-                    return { success: true };
-                } else {
-                    const errorData = await response.json();
-                    return { success: false, error: errorData.detail || '추방에 실패했습니다.' };
-                }
-            } catch (error) {
-                return { success: false, error: '
+</html>
