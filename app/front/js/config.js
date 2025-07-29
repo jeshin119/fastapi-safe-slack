@@ -17,6 +17,8 @@
     
     // 전역 변수로 설정
     window.API_BASE_URL = getApiBaseUrl();
+    // 호환성을 위해 API_BASE_URL도 설정
+    API_BASE_URL = getApiBaseUrl();
     
     // 콘솔에 현재 설정 출력 (디버깅용)
     console.log('API_BASE_URL 설정됨:', window.API_BASE_URL);

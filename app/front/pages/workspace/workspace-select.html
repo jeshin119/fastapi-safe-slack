@@ -159,87 +159,6 @@
         </div>
     </div>
 
-    <script>
-// ============================
-// JWT 토큰 디코딩 함수들
-// ============================
-
-// Base64 URL 디코딩 함수
-function base64UrlDecode(str) {
-    // Base64 URL을 일반 Base64로 변환
-    str = str.replace(/-/g, '+').replace(/_/g, '/');
-    
-    // 패딩 추가
-    while (str.length % 4) {
-        str += '=';
-    }
-    
-    try {
-        // Base64 디코딩 후 UTF-8로 변환
-        return decodeURIComponent(atob(str).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-    } catch (error) {
-        console.error('Base64 디코딩 오류:', error);
-        return null;
-    }
-}
-
-// JWT 토큰에서 페이로드 추출
-function parseJWT(token) {
-    try {
-        const parts = token.split('.');
-        if (parts.length !== 3) {
-            throw new Error('유효하지 않은 JWT 형식');
-        }
-        
-        const payload = base64UrlDecode(parts[1]);
-        if (!payload) {
-            throw new Error('페이로드 디코딩 실패');
-        }
-        
-        return JSON.parse(payload);
-    } catch (error) {
-        console.error('JWT 파싱 오류:', error);
-        return null;
-    }
-}
-
-// JWT에서 사용자 정보 추출
-function getUserInfoFromJWT() {
-    const token = localStorage.getItem('access_token');
-    
-    if (!token) {
-        console.log('토큰이 없습니다.');
-        return null;
-    }
-    
-    const payload = parseJWT(token);
-    
-    if (!payload) {
-        console.error('JWT 파싱 실패');
-        return null;
-    }
-    
-    console.log('JWT 페이로드:', payload);
-    
-    // 토큰 만료 체크
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-        console.error('토큰이 만료되었습니다.');
-        localStorage.removeItem('access_token');
-        return null;
-    }
-    
-    // 사용자 정보 추출
-    return {
-        id: payload.user_id,
-        name: payload.user_name,
-        username: payload.user_name,
-        email: payload.user_email,
-        exp: payload.exp
-    };
-}
-
     <script src="../../js/config.js"></script>
     <script>
         // ============================
@@ -275,6 +194,20 @@ function getUserInfoFromJWT() {
 
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({}));
+                    console.error('서버 응답 에러:', errorData);
+                    
+                    // 422 에러 (검증 오류) 처리
+                    if (response.status === 422) {
+                        if (errorData.detail && Array.isArray(errorData.detail)) {
+                            // Pydantic 검증 오류 처리
+                            const errorMessages = errorData.detail.map(error => {
+                                const field = error.loc ? error.loc[error.loc.length - 1] : 'unknown';
+                                return `${field}: ${error.msg}`;
+                            }).join(', ');
+                            throw new Error(`입력값 오류: ${errorMessages}`);
+                        }
+                    }
+                    
                     throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
                 }
 
@@ -341,440 +274,397 @@ function getUserInfoFromJWT() {
             });
         }
 
-// ============================
-// 수정된 사용자 정보 로드 함수 (JWT 디코딩 우선)
-// ============================
-async function loadUserInfo() {
-    console.log('👤 사용자 정보 로드 시작...');
-    
-    // 1. 먼저 JWT에서 사용자 정보 추출 시도
-    const jwtUserInfo = getUserInfoFromJWT();
-    
-    if (jwtUserInfo) {
-        console.log('✅ JWT에서 사용자 정보 추출됨:', jwtUserInfo);
-        
-        // UI 업데이트
-        document.getElementById('user-name').textContent = jwtUserInfo.name || jwtUserInfo.username;
-        document.getElementById('user-email').textContent = jwtUserInfo.email;
-        document.getElementById('user-avatar').textContent = (jwtUserInfo.name || jwtUserInfo.username).charAt(0);
-        
-        return;
-    }
-    
-    // 2. JWT에서 정보를 가져올 수 없으면 API 호출
-    try {
-        console.log('JWT에서 정보 추출 실패, API 호출 시도...');
-        const userData = await apiCall('/auth/me');
-        console.log('✅ API에서 사용자 정보 로드됨:', userData);
-        
-        document.getElementById('user-name').textContent = userData.name || userData.username;
-        document.getElementById('user-email').textContent = userData.email;
-        document.getElementById('user-avatar').textContent = (userData.name || userData.username).charAt(0);
-    } catch (error) {
-        console.error('❌ 사용자 정보 로드 실패:', error);
-        
-        if (!IS_DEV_MODE && (error.message.includes('401') || error.message.includes('403'))) {
-            alert('로그인이 필요합니다.');
-            window.location.href = '/login.html';
+        // ============================
+        // 수정된 사용자 정보 로드 함수 (JWT 디코딩 우선)
+        // ============================
+        async function loadUserInfo() {
+            console.log('👤 사용자 정보 로드 시작...');
+            
+            // 1. 먼저 JWT에서 사용자 정보 추출 시도
+            const jwtUserInfo = getUserInfoFromJWT();
+            
+            if (jwtUserInfo) {
+                console.log('✅ JWT에서 사용자 정보 추출됨:', jwtUserInfo);
+                
+                // UI 업데이트
+                document.getElementById('user-name').textContent = jwtUserInfo.name || jwtUserInfo.username;
+                document.getElementById('user-email').textContent = jwtUserInfo.email;
+                document.getElementById('user-avatar').textContent = (jwtUserInfo.name || jwtUserInfo.username).charAt(0);
+                
+                return;
+            }
+            
+            // 2. JWT에서 정보를 가져올 수 없으면 API 호출
+            try {
+                console.log('🔄 API에서 사용자 정보 요청...');
+                const userData = await apiCall('/auth/me');
+                
+                console.log('✅ API에서 사용자 정보 받음:', userData);
+                
+                // UI 업데이트
+                document.getElementById('user-name').textContent = userData.name || userData.username;
+                document.getElementById('user-email').textContent = userData.email;
+                document.getElementById('user-avatar').textContent = (userData.name || userData.username).charAt(0);
+                
+            } catch (error) {
+                console.error('❌ 사용자 정보 로드 실패:', error);
+                
+                // 로그인 페이지로 리다이렉트
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    window.location.href = 'login.html';
+                }
+            }
         }
-    }
-}
 
-// 사용자의 워크스페이스 목록 로드
-async function loadUserWorkspaces() {
-    console.log('📋 워크스페이스 목록 로드 시작...');
-    
-    try {
-        const data = await apiCall('/workspaces/workspaces_list');
-        console.log('API 응답:', data);
-        
-        userWorkspaces = data.map((ws, index) => ({
-            id: index + 1,
-            name: ws.name,
-            description: '',
-            member_count: ws.member_count || 0,  // ← ✅ 실제 데이터 사용,
-            role: ws.is_workspace_admin ? 'admin' : 'member',
-            status: 'active',
-            last_activity: '최근 활동',
-            start_date: ws.start_date,
-            role_id: ws.role_id
-        }));
-        
-        console.log('변환된 워크스페이스:', userWorkspaces);
-        renderWorkspaceList();
-    } catch (error) {
-        console.error('워크스페이스 목록 로드 실패:', error);
-        
-        userWorkspaces = [];
-        renderWorkspaceList();
-        
-        alert('워크스페이스 목록을 불러오는데 실패했습니다. 새로고침을 시도해주세요.');
-    }
-}
+        // ============================
+        // JWT 토큰에서 사용자 정보 추출 함수
+        // ============================
+        function getUserInfoFromJWT() {
+            try {
+                const token = localStorage.getItem('access_token');
+                if (!token) return null;
+                
+                // JWT 토큰 디코딩 (Base64)
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                
+                // 토큰 만료 확인
+                if (payload.exp && payload.exp * 1000 < Date.now()) {
+                    console.log('⚠️ JWT 토큰이 만료됨');
+                    localStorage.removeItem('access_token');
+                    return null;
+                }
+                
+                return {
+                    id: payload.user_id,
+                    name: payload.user_name,
+                    username: payload.user_name,
+                    email: payload.user_email,
+                    exp: payload.exp
+                };
+            } catch (error) {
+                console.error('JWT 디코딩 실패:', error);
+                return null;
+            }
+        }
 
-// 워크스페이스 목록 렌더링
-function renderWorkspaceList() {
-    console.log('🎨 워크스페이스 목록 렌더링 시작...');
-    console.log('렌더링할 워크스페이스:', userWorkspaces);
-    
-    const listContainer = document.getElementById('workspace-list');
-    
-    if (!listContainer) {
-        console.error('❌ workspace-list 요소를 찾을 수 없습니다!');
-        return;
-    }
-    
-    if (userWorkspaces.length === 0) {
-        console.log('📭 워크스페이스가 없음 - 빈 상태 표시');
-        listContainer.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-icon">🏢</div>
-                <div class="empty-title">아직 참여한 워크스페이스가 없습니다</div>
-                <div class="empty-description">
-                    새 워크스페이스를 만들거나<br>
-                    초대 코드로 기존 워크스페이스에 참여해보세요
-                </div>
-            </div>
-        `;
-        return;
-    }
+        // ============================
+        // 워크스페이스 목록 로드
+        // ============================
+        async function loadUserWorkspaces() {
+            console.log('🏢 워크스페이스 목록 로드 시작...');
+            
+            try {
+                const data = await apiCall('/workspaces/workspaces_list');
+                console.log('✅ 워크스페이스 목록 받음:', data);
+                
+                // 백엔드에서 배열을 직접 반환하므로 data 자체가 배열
+                userWorkspaces = Array.isArray(data) ? data : [];
+                renderWorkspaceList();
+                
+            } catch (error) {
+                console.error('❌ 워크스페이스 목록 로드 실패:', error);
+                
+                // 에러 메시지 표시
+                const workspaceList = document.getElementById('workspace-list');
+                workspaceList.innerHTML = `
+                    <div class="error-message">
+                        <div class="error-icon">⚠️</div>
+                        <div class="error-text">워크스페이스 목록을 불러올 수 없습니다.</div>
+                        <button class="btn btn-secondary" onclick="loadUserWorkspaces()">다시 시도</button>
+                    </div>
+                `;
+            }
+        }
 
-    console.log(`✅ ${userWorkspaces.length}개 워크스페이스 렌더링 중...`);
-    
-    listContainer.innerHTML = userWorkspaces.map(workspace => `
-        <div class="workspace-item" onclick="selectWorkspace(${workspace.id}, event)" data-workspace-id="${workspace.id}">
-            <div class="workspace-status status-${workspace.status || 'active'}">
-                ${workspace.status === 'pending' ? '승인 대기' : '활성'}
-            </div>
-            <div class="workspace-header">
-                <div class="workspace-icon">
-                    ${getWorkspaceIcon(workspace.name)}
-                </div>
-                <div class="workspace-info">
-                    <div class="workspace-name">${workspace.name}</div>
-                    <div class="workspace-meta">
-                        👥 ${workspace.member_count || 0}명 • 
-                        ${workspace.role === 'admin' ? '👑 관리자' : '👤 멤버'} • 
-                        ${workspace.last_activity || '최근 활동 없음'}
+        // ============================
+        // 워크스페이스 목록 렌더링
+        // ============================
+        function renderWorkspaceList() {
+            const workspaceList = document.getElementById('workspace-list');
+            
+            if (userWorkspaces.length === 0) {
+                workspaceList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🏢</div>
+                        <div class="empty-title">참여한 워크스페이스가 없습니다</div>
+                        <div class="empty-description">
+                            새로운 워크스페이스를 만들거나<br>
+                            초대 코드로 참여해보세요
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            workspaceList.innerHTML = userWorkspaces.map(workspace => `
+                <div class="workspace-item" onclick="selectWorkspace('${workspace.id}')" data-workspace-id="${workspace.id}">
+                    <div class="workspace-icon">🏢</div>
+                    <div class="workspace-details">
+                        <div class="workspace-name">${workspace.name}</div>
+                        <div class="workspace-meta">
+                            ${workspace.description || '설명 없음'} • ${workspace.member_count || 0}명
+                        </div>
+                    </div>
+                    <div class="workspace-status ${workspace.status || 'active'}">
+                        ${getStatusText(workspace.status)}
                     </div>
                 </div>
-            </div>
-            ${workspace.description ? `<div style="margin-top: 8px; color: #64748b; font-size: 14px;">${workspace.description}</div>` : ''}
-        </div>
-    `).join('');
-    
-    console.log('✅ 워크스페이스 목록 렌더링 완료');
-}
+            `).join('');
+        }
 
-// 워크스페이스 아이콘 추출
-function getWorkspaceIcon(name) {
-    const match = name.match(/[\u{1F300}-\u{1F9FF}]/u);
-    return match ? match[0] : '🏢';
-}
-
-// ============================
-// 탭 전환
-// ============================
-function switchTab(tabName, event = null) {
-    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-    
-    if (event && event.target) {
-        event.target.classList.add('active');
-    } else {
-        const buttons = document.querySelectorAll('.tab-button');
-        buttons.forEach((btn, index) => {
-            if ((tabName === 'my-workspaces' && index === 0) ||
-                (tabName === 'create-workspace' && index === 1) ||
-                (tabName === 'join-workspace' && index === 2)) {
-                btn.classList.add('active');
+        // ============================
+        // 워크스페이스 선택
+        // ============================
+        function selectWorkspace(workspaceId) {
+            // 이전 선택 해제
+            document.querySelectorAll('.workspace-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // 새 선택 표시
+            const selectedItem = document.querySelector(`[data-workspace-id="${workspaceId}"]`);
+            if (selectedItem) {
+                selectedItem.classList.add('selected');
             }
-        });
-    }
-
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-
-    if (tabName !== 'my-workspaces') {
-        selectedWorkspace = null;
-        updateEnterButton();
-    }
-}
-
-// ============================
-// 워크스페이스 선택
-// ============================
-function selectWorkspace(workspaceId, event = null) {
-    selectedWorkspace = userWorkspaces.find(ws => ws.id === workspaceId);
-    
-    document.querySelectorAll('.workspace-item').forEach(item => {
-        item.classList.remove('selected');
-    });
-    
-    if (event && event.target) {
-        const workspaceItem = event.target.closest('.workspace-item');
-        if (workspaceItem) {
-            workspaceItem.classList.add('selected');
-        }
-    } else {
-        const workspaceItem = document.querySelector(`[data-workspace-id="${workspaceId}"]`);
-        if (workspaceItem) {
-            workspaceItem.classList.add('selected');
-        }
-    }
-    
-    updateEnterButton();
-}
-
-function updateEnterButton() {
-    const enterBtn = document.getElementById('enter-workspace-btn');
-    const btnText = document.getElementById('enter-btn-text');
-    
-    if (selectedWorkspace) {
-        enterBtn.disabled = false;
-        if (selectedWorkspace.status === 'pending') {
-            btnText.textContent = '승인 대기 중';
-            enterBtn.disabled = true;
-        } else {
-            btnText.textContent = `${selectedWorkspace.name} 입장`;
-        }
-    } else {
-        enterBtn.disabled = true;
-        btnText.textContent = '워크스페이스 입장';
-    }
-}
-
-// ============================
-// 워크스페이스 입장
-// ============================
-async function enterWorkspace() {
-    if (!selectedWorkspace) return;
-
-    const enterBtn = document.getElementById('enter-workspace-btn');
-    const btnText = document.getElementById('enter-btn-text');
-    
-    enterBtn.disabled = true;
-    btnText.textContent = '입장 중...';
-
-    try {
-        const data = await apiCall('/workspaces/workspaces_select', {
-            method: 'POST',
-            body: JSON.stringify({
-                workspace_name: selectedWorkspace.name
-            })
-        });
-
-        console.log('워크스페이스 선택 응답:', data);
-
-        localStorage.setItem('current_workspace_name', data.workspace_name || selectedWorkspace.name);
-        localStorage.setItem('is_workspace_admin', data.is_workspace_admin || false);
-        localStorage.setItem('user_role_id', selectedWorkspace.role_id || '');
-        localStorage.setItem('workspace_start_date', selectedWorkspace.start_date || '');
-        
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
+            
+            selectedWorkspace = userWorkspaces.find(ws => ws.id === workspaceId);
+            
+            // 입장 버튼 활성화
+            const enterBtn = document.getElementById('enter-workspace-btn');
+            if (enterBtn) {
+                enterBtn.disabled = false;
+            }
         }
 
-        alert(`🎉 ${data.message || selectedWorkspace.name + ' 워크스페이스에 입장했습니다!'}`);
-        
-        window.location.href = `workspace-main.html?workspace_name=${encodeURIComponent(selectedWorkspace.name)}`;
-
-    } catch (error) {
-        console.error('워크스페이스 입장 실패:', error);
-        alert('워크스페이스 입장에 실패했습니다: ' + error.message);
-        
-        enterBtn.disabled = false;
-        updateEnterButton();
-    }
-}
-
-// ============================
-// 새 워크스페이스 생성
-// ============================
-async function createWorkspace(event = null) {
-    const name = document.getElementById('workspace-name').value.trim();
-    const description = document.getElementById('workspace-description').value.trim();
-    
-    if (!name) {
-        alert('워크스페이스 이름을 입력해주세요.');
-        return;
-    }
-
-    const createBtn = event && event.target ? event.target : document.querySelector('#create-workspace .btn-primary');
-    const btnText = document.getElementById('create-btn-text');
-    const spinner = document.getElementById('create-spinner');
-
-    createBtn.disabled = true;
-    btnText.textContent = '생성 중...';
-    spinner.style.display = 'inline-block';
-
-    try {
-        const data = await apiCall('/workspaces/create', {
-            method: 'POST',
-            body: JSON.stringify({
-                workspace_name: name,
-                description: description
-            })
-        });
-
-        console.log('워크스페이스 생성 응답:', data);
-
-        const successMessage = data.message || `"${data.workspace_name || name}" 워크스페이스가 생성되었습니다!`;
-        const startDate = data.start_date ? `\n시작일: ${data.start_date}` : '';
-        
-        alert(`🎉 ${successMessage}${startDate}\n관리자로 설정되었습니다.`);
-        
-        await loadUserWorkspaces();
-        switchTab('my-workspaces');
-        clearCreateForm();
-
-    } catch (error) {
-        console.error('워크스페이스 생성 실패:', error);
-        alert(`생성 실패: ${error.message}`);
-    } finally {
-        createBtn.disabled = false;
-        btnText.textContent = '워크스페이스 만들기';
-        spinner.style.display = 'none';
-    }
-}
-
-function clearCreateForm() {
-    document.getElementById('workspace-name').value = '';
-    document.getElementById('workspace-description').value = '';
-    
-    // 버튼 상태도 리셋
-    const createBtn = document.querySelector('#create-workspace .btn-primary');
-    if (createBtn) {
-        createBtn.disabled = true;
-    }
-}
-
-// ============================
-// 워크스페이스 참여
-// ============================
-async function joinWorkspace(event = null) {
-    const inviteCode = document.getElementById('invite-code').value.trim();
-    const roleName = document.getElementById('role-name').value.trim();
-    
-    if (!inviteCode) {
-        alert('초대 코드를 입력해주세요.');
-        return;
-    }
-    
-    if (!roleName) {
-        alert('역할을 선택해주세요.');
-        return;
-    }
-
-    const joinBtn = event && event.target ? event.target : document.getElementById('join-workspace-btn');
-    const btnText = document.getElementById('join-btn-text');
-    const spinner = document.getElementById('join-spinner');
-
-    joinBtn.disabled = true;
-    btnText.textContent = '참여 중...';
-    spinner.style.display = 'inline-block';
-
-    try {
-        const data = await apiCall('/workspaces/join-request', {
-            method: 'POST',
-            body: JSON.stringify({
-                invite_code: inviteCode,
-                role_name: roleName
-            })
-        });
-
-        alert('🎉 워크스페이스 가입 요청이 전송되었습니다!\n관리자의 승인을 기다리세요.');
-        
-        await loadUserWorkspaces();
-        switchTab('my-workspaces');
-        clearJoinForm();
-
-    } catch (error) {
-        console.error('워크스페이스 참여 실패:', error);
-        alert(`참여 실패: ${error.message}`);
-    } finally {
-        joinBtn.disabled = false;
-        btnText.textContent = '워크스페이스 참여';
-        spinner.style.display = 'none';
-    }
-}
-
-function clearJoinForm() {
-    document.getElementById('invite-code').value = '';
-    document.getElementById('role-name').value = '';
-    
-    const joinBtn = document.getElementById('join-workspace-btn');
-    if (joinBtn) {
-        joinBtn.disabled = true;
-    }
-}
-
-// ============================
-// 기타 기능들
-// ============================
-async function refreshWorkspaces(event = null) {
-    const btn = event && event.target ? event.target : document.querySelector('.btn-secondary');
-    const originalText = btn.textContent;
-    
-    btn.disabled = true;
-    btn.textContent = '🔄 새로고침 중...';
-    
-    try {
-        await loadUserWorkspaces();
-    } catch (error) {
-        console.error('새로고침 실패:', error);
-    } finally {
-        setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }, 1000);
-    }
-}
-
-function handleRoleChange() {
-    validateJoinForm();
-}
-
-function validateJoinForm() {
-    const joinBtn = document.getElementById('join-workspace-btn');
-    const inviteCode = document.getElementById('invite-code').value.trim();
-    const roleName = document.getElementById('role-name').value.trim();
-   
-    const isValid = inviteCode.length >= 3 && roleName.length > 0; 
-    if (joinBtn) {
-        joinBtn.disabled = !isValid;
-    }
-}
-
-// 개발자 도구용 디버깅
-window.debugWorkspace = {
-    fillTestData: () => {
-        document.getElementById('workspace-name').value = '테스트 워크스페이스';
-        document.getElementById('workspace-description').value = '테스트용 워크스페이스입니다';
-        document.getElementById('invite-code').value = 'TEST123';
-        document.getElementById('role-name').value = '사원';
-        console.log('테스트 데이터가 입력되었습니다.');
-    },
-    testAPI: async () => {
-        try {
-            const data = await apiCall('/workspaces/workspaces_list');
-            console.log('API 테스트 성공:', data);
-        } catch (error) {
-            console.error('API 테스트 실패:', error);
+        // ============================
+        // 워크스페이스 입장
+        // ============================
+        function enterWorkspace() {
+            if (!selectedWorkspace) {
+                alert('워크스페이스를 선택해주세요.');
+                return;
+            }
+            
+            // 워크스페이스 정보 저장
+            localStorage.setItem('current_workspace_id', selectedWorkspace.id);
+            localStorage.setItem('current_workspace_name', selectedWorkspace.name);
+            
+            // 워크스페이스 메인 페이지로 이동
+            window.location.href = 'workspace-main.html';
         }
-    },
-    clearData: () => {
-        userWorkspaces = [];
-        renderWorkspaceList();
-        console.log('워크스페이스 데이터가 초기화되었습니다.');
-    },
-    testJWT: () => {
-        const userInfo = getUserInfoFromJWT();
-        console.log('JWT 테스트 결과:', userInfo);
-    }
-};
 
-console.log('🔧 개발자 도구에서 debugWorkspace 객체를 사용하여 테스트할 수 있습니다.');
-console.log('예: debugWorkspace.fillTestData(), debugWorkspace.testAPI(), debugWorkspace.testJWT()');
+        // ============================
+        // 워크스페이스 생성
+        // ============================
+        async function createWorkspace(event = null) {
+            const name = document.getElementById('workspace-name').value.trim();
+            const description = document.getElementById('workspace-description').value.trim();
+            
+            if (name.length < 2) {
+                alert('워크스페이스 이름을 2자 이상 입력해주세요.');
+                return;
+            }
+            
+            const createBtn = document.getElementById('create-btn-text');
+            const spinner = document.getElementById('create-spinner');
+            
+            createBtn.textContent = '생성 중...';
+            spinner.style.display = 'inline-block';
+            
+            try {
+                const data = await apiCall('/workspaces/create', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        workspace_name: name
+                    })
+                });
+                
+                console.log('✅ 워크스페이스 생성 성공:', data);
+                
+                alert('🎉 워크스페이스가 생성되었습니다!');
+                
+                // 폼 초기화
+                document.getElementById('workspace-name').value = '';
+                document.getElementById('workspace-description').value = '';
+                
+                // 워크스페이스 목록 새로고침
+                await loadUserWorkspaces();
+                switchTab('my-workspaces');
+                
+            } catch (error) {
+                console.error('❌ 워크스페이스 생성 실패:', error);
+                alert(`생성 실패: ${error.message}`);
+            } finally {
+                createBtn.textContent = '워크스페이스 만들기';
+                spinner.style.display = 'none';
+            }
+        }
+
+        // ============================
+        // 워크스페이스 참여
+        // ============================
+        async function joinWorkspace(event = null) {
+            const inviteCode = document.getElementById('invite-code').value.trim();
+            const roleName = document.getElementById('role-name').value.trim();
+            
+            if (inviteCode.length < 3) {
+                alert('초대 코드를 3자 이상 입력해주세요.');
+                return;
+            }
+            
+            if (!roleName) {
+                alert('역할을 선택해주세요.');
+                return;
+            }
+            
+            const joinBtn = document.getElementById('join-workspace-btn');
+            const btnText = document.getElementById('join-btn-text');
+            const spinner = document.getElementById('join-spinner');
+            
+            joinBtn.disabled = true;
+            btnText.textContent = '참여 중...';
+            spinner.style.display = 'inline-block';
+            
+            try {
+                const data = await apiCall('/workspaces/join', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        invite_code: inviteCode,
+                        role_name: roleName
+                    })
+                });
+                
+                console.log('✅ 워크스페이스 참여 성공:', data);
+                
+                alert('🎉 워크스페이스 가입 요청이 전송되었습니다!\n관리자의 승인을 기다리세요.');
+                
+                await loadUserWorkspaces();
+                switchTab('my-workspaces');
+                clearJoinForm();
+                
+            } catch (error) {
+                console.error('❌ 워크스페이스 참여 실패:', error);
+                alert(`참여 실패: ${error.message}`);
+            } finally {
+                joinBtn.disabled = false;
+                btnText.textContent = '워크스페이스 참여';
+                spinner.style.display = 'none';
+            }
+        }
+
+        // ============================
+        // 탭 전환
+        // ============================
+        function switchTab(tabName, event = null) {
+            // 탭 버튼 활성화
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // 탭 콘텐츠 전환
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // ============================
+        // 폼 초기화
+        // ============================
+        function clearJoinForm() {
+            document.getElementById('invite-code').value = '';
+            document.getElementById('role-name').value = '';
+            
+            const joinBtn = document.getElementById('join-workspace-btn');
+            if (joinBtn) {
+                joinBtn.disabled = true;
+            }
+        }
+
+        // ============================
+        // 기타 기능들
+        // ============================
+        async function refreshWorkspaces(event = null) {
+            const btn = event && event.target ? event.target : document.querySelector('.btn-secondary');
+            const originalText = btn.textContent;
+            
+            btn.disabled = true;
+            btn.textContent = '🔄 새로고침 중...';
+            
+            try {
+                await loadUserWorkspaces();
+            } catch (error) {
+                console.error('새로고침 실패:', error);
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }, 1000);
+            }
+        }
+
+        function handleRoleChange() {
+            validateJoinForm();
+        }
+
+        function validateJoinForm() {
+            const joinBtn = document.getElementById('join-workspace-btn');
+            const inviteCode = document.getElementById('invite-code').value.trim();
+            const roleName = document.getElementById('role-name').value.trim();
+           
+            const isValid = inviteCode.length >= 3 && roleName.length > 0; 
+            if (joinBtn) {
+                joinBtn.disabled = !isValid;
+            }
+        }
+
+        // ============================
+        // 상태 텍스트 변환
+        // ============================
+        function getStatusText(status) {
+            switch (status) {
+                case 'active': return '활성';
+                case 'pending': return '승인 대기';
+                case 'suspended': return '정지';
+                default: return '알 수 없음';
+            }
+        }
+
+        // 개발자 도구용 디버깅
+        window.debugWorkspace = {
+            fillTestData: () => {
+                document.getElementById('workspace-name').value = '테스트 워크스페이스';
+                document.getElementById('workspace-description').value = '테스트용 워크스페이스입니다';
+                document.getElementById('invite-code').value = 'TEST123';
+                document.getElementById('role-name').value = '사원';
+                console.log('테스트 데이터가 입력되었습니다.');
+            },
+            testAPI: async () => {
+                try {
+                    const data = await apiCall('/workspaces/workspaces_list');
+                    console.log('API 테스트 성공:', data);
+                } catch (error) {
+                    console.error('API 테스트 실패:', error);
+                }
+            },
+            clearData: () => {
+                userWorkspaces = [];
+                renderWorkspaceList();
+                console.log('워크스페이스 데이터가 초기화되었습니다.');
+            },
+            testJWT: () => {
+                const userInfo = getUserInfoFromJWT();
+                console.log('JWT 테스트 결과:', userInfo);
+            }
+        };
+
+        console.log('🔧 개발자 도구에서 debugWorkspace 객체를 사용하여 테스트할 수 있습니다.');
+        console.log('예: debugWorkspace.fillTestData(), debugWorkspace.testAPI(), debugWorkspace.testJWT()');
     </script>
        
 </body>
