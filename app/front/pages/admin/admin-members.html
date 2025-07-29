@@ -110,7 +110,7 @@
                     </select>
                     <div class="action-buttons">
                         <button class="btn btn-secondary" onclick="exportMembers()">
-                            🚫 멤버 추방
+                            📤 내보내기
                         </button>
                     </div>
                 </div>
@@ -293,7 +293,6 @@
         let currentAction = null;
         let targetMember = null;
         let approvalMember = null;
-        let activeMembersData = [];
 
         // API에서 받은 실제 데이터로 통계 업데이트
         function updateStatisticsFromAPI(stats) {
@@ -737,7 +736,6 @@
         }
 
         function updateActiveMembersFromAPI(members) {
-            activeMembersData = Array.isArray(members) ? members : [];
             const container = document.getElementById('active-members-list');
             if (!container) {
                 console.warn("❗ active-members-list 요소가 없습니다.");
@@ -920,17 +918,12 @@
 
         // 기타 기능들
 
-        function exportMembers() {
-            const inputEmail = prompt("추방할 사용자 이메일을 입력하세요:");
-            if (!inputEmail) {
-                alert("이메일을 입력해주세요.");
-                return;
-            }
 
-            // 이메일로 사용자 ID 찾기
-            const userId = findUserIdByEmail(inputEmail);
-            if (!userId) {
-                alert("해당 이메일의 사용자를 찾을 수 없습니다.");
+        function exportMembers() {
+            const inputId = prompt("추방할 사용자 ID를 입력하세요:");
+            const userId = parseInt(inputId);
+            if (isNaN(userId)) {
+                alert("숫자 ID를 입력해주세요.");
                 return;
             }
 
@@ -945,12 +938,6 @@
             setupModalClose();
             loadInitialData();
         });
-
-        // 이메일로 사용자 ID 찾기
-        function findUserIdByEmail(email) {
-            const member = activeMembersData.find(m => m.email === email);
-            return member ? member.user_id : null;
-        }
     </script>
 </body>
 </html>
