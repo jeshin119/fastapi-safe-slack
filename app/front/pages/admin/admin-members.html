@@ -91,11 +91,6 @@
                         <option value="recent">최근 요청</option>
                         <option value="old">오래된 요청</option>
                     </select>
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" onclick="inviteMembers()">
-                            ➕ 멤버 초대
-                        </button>
-                    </div>
                 </div>
 
                 <div class="members-grid" id="pending-list">
@@ -119,9 +114,6 @@
                     <div class="action-buttons">
                         <button class="btn btn-secondary" onclick="exportMembers()">
                             📤 내보내기
-                        </button>
-                        <button class="btn btn-primary" onclick="inviteMembers()">
-                            ➕ 멤버 초대
                         </button>
                     </div>
                 </div>
@@ -927,46 +919,6 @@
         }
 
         // 기타 기능들
-        async function inviteMembers() {
-            const workspaceName = localStorage.getItem("current_workspace_name");
-            if (!workspaceName) {
-                alert("워크스페이스 정보가 없습니다.");
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem("access_token");
-
-                const response = await fetch(`${API_BASE_URL}/auth/invite-codes-create`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        workspace_name: workspaceName
-                        // expires_at 생략 가능 (백엔드에서 Optional 처리 시)
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok && data.code) {
-                    const message = `🎉 초대 코드가 생성되었습니다!\n\n🔗 초대 코드: ${data.code}`;
-                    if (navigator.clipboard) {
-                        await navigator.clipboard.writeText(data.code);
-                        alert(`${message}\n\n📋 클립보드에 복사되었습니다.`);
-                    } else {
-                        alert(message);
-                    }
-                } else {
-                    alert(`❌ 초대 코드 생성 실패: ${data.detail || "알 수 없는 오류"}`);
-                }
-            } catch (error) {
-                console.error("초대 코드 생성 중 오류:", error);
-                alert("❌ 초대 코드 생성 중 오류가 발생했습니다.");
-            }
-        }
 
 
         function exportMembers() {

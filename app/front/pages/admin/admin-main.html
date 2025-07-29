@@ -42,7 +42,6 @@
                     <h3 class="card-title">멤버 관리</h3>
                     <p class="card-description">워크스페이스 멤버들의 가입 승인과 권한 관리를 수행하세요</p>
                 </div>
-                <div class="card-badge" id="members-badge">3</div>
             </div>
 
             <div class="menu-card" onclick="goToChannelsPage()">
@@ -393,11 +392,51 @@
                 switchTab(tab);
             }
         }
+        // 실제 승인 대기 멤버 수 가져오기
+        async function updateNotificationBadges() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const workspaceName = localStorage.getItem('current_workspace_name') || '기본워크스페이스';
+                
+                // 승인 대기 멤버 API 호출
+                const response = await fetch(`${API_BASE_URL || 'http://localhost:8000'}/workspaces/join-requests-list`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        workspace_name: workspaceName
+                    })
+                });
+                
+                if (response.ok) {
+                    const pendingData = await response.json();
+                    const pendingCount = Array.isArray(pendingData) ? pendingData.length : 0;
+                    
+                    const membersBadge = document.getElementById('members-badge');
+                    if (pendingCount > 0) {
+                        membersBadge.textContent = pendingCount;
+                        membersBadge.style.display = 'block';
+                    } else {
+                        membersBadge.style.display = 'none';
+                    }
+                } else {
+                    // API 실패시 배지 숨김
+                    document.getElementById('members-badge').style.display = 'none';
+                }
+                
+            } catch (error) {
+                console.error('알림 배지 업데이트 실패:', error);
+                // 에러시 배지 숨김
+                document.getElementById('members-badge').style.display = 'none';
+            }
+        }
 
         // 알림 배지 업데이트
         function updateNotificationBadges() {
             // 실제로는 API에서 데이터를 가져와야 함
-            const pendingMembers = 3; // 예시 데이터
+            const pendingMembers = 0;
             
             const membersBadge = document.getElementById('members-badge');
             if (pendingMembers > 0) {
