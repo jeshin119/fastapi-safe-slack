@@ -34,13 +34,12 @@
             </div>
         </div>
 
-        <!-- 채널 선택 섹션 -->
-        <div class="stats-section">
-            <div class="section-title">🏷️ 채널 선택</div>
-            <div class="form-group">
-                <select class="form-input" id="channel-select" onchange="loadChannelData()">
-                    <option value="">관리할 채널을 선택하세요...</option>
-                </select>
+        <!-- 현재 채널 정보 표시 -->
+        <div class="channel-info-section" id="channel-info-section" style="display: none;">
+            <div class="section-title">📢 현재 채널</div>
+            <div class="channel-info-box">
+                <div><strong>채널 이름:</strong> <span id="current-channel-name">-</span></div>
+                <div><strong>공개 여부:</strong> <span id="current-channel-public">-</span></div>
             </div>
         </div>
 
@@ -266,27 +265,55 @@
         }
 
         // 선택된 채널 데이터 로드
-        async function loadChannelData() {
-            const channelSelect = document.getElementById('channel-select');
-            const selectedOption = channelSelect.options[channelSelect.selectedIndex];
-            
-            if (!selectedOption.value) {
-                hideChannelSections();
-                return;
+        async function loadChannels() {
+            try {
+                if (!currentWorkspace) return;
+
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/channels/list`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ workspace_name: currentWorkspace })
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+
+                const channels = await response.json();
+
+                if (Array.isArray(channels) && channels.length > 0) {
+                    const storedChannelName = localStorage.getItem('current_channel_name');
+                    let matchedChannel = null;
+
+                    // 저장된 채널명과 일치하는 채널 찾기
+                    if (storedChannelName) {
+                        matchedChannel = channels.find(c => c.name === storedChannelName);
+                    }
+
+                    // 없으면 첫 번째 채널 fallback
+                    const channel = matchedChannel || channels[0];
+
+                    currentChannel = {
+                        name: channel.name,
+                        id: channel.channel_id,
+                        isPublic: channel.is_public
+                    };
+
+                    updateChannelInfoDisplay(); // 새로운 채널 정보 표시
+                    showChannelSections();
+                    await Promise.all([
+                        loadChannelMembers(),
+                        loadChannelRequests()
+                    ]);
+                }
+
+            } catch (error) {
+                console.error('채널 목록 로드 실패:', error);
             }
-            
-            currentChannel = {
-                name: selectedOption.value,
-                id: selectedOption.getAttribute('data-channel-id'),
-                isPublic: selectedOption.getAttribute('data-is-public') === 'true'
-            };
-            
-            showChannelSections();
-            await Promise.all([
-                loadChannelMembers(),
-                loadChannelRequests()
-            ]);
         }
+
 
         // 채널 섹션 표시
         function showChannelSections() {
@@ -564,6 +591,21 @@
             document.getElementById('applicant-channel').textContent = currentChannel.name;
             
             document.getElementById('approval-modal').style.display = 'flex';
+        }
+
+        // 채널 정보 출력
+        function updateChannelInfoDisplay() {
+            const channelSection = document.getElementById('channel-info-section');
+            const nameEl = document.getElementById('current-channel-name');
+            const publicEl = document.getElementById('current-channel-public');
+
+            if (currentChannel) {
+                nameEl.textContent = currentChannel.name;
+                publicEl.textContent = currentChannel.isPublic ? '🌍 공개' : '🔒 비공개';
+                channelSection.style.display = 'block';
+            } else {
+                channelSection.style.display = 'none';
+            }
         }
 
         // 승인 확인
