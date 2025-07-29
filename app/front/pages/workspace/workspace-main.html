@@ -192,9 +192,10 @@
         </div>
     </div>
 
+    <script src="../../js/config.js"></script>
     <script>
         // 서버 연결 설정
-        const API_BASE_URL = 'http://localhost:8000';
+        // API_BASE_URL은 config.js에서 자동으로 설정됨
         const WEBSOCKET_BASE_URL = 'ws://localhost:8000/ws';
     
         // 전역 데이터 저장소
@@ -894,6 +895,19 @@
                 updateChannelContent();
             }
         }
+
+        // 스크롤을 맨 아래로 이동하는 함수
+        function scrollToBottom(container, behavior = 'smooth') {
+            if (!container) return;
+            
+            // DOM이 완전히 렌더링될 때까지 대기
+            setTimeout(() => {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: behavior
+                });
+            }, 10);
+        }
     
         // 채널 데이터 로딩
         async function loadChannelData(channelName) {
@@ -1015,9 +1029,6 @@
                 document.getElementById('message-input').placeholder = `# ${channel.name} 채널에 메시지 보내기`;
                 updateChannelContent();
 
-                // 채널 전환 후 스크롤을 맨 아래로 이동
-                forceScrollToBottom(document.getElementById('chat-messages'));
-
                 // 새 채널로 WebSocket 연결 (지연 시간 단축)
                 setTimeout(() => {
                     connectWebSocket();
@@ -1026,6 +1037,7 @@
                 // ✅ 여기에 관리자 여부 확인을 위한 호출 추가
                 const isChannelAdmin = await checkIfChannelAdmin();
                 document.getElementById("channel-manage-btn").style.display = isChannelAdmin ? "block" : "none";
+                
     
             } catch (error) {
                 console.error('채널 전환 실패:', error);
@@ -1045,13 +1057,6 @@
             renderMessages();
             renderFiles();
             
-            // 채널 콘텐츠 업데이트 후 스크롤을 맨 아래로 이동
-            setTimeout(() => {
-                const messagesContainer = document.getElementById('chat-messages');
-                if (messagesContainer) {
-                    forceScrollToBottom(messagesContainer);
-                }
-            }, 100);
         }
     
         // 탭 전환
@@ -1075,29 +1080,11 @@
             if (tabName === 'chat') {
                 setupScrollHandler();
                 setTimeout(() => {
-                    forceScrollToBottom(document.getElementById('chat-messages'));
+                    scrollToBottom(document.getElementById('chat-messages'), 'smooth');
                 }, 0);
             }
         }
     
-        // 스크롤을 맨 아래로 이동하는 함수
-        function scrollToBottom(container, behavior = 'smooth') {
-            if (!container) return;
-            
-            // DOM이 완전히 렌더링될 때까지 대기
-            setTimeout(() => {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: behavior
-                });
-            }, 10);
-        }
-
-        // 간단하게 스크롤을 맨 아래로 이동하는 함수
-        function forceScrollToBottom(container) {
-            if (!container) return;
-            container.scrollTop = container.scrollHeight;
-        }
 
         // 메시지 렌더링 (스크롤 최적화)
         function renderMessages() {
@@ -1115,8 +1102,6 @@
                         </div>
                     </div>
                 `;
-                // 환영 메시지도 맨 아래로 스크롤
-                setTimeout(() => forceScrollToBottom(messagesContainer), 0);
                 return;
             }
             
@@ -1142,9 +1127,8 @@
                     </div>
                 `;
             }).join('');
-            
-            // 메시지 렌더링 후 맨 아래로 스크롤 (DOM 업데이트 후 실행)
-            setTimeout(() => forceScrollToBottom(messagesContainer), 0);
+
+            scrollToBottom(messagesContainer, 'auto');
         }
 
         // 스크롤 이벤트 처리
@@ -1191,10 +1175,8 @@
             }
             
             // 스크롤이 제대로 작동하는지 확인
-            console.log('🔍 스크롤 핸들러 설정됨:', messagesContainer.scrollHeight, messagesContainer.clientHeight);
+            // console.log('🔍 스크롤 핸들러 설정됨:', messagesContainer.scrollHeight, messagesContainer.clientHeight);
         }
-        
-
     
         // 메시지 전송 (WebSocket 사용)
         async function sendMessage() {
@@ -1222,6 +1204,8 @@
                 input.value = '';
                 input.style.height = 'auto';
                 updateSendButton();
+                
+                // scrollToBottom(messagesContainer, 'auto');
                 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
@@ -1706,11 +1690,6 @@
             setupKeyboardShortcuts();
             handleUrlParameters();
             
-            // 페이지 로드 시 즉시 스크롤을 맨 아래로 이동
-            setTimeout(() => {
-                forceScrollToBottom(document.getElementById('chat-messages'));
-            }, 100);
-            
             // 워크스페이스 초기화 후 드래그 앤 드롭 설정
             initializeWorkspace().then(() => {
                 restoreDraftMessage();
@@ -1732,10 +1711,6 @@
                 // 업로드 버튼 이벤트 리스너
                 document.getElementById('upload-submit-btn').addEventListener('click', handleFileUpload);
                 
-                // 페이지 로드 완료 후 스크롤을 맨 아래로 이동
-                setTimeout(() => {
-                    forceScrollToBottom(document.getElementById('chat-messages'));
-                }, 0);
             });
             
 

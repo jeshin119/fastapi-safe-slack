@@ -1,6 +1,6 @@
 # 🚀 Safe Slack API 플로우차트
 
-## 🏗️ 1. 서비스 모듈 구조
+## 🏗️ 서비스 모듈 구조
 
 ```mermaid
 graph TB
@@ -46,7 +46,7 @@ graph TB
     class K,L dbStyle
 ```
 
-## 🏢 2. 워크스페이스 관리 플로우
+## 🏢 워크스페이스 관리 플로우
 
 ```mermaid
 flowchart TD
@@ -80,7 +80,7 @@ flowchart TD
     class P,Q,R,S,O resultStyle
 ```
 
-## 📺 3. 채널 관리 플로우
+## 📺 채널 관리 플로우
 
 ```mermaid
 flowchart TD
@@ -124,7 +124,7 @@ flowchart TD
     class T errorStyle
 ```
 
-## 📁 4. 파일 관리 플로우
+## 📁 파일 관리 플로우
 
 ```mermaid
 flowchart TD
@@ -178,7 +178,7 @@ flowchart TD
     class V successStyle
 ```
 
-## 🚀 5. API 엔드포인트 구조
+## 🚀 API 엔드포인트 구조
 
 ```mermaid
 graph LR

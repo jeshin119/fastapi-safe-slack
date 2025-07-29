@@ -240,106 +240,110 @@ function getUserInfoFromJWT() {
     };
 }
 
-// ============================
-// API 설정
-// ============================
-const API_BASE_URL = 'http://localhost:8000';
+    <script src="../../js/config.js"></script>
+    <script>
+        // ============================
+        // API 설정
+        // ============================
+        // API_BASE_URL은 config.js에서 자동으로 설정됨
 
-// 전역 변수 추가
-let selectedWorkspace = null;
-let userWorkspaces = [];
+        // 전역 변수 추가
+        let selectedWorkspace = null;
+        let userWorkspaces = [];
 
-// ============================
-// 공통 API 호출 함수
-// ============================
-async function apiCall(endpoint, options = {}) {
-    try {
-        const token = localStorage.getItem('access_token');
-        const defaultHeaders = {
-            'Content-Type': 'application/json'
-        };
+        // ============================
+        // 공통 API 호출 함수
+        // ============================
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const token = localStorage.getItem('access_token');
+                const defaultHeaders = {
+                    'Content-Type': 'application/json'
+                };
 
-        if (token) {
-            defaultHeaders['Authorization'] = `Bearer ${token}`;
-        }
+                if (token) {
+                    defaultHeaders['Authorization'] = `Bearer ${token}`;
+                }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: {
-                ...defaultHeaders,
-                ...options.headers
-            },
-            ...options
-        });
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                    headers: {
+                        ...defaultHeaders,
+                        ...options.headers
+                    },
+                    ...options
+                });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
-        }
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
 
-        return await response.json();
-    } catch (error) {
-        console.error(`API 호출 오류 (${endpoint}):`, error);
-        throw error;
-    }
-}
-
-const IS_DEV_MODE = false;
-
-// ============================
-// 초기화 및 데이터 로드
-// ============================
-document.addEventListener('DOMContentLoaded', function() {    
-    loadUserInfo();
-    loadUserWorkspaces();
-    
-    // 이벤트 리스너 추가
-    setupEventListeners();
-});
-
-// 이벤트 리스너 설정
-function setupEventListeners() {
-    // 워크스페이스 이름 입력 실시간 검증
-    const workspaceNameInput = document.getElementById('workspace-name');
-    if (workspaceNameInput) {
-        workspaceNameInput.addEventListener('input', function() {
-            const createBtn = document.querySelector('#create-workspace .btn-primary');
-            if (createBtn) {
-                createBtn.disabled = this.value.trim().length < 2;
-            }
-        });
-    }
-
-    // 초대 코드 입력 실시간 검증
-    const inviteCodeInput = document.getElementById('invite-code');
-    if (inviteCodeInput) {
-        inviteCodeInput.addEventListener('input', function() {
-            this.value = this.value.toUpperCase();
-            validateJoinForm();
-        });
-    }
-
-    // 역할 선택 변경
-    const roleSelect = document.getElementById('role-name');
-    if (roleSelect) {
-        roleSelect.addEventListener('change', handleRoleChange);
-    }
-
-    // 엔터키 처리
-    document.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            const activeTab = document.querySelector('.tab-content.active');
-            if (activeTab && activeTab.id === 'create-workspace') {
-                const name = document.getElementById('workspace-name').value.trim();
-                if (name.length >= 2) createWorkspace();
-            } else if (activeTab && activeTab.id === 'join-workspace') {
-                const joinBtn = document.getElementById('join-workspace-btn');
-                if (joinBtn && !joinBtn.disabled) joinWorkspace();
+                return await response.json();
+            } catch (error) {
+                console.error(`API 호출 오류 (${endpoint}):`, error);
+                throw error;
             }
         }
-    });
-}
 
+        const IS_DEV_MODE = false;
+
+        // ============================
+        // 초기화 및 데이터 로드
+        // ============================
+        document.addEventListener('DOMContentLoaded', function() {    
+            loadUserInfo();
+            loadUserWorkspaces();
+            
+            // 이벤트 리스너 추가
+            setupEventListeners();
+        });
+
+        // 이벤트 리스너 설정
+        function setupEventListeners() {
+            // 워크스페이스 이름 입력 실시간 검증
+            const workspaceNameInput = document.getElementById('workspace-name');
+            if (workspaceNameInput) {
+                workspaceNameInput.addEventListener('input', function() {
+                    const createBtn = document.querySelector('#create-workspace .btn-primary');
+                    if (createBtn) {
+                        createBtn.disabled = this.value.trim().length < 2;
+                    }
+                });
+            }
+
+            // 초대 코드 입력 실시간 검증
+            const inviteCodeInput = document.getElementById('invite-code');
+            if (inviteCodeInput) {
+                inviteCodeInput.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase();
+                    validateJoinForm();
+                });
+            }
+
+            // 역할 선택 변경
+            const roleSelect = document.getElementById('role-name');
+            if (roleSelect) {
+                roleSelect.addEventListener('change', handleRoleChange);
+            }
+
+            // 엔터키 처리
+            document.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const activeTab = document.querySelector('.tab-content.active');
+                    if (activeTab && activeTab.id === 'create-workspace') {
+                        const name = document.getElementById('workspace-name').value.trim();
+                        if (name.length >= 2) createWorkspace();
+                    } else if (activeTab && activeTab.id === 'join-workspace') {
+                        const joinBtn = document.getElementById('join-workspace-btn');
+                        if (joinBtn && !joinBtn.disabled) joinWorkspace();
+                    }
+                }
+            });
+        }
+
+// ============================
 // 수정된 사용자 정보 로드 함수 (JWT 디코딩 우선)
+// ============================
 async function loadUserInfo() {
     console.log('👤 사용자 정보 로드 시작...');
     
