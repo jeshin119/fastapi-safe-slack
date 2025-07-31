@@ -405,6 +405,14 @@
                     globalData.messages[currentChannelName].push(newMessage);
                     renderMessages();
                     updateChannelContent();
+                    
+                    // 새 메시지 수신 시 자동 스크롤 여부에 따라 스크롤 이동
+                    setTimeout(() => {
+                        const messagesContainer = document.querySelector('.chat-messages-container');
+                        if (messagesContainer && shouldAutoScroll) {
+                            scrollToBottom(messagesContainer, 'smooth');
+                        }
+                    }, 100);
                     break;
                     
                 case 'message_history':
@@ -1142,6 +1150,8 @@
         // 스크롤 이벤트 처리 (개선됨)
         let scrollHandlerInitialized = false;
         let scrollTimeout = null;
+        let isUserScrolling = false; // 사용자가 스크롤 중인지 추적
+        let shouldAutoScroll = true; // 자동 스크롤 여부
         
         function setupScrollHandler() {
             const messagesContainer = document.querySelector('.chat-messages-container');
@@ -1155,17 +1165,28 @@
         }
         
         function handleScroll() {
+            const messagesContainer = document.querySelector('.chat-messages-container');
+            if (!messagesContainer) return;
+            
+            // 사용자가 스크롤 중인지 확인
+            const scrollTop = messagesContainer.scrollTop;
+            const scrollHeight = messagesContainer.scrollHeight;
+            const clientHeight = messagesContainer.clientHeight;
+            
+            // 스크롤이 맨 아래에 가까운지 확인 (50px 이내)
+            const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+            
+            // 자동 스크롤 여부 업데이트
+            shouldAutoScroll = isNearBottom;
+            
             // 디바운싱으로 중복 요청 방지
             if (scrollTimeout) {
                 clearTimeout(scrollTimeout);
             }
             
             scrollTimeout = setTimeout(() => {
-                const messagesContainer = document.querySelector('.chat-messages-container');
-                if (!messagesContainer) return;
-                
                 // 스크롤이 맨 위에 가까워지면 더 이전 메시지 요청
-                if (messagesContainer.scrollTop <= 100 && !globalData.isLoadingOlderMessages) {
+                if (scrollTop <= 100 && !globalData.isLoadingOlderMessages) {
                     const messages = globalData.messages[currentChannelName] || [];
                     if (messages.length > 0) {
                         const oldestMessage = messages[0];
@@ -1223,7 +1244,14 @@
                 input.style.height = 'auto';
                 updateSendButton();
                 
-                // scrollToBottom(messagesContainer, 'auto');
+                // 메시지 전송 후 항상 스크롤을 맨 아래로 이동
+                setTimeout(() => {
+                    const messagesContainer = document.querySelector('.chat-messages-container');
+                    if (messagesContainer) {
+                        scrollToBottom(messagesContainer, 'smooth');
+                        shouldAutoScroll = true; // 전송 후 자동 스크롤 활성화
+                    }
+                }, 100);
                 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
