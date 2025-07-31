@@ -12,6 +12,8 @@ from app.models.models import User, Role
 import secrets
 import string
 from sqlalchemy import select
+import html
+import re
 
 
 # 비밀번호 해싱
@@ -19,6 +21,85 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT 토큰 보안
 security = HTTPBearer()
+
+def sanitize_input(text: str) -> str:
+    """
+    입력 데이터를 Sanitize하여 XSS 공격을 방지합니다.
+    """
+    if not text:
+        return text
+    
+    # HTML 엔티티 이스케이프
+    sanitized = html.escape(text)
+    
+    # 위험한 스크립트 태그 제거
+    script_pattern = r'<script[^>]*>.*?</script>'
+    sanitized = re.sub(script_pattern, '', sanitized, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 위험한 이벤트 핸들러 제거
+    event_pattern = r'on\w+\s*='
+    sanitized = re.sub(event_pattern, '', sanitized, flags=re.IGNORECASE)
+    
+    return sanitized.strip()
+
+def sanitize_email(email: str) -> str:
+    """
+    이메일 주소를 Sanitize합니다.
+    """
+    if not email:
+        return email
+    
+    # 이메일 형식 검증 및 정리
+    email = email.lower().strip()
+    
+    # 위험한 문자 제거
+    dangerous_chars = ['<', '>', '"', "'", '&']
+    for char in dangerous_chars:
+        email = email.replace(char, '')
+    
+    return email
+
+def validate_password_strength(password: str) -> dict:
+    """
+    비밀번호 강도를 검증하고 결과를 반환합니다.
+    """
+    result = {
+        'is_valid': True,
+        'errors': [],
+        'strength_score': 0
+    }
+    
+    if len(password) < 8:
+        result['is_valid'] = False
+        result['errors'].append('비밀번호는 8자 이상이어야 합니다.')
+    else:
+        result['strength_score'] += 1
+    
+    if not any(c.islower() for c in password):
+        result['is_valid'] = False
+        result['errors'].append('소문자를 포함해야 합니다.')
+    else:
+        result['strength_score'] += 1
+    
+    if not any(c.isupper() for c in password):
+        result['is_valid'] = False
+        result['errors'].append('대문자를 포함해야 합니다.')
+    else:
+        result['strength_score'] += 1
+    
+    if not any(c.isdigit() for c in password):
+        result['is_valid'] = False
+        result['errors'].append('숫자를 포함해야 합니다.')
+    else:
+        result['strength_score'] += 1
+    
+    if not any(not c.isalnum() for c in password):
+        result['is_valid'] = False
+        result['errors'].append('특수문자를 포함해야 합니다.')
+    else:
+        result['strength_score'] += 1
+    
+    return result
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)

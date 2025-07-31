@@ -71,7 +71,12 @@
                         placeholder="8자 이상의 안전한 비밀번호"
                         required
                     >
-              
+                    <div class="password-strength" id="password-strength" style="display: none;">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strength-fill"></div>
+                        </div>
+                        <div class="strength-text" id="strength-text"></div>
+                    </div>
                     <div class="validation-message" id="password-error"></div>
                 </div>
 
@@ -280,16 +285,56 @@
             const password = document.getElementById('password');
             const error = document.getElementById('password-error');
             
-            if (password.value.length < 4) {
+            // 비밀번호 강도 검증
+            const hasLower = /[a-z]/.test(password.value);
+            const hasUpper = /[A-Z]/.test(password.value);
+            const hasDigit = /[0-9]/.test(password.value);
+            const hasSpecial = /[^a-zA-Z0-9]/.test(password.value);
+            const hasLength = password.value.length >= 8;
+            
+            let errorMessage = '';
+            let isValid = true;
+            
+            if (!hasLength) {
+                errorMessage += '비밀번호는 8자 이상이어야 합니다. ';
+                isValid = false;
+            }
+            
+            if (!hasLower) {
+                errorMessage += '소문자를 포함해야 합니다. ';
+                isValid = false;
+            }
+            
+            if (!hasUpper) {
+                errorMessage += '대문자를 포함해야 합니다. ';
+                isValid = false;
+            }
+            
+            if (!hasDigit) {
+                errorMessage += '숫자를 포함해야 합니다. ';
+                isValid = false;
+            }
+            
+            if (!hasSpecial) {
+                errorMessage += '특수문자를 포함해야 합니다. ';
+                isValid = false;
+            }
+            
+            if (!isValid) {
                 password.classList.add('error');
-                error.textContent = '비밀번호는 8자 이상이어야 합니다.';
-                return false;
+                password.classList.remove('success');
+                error.textContent = errorMessage.trim();
+                error.classList.add('error');
+                error.classList.remove('success');
             } else {
                 password.classList.remove('error');
                 password.classList.add('success');
-                error.textContent = '';
-                return true;
+                error.textContent = '안전한 비밀번호입니다.';
+                error.classList.remove('error');
+                error.classList.add('success');
             }
+            
+            return isValid;
         }
 
         function validatePasswordConfirm() {
@@ -432,6 +477,53 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkStep1Validity();
         });
+
+        // 비밀번호 입력 이벤트 리스너 추가
+        document.getElementById('password').addEventListener('input', function() {
+            validatePassword();
+            updatePasswordStrength();
+        });
+
+        function updatePasswordStrength() {
+            const password = document.getElementById('password');
+            const strengthIndicator = document.getElementById('password-strength');
+            const strengthFill = document.getElementById('strength-fill');
+            const strengthText = document.getElementById('strength-text');
+            
+            if (password.value.length > 0) {
+                strengthIndicator.style.display = 'block';
+                
+                let strength = 0;
+                if (password.value.length >= 8) strength++;
+                if (/[a-z]/.test(password.value)) strength++;
+                if (/[A-Z]/.test(password.value)) strength++;
+                if (/[0-9]/.test(password.value)) strength++;
+                if (/[^a-zA-Z0-9]/.test(password.value)) strength++;
+                
+                let strengthClass = '';
+                let strengthLabel = '';
+                
+                if (strength < 2) {
+                    strengthClass = 'strength-weak';
+                    strengthLabel = '약함';
+                    strengthFill.style.width = '20%';
+                } else if (strength < 4) {
+                    strengthClass = 'strength-medium';
+                    strengthLabel = '보통';
+                    strengthFill.style.width = '60%';
+                } else {
+                    strengthClass = 'strength-strong';
+                    strengthLabel = '강함';
+                    strengthFill.style.width = '100%';
+                }
+                
+                strengthFill.className = `strength-fill ${strengthClass}`;
+                strengthText.textContent = `비밀번호 강도: ${strengthLabel}`;
+                strengthText.className = `strength-text ${strengthClass}`;
+            } else {
+                strengthIndicator.style.display = 'none';
+            }
+        }
 
     </script>
 <script src="../../js/alert-system.js"></script>

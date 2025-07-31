@@ -7,7 +7,7 @@ from app.schemas.user import UserCreate, UserLogin
 from app.schemas.auth import Token, EmailVerificationRequest, EmailVerification
 from app.models.invite_code import InviteCode
 from app.schemas.invite_code import InviteCodeCreate, InviteCodeResponse
-from app.core.utils import get_current_user, get_current_user_with_context, get_password_hash, verify_password, create_access_token, generate_invite_code
+from app.core.utils import get_current_user, get_current_user_with_context, get_password_hash, verify_password, create_access_token, generate_invite_code, sanitize_input, sanitize_email, validate_password_strength
 from datetime import datetime, date
 import secrets
 
@@ -15,31 +15,49 @@ router = APIRouter()
 
 @router.post("/signup")
 async def signup(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    # 이메일 중복 확인
-    result = await db.execute(select(User).where(User.email == user_data.email))
-    existing_user = result.scalars().first()
-    if existing_user:
+    try:
+        # 입력 데이터 Sanitization
+        sanitized_name = sanitize_input(user_data.name)
+        sanitized_email = sanitize_email(user_data.email)
+        
+        # 이메일 중복 확인
+        result = await db.execute(select(User).where(User.email == sanitized_email))
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 등록된 이메일입니다."
+            )
+        
+        hashed_password = get_password_hash(user_data.password)
+        user = User(
+            name=sanitized_name,
+            email=sanitized_email,
+            password_hash=hashed_password
+        )
+        db.add(user)
+        await db.flush()
+        workspace_id = None
+        await db.commit()
+        return {"message": f"{sanitized_name}님, 회원가입을 축하합니다!"}
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 등록된 이메일입니다."
+            detail=str(e)
         )
-    
-    hashed_password = get_password_hash(user_data.password)
-    user = User(
-        name=user_data.name,
-        email=user_data.email,
-        password_hash=hashed_password
-    )
-    db.add(user)
-    await db.flush()
-    workspace_id = None
-    await db.commit()
-    return {"message": f"{user_data.name}님, 회원가입을 축하합니다!"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="회원가입 중 오류가 발생했습니다."
+        )
 
 
 @router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == user_credentials.email))
+    # 입력 데이터 Sanitization
+    sanitized_email = sanitize_email(user_credentials.email)
+    
+    result = await db.execute(select(User).where(User.email == sanitized_email))
     user = result.scalars().first()
     if not user or not verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(
