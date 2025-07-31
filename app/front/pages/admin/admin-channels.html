@@ -136,6 +136,9 @@
         </div>
     </div>
 
+    <!-- API 설정 - config.js 먼저 로드 -->
+    <script src="/static/js/config.js"></script>
+    
     <script>
         // 워크스페이스 정보 로드 함수 추가
       // 🆕 로딩 상태 표시 함수
@@ -207,7 +210,7 @@
         `;
     }
 
-    // 🔧 개선된 워크스페이스 정보 로드 함수
+    // 🔧 개선된 워크스페이스 정보 로드 함수 - config.js 사용
     async function loadWorkspaceInfo() {
         try {
             const token = localStorage.getItem('access_token');
@@ -215,7 +218,8 @@
             // 로딩 상태 표시
             showWorkspaceLoading();
             
-            const response = await fetch('http://localhost:8000/workspaces/workspaces_list', {
+            // config.js에서 설정된 API_BASE_URL 사용
+            const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
@@ -243,8 +247,8 @@
         }
     }
 
-    // API 설정
-            // API_BASE_URL은 config.js에서 자동으로 설정됨
+    // API 설정 - config.js에서 API_BASE_URL 사용
+    // API_BASE_URL은 config.js에서 자동으로 설정됨
     let currentAction = null;
     let targetChannel = null;
 
@@ -659,12 +663,6 @@
                 }
             }
         });
-    </script>
-    
-    <!-- API 설정 -->
-    <script src="../../js/config.js"></script>
-    <script>
-        // API_BASE_URL은 config.js에서 자동으로 설정됨
     </script>
 </body>
 </html>
