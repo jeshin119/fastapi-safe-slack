@@ -881,18 +881,29 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // 스크롤 이벤트 처리
+        // 스크롤 이벤트 처리 (개선됨)
+        let scrollHandlerInitialized = false;
+        let scrollTimeout = null;
+        
         function setupScrollHandler() {
             const messagesContainer = document.getElementById('chat-messages');
-            if (!messagesContainer) return;
+            if (!messagesContainer || scrollHandlerInitialized) return;
             
-            // 기존 이벤트 리스너 제거
-            messagesContainer.removeEventListener('scroll', handleScroll);
-            
-            // 새로운 이벤트 리스너 추가
+            // 스크롤 이벤트 리스너 한 번만 추가
             messagesContainer.addEventListener('scroll', handleScroll);
+            scrollHandlerInitialized = true;
+        }
+        
+        function handleScroll() {
+            // 디바운싱으로 중복 요청 방지
+            if (scrollTimeout) {
+                clearTimeout(scrollTimeout);
+            }
             
-            function handleScroll() {
+            scrollTimeout = setTimeout(() => {
+                const messagesContainer = document.getElementById('chat-messages');
+                if (!messagesContainer) return;
+                
                 // 스크롤이 맨 위에 가까워지면 더 이전 메시지 요청
                 if (messagesContainer.scrollTop <= 100 && !globalData.isLoadingOlderMessages) {
                     const messages = globalData.messages[currentChannelName] || [];
@@ -919,7 +930,7 @@
                         }
                     }
                 }
-            }
+            }, 150); // 150ms 디바운싱
         }
     
         // 메시지 전송 (WebSocket 사용)
