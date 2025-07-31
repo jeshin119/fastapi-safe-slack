@@ -287,6 +287,8 @@
     </div>
 
     <script src="../../js/config.js"></script>
+    <script src="../../js/alert-system.js"></script> 
+
     <script>
         // 전역 변수
         // API_BASE_URL은 config.js에서 자동으로 설정됨
@@ -529,7 +531,7 @@
             const isContractor = document.querySelector('input[name="is_contractor"]:checked').value === 'true';
             
             if (!finalRole) {
-                alert('최종 직급을 선택해주세요.');
+                showAlert('최종 직급을 선택해주세요.');
                 return;
             }
 
@@ -543,7 +545,7 @@
                 const day = document.getElementById('expire-day').value;
                 
                 if (!year || !month || !day) {
-                    alert('파견 만료일을 모두 입력해주세요.');
+                    showAlert('파견 만료일을 모두 입력해주세요.');
                     return;
                 }
                 
@@ -570,7 +572,7 @@
                 
                 if (result.success) {
                     const contractorText = isContractor ? ` (파견직, ~${year}.${month}.${day})` : ' (정규직)';
-                    alert(`✅ ${approvalMember.name}님이 ${finalRole}${contractorText}으로 승인되었습니다!`);
+                    showAlert(`✅ ${approvalMember.name}님이 ${finalRole}${contractorText}으로 승인되었습니다!`);
                     
                     const memberCard = document.querySelector(`[data-member-id="${approvalMember.id}"]`);
                     if (memberCard) {
@@ -588,11 +590,11 @@
                     updateStatsAfterAction('approve');
                     closeApprovalModal();
                 } else {
-                    alert(`❌ 승인 실패: ${result.error}`);
+                    showAlert(`❌ 승인 실패: ${result.error}`);
                 }
             } catch (error) {
                 console.error('승인 처리 오류:', error);
-                //alert('❌ 승인 처리 중 오류가 발생했습니다.');
+                //showAlert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
@@ -650,7 +652,7 @@
                 }
 
                 if (result.success) {
-                    alert(`❌ ${targetMember.name}님의 가입 요청이 거부되었습니다.`);
+                    showAlert(`❌ ${targetMember.name}님의 가입 요청이 거부되었습니다.`);
                     
                     const memberCard = document.querySelector(`[data-member-id="${targetMember.id}"]`);
                     if (memberCard) {
@@ -668,10 +670,10 @@
                     updateStatsAfterAction('reject');
                     closeModal();
                 } else {
-                    alert(`❌ 오류: ${result.error}`);
+                    showAlert(`❌ 오류: ${result.error}`);
                 }
             } catch (error) {
-                alert('❌ 처리 중 오류가 발생했습니다.');
+                showAlert('❌ 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '거부하기';
@@ -766,7 +768,7 @@
         async function kickWorkspaceMember(userId) {
             const workspaceName = localStorage.getItem("current_workspace_name");
             if (!workspaceName || !userId) {
-                alert("유효하지 않은 요청입니다.");
+                showAlert("유효하지 않은 요청입니다.");
                 return;
             }
 
@@ -793,12 +795,12 @@
                 }
 
                 const data = await res.json();
-                alert(`✅ ${data.message}`);
+                showAlert(`✅ ${data.message}`);
                 // 멤버 목록 다시 로드
                 loadMembers(); // 또는 updateActiveMembersFromAPI(...) 호출
             } catch (error) {
                 console.error("추방 에러:", error);
-                //alert("❌ 추방에 실패했습니다: " + error.message);
+                //showAlert("❌ 추방에 실패했습니다: " + error.message);
             }
         }
 
@@ -921,17 +923,17 @@
         // 기타 기능들
 
 
-        function exportMembers() {
-            const inputEmail = prompt("추방할 사용자 이메일을 입력하세요:");
+        async function exportMembers() {
+            const inputEmail = await showPrompt("추방할 사용자 이메일을 입력하세요:");
             if (!inputEmail) {
-                alert("이메일을 입력해주세요.");
+                showAlert("이메일을 입력해주세요.");
                 return;
             }
 
             // 이메일로 사용자 ID 찾기
             const userId = findUserIdByEmail(inputEmail);
             if (!userId) {
-                alert("해당 이메일의 사용자를 찾을 수 없습니다.");
+                showAlert("해당 이메일의 사용자를 찾을 수 없습니다.");
                 return;
             }
 

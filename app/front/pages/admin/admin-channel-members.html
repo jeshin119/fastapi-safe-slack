@@ -588,7 +588,7 @@
                 });
                 
                 if (result.success) {
-                    showAlert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
+                    showshowAlert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${approvalMember.id}"]`);
@@ -608,11 +608,11 @@
                     
                     closeApprovalModal();
                 } else {
-                    showAlert(`❌ 승인 실패: ${result.error}`);
+                    showshowAlert(`❌ 승인 실패: ${result.error}`);
                 }
             } catch (error) {
                 console.error('승인 처리 오류:', error);
-                showAlert('❌ 승인 처리 중 오류가 발생했습니다.');
+                showshowAlert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
@@ -719,7 +719,7 @@
 
                 if (result.success) {
                     const actionText = currentAction === 'reject' ? '거부' : '추방';
-                    showAlert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
+                    showshowAlert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${targetMember.id}"]`);
@@ -744,10 +744,10 @@
                     
                     closeModal();
                 } else {
-                    showAlert(`❌ 오류: ${result.error}`);
+                    showshowAlert(`❌ 오류: ${result.error}`);
                 }
             } catch (error) {
-                showAlert('❌ 처리 중 오류가 발생했습니다.');
+                showshowAlert('❌ 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = currentAction === 'reject' ? '거부하기' : '추방하기';
@@ -946,7 +946,7 @@
             const inputId = prompt("강퇴할 사용자 ID를 입력하세요:");
             const userId = parseInt(inputId);
             if (isNaN(userId)) {
-                showAlert("숫자 ID를 입력해주세요.");
+                showshowAlert("숫자 ID를 입력해주세요.");
                 return;
             }
 
@@ -1004,8 +1004,10 @@
     
     <!-- API 설정 -->
     <script src="../../js/config.js"></script>
+    <script src="../../js/alert-system.js"></script> 
+
     <script>
         // API_BASE_URL은 config.js에서 자동으로 설정됨
     </script>
-<script src="../../js/alert-system.js"></script>
+<script src="../../js/showAlert-system.js"></script>
 </body></html>

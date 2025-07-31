@@ -1,9 +1,11 @@
 // ============================
-// Alert 시스템 - app/front/js/alert-system.js
+// Alert 시스템 - app/front/js/alert-system.js (수정된 버전)
 // ============================
 
 class AlertSystem {
     constructor() {
+        this.confirmResolver = null;
+        this.promptResolver = null;
         this.init();
     }
 
@@ -130,6 +132,22 @@ class AlertSystem {
                 display: flex;
                 justify-content: center;
                 gap: 10px;
+            }
+
+            .prompt-input {
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #ddd;
+                border-radius: 6px;
+                margin: 15px 0;
+                font-size: 16px;
+                box-sizing: border-box;
+            }
+
+            .prompt-input:focus {
+                outline: none;
+                border-color: #007bff;
+                box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
             }
 
             /* Toast Styles */
@@ -270,6 +288,7 @@ class AlertSystem {
         // 원본 함수 백업
         window.originalAlert = window.alert;
         window.originalConfirm = window.confirm;
+        window.originalPrompt = window.prompt;
         
         // alert 대체
         window.alert = (message) => {
@@ -279,6 +298,11 @@ class AlertSystem {
         // confirm 대체 (Promise 기반)
         window.confirm = (message) => {
             return this.showConfirm(message, '확인');
+        };
+
+        // prompt 대체 (Promise 기반)
+        window.prompt = (message, defaultValue = '') => {
+            return this.showPrompt(message, '입력', defaultValue);
         };
     }
 
@@ -297,6 +321,85 @@ class AlertSystem {
         
         // 표시
         modal.style.display = 'flex';
+    }
+
+    // showPrompt 메서드 (수정됨)
+    showPrompt(message, title = '입력', defaultValue = '') {
+        return new Promise((resolve) => {
+            // 기존 모달 제거
+            this.closeModal();
+            
+            // Promise resolver 저장
+            this.promptResolver = resolve;
+            
+            // 입력 모달 생성
+            const modal = document.createElement('div');
+            modal.className = 'alert-modal-overlay';
+            modal.innerHTML = `
+                <div class="alert-modal-content">
+                    <div class="alert-modal-icon">📝</div>
+                    <h2 class="alert-modal-title">${title}</h2>
+                    <p class="alert-modal-message">${message}</p>
+                    <input type="text" class="prompt-input" value="${defaultValue}" placeholder="입력하세요...">
+                    <div class="alert-modal-buttons">
+                        <button class="alert-modal-button prompt-ok">확인</button>
+                        <button class="alert-modal-button cancel prompt-cancel">취소</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            modal.style.display = 'flex';
+            
+            // 이벤트 리스너 추가
+            const input = modal.querySelector('.prompt-input');
+            const okButton = modal.querySelector('.prompt-ok');
+            const cancelButton = modal.querySelector('.prompt-cancel');
+            
+            // 확인 버튼 클릭
+            okButton.addEventListener('click', () => {
+                this.resolvePrompt(input.value);
+            });
+            
+            // 취소 버튼 클릭
+            cancelButton.addEventListener('click', () => {
+                this.resolvePrompt(null);
+            });
+            
+            // 입력 필드에 포커스 및 키보드 이벤트
+            setTimeout(() => {
+                input.focus();
+                input.select();
+                
+                // Enter 키로 확인, Escape 키로 취소
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.resolvePrompt(input.value);
+                    }
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.resolvePrompt(null);
+                    }
+                });
+            }, 100);
+            
+            // 배경 클릭으로 닫기
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.resolvePrompt(null);
+                }
+            });
+        });
+    }
+
+    // Prompt 결과 처리
+    resolvePrompt(result) {
+        if (this.promptResolver) {
+            this.promptResolver(result);
+            this.promptResolver = null;
+        }
+        this.closeModal();
     }
 
     // Toast 알림
@@ -325,25 +428,27 @@ class AlertSystem {
         
         // 자동 제거
         const autoRemove = setTimeout(() => {
-            toast.style.animation = 'toastSlideOut 0.3s ease forwards';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
+            this.removeToast(toast);
         }, duration);
         
         // 클릭시 즉시 제거
         toast.addEventListener('click', (e) => {
             if (e.target.classList.contains('toast-close')) return;
             clearTimeout(autoRemove);
-            toast.style.animation = 'toastSlideOut 0.3s ease forwards';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
+            this.removeToast(toast);
         });
+    }
+
+    // Toast 제거 함수
+    removeToast(toast) {
+        if (!toast || !toast.parentNode) return;
+        
+        toast.style.animation = 'toastSlideOut 0.3s ease forwards';
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
     }
 
     // Confirm 다이얼로그 (Promise 기반)
@@ -351,6 +456,9 @@ class AlertSystem {
         return new Promise((resolve) => {
             // 기존 모달 제거
             this.closeModal();
+            
+            // Promise resolver 저장
+            this.confirmResolver = resolve;
             
             // 확인 모달 생성
             const modal = document.createElement('div');
@@ -361,8 +469,8 @@ class AlertSystem {
                     <h2 class="alert-modal-title">${title}</h2>
                     <p class="alert-modal-message">${message}</p>
                     <div class="alert-modal-buttons">
-                        <button class="alert-modal-button" onclick="window.alertSystem.resolveConfirm(true)">확인</button>
-                        <button class="alert-modal-button cancel" onclick="window.alertSystem.resolveConfirm(false)">취소</button>
+                        <button class="alert-modal-button confirm-ok">확인</button>
+                        <button class="alert-modal-button cancel confirm-cancel">취소</button>
                     </div>
                 </div>
             `;
@@ -370,8 +478,24 @@ class AlertSystem {
             document.body.appendChild(modal);
             modal.style.display = 'flex';
             
-            // Promise resolver 저장
-            this.confirmResolver = resolve;
+            // 이벤트 리스너 추가
+            const okButton = modal.querySelector('.confirm-ok');
+            const cancelButton = modal.querySelector('.confirm-cancel');
+            
+            okButton.addEventListener('click', () => {
+                this.resolveConfirm(true);
+            });
+            
+            cancelButton.addEventListener('click', () => {
+                this.resolveConfirm(false);
+            });
+            
+            // 배경 클릭으로 닫기 (취소로 간주)
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.resolveConfirm(false);
+                }
+            });
         });
     }
 
@@ -466,9 +590,14 @@ class AlertSystem {
                 <div class="alert-modal-icon">${icon}</div>
                 <h2 class="alert-modal-title">${title}</h2>
                 <p class="alert-modal-message">${message}</p>
-                <button class="alert-modal-button ${buttonClass}" onclick="window.alertSystem.closeModal()">확인</button>
+                <button class="alert-modal-button ${buttonClass} modal-ok">확인</button>
             </div>
         `;
+        
+        // 확인 버튼 이벤트 리스너
+        modal.querySelector('.modal-ok').addEventListener('click', () => {
+            this.closeModal();
+        });
         
         // 배경 클릭으로 닫기
         modal.addEventListener('click', (e) => {
@@ -497,7 +626,14 @@ class AlertSystem {
     setupKeyboardEvents() {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                this.closeModal();
+                // Confirm이나 Prompt 모달이 있는 경우 적절히 처리
+                if (this.confirmResolver) {
+                    this.resolveConfirm(false);
+                } else if (this.promptResolver) {
+                    this.resolvePrompt(null);
+                } else {
+                    this.closeModal();
+                }
             }
         });
     }
@@ -520,6 +656,10 @@ function showConfirm(message, title = '확인') {
     return window.alertSystem.showConfirm(message, title);
 }
 
+function showPrompt(message, title = '입력', defaultValue = '') {
+    return window.alertSystem.showPrompt(message, title, defaultValue);
+}
+
 // 타입별 전용 함수들
 function showSuccess(message, title = '성공') {
     showAlert(message, 'success', title);
@@ -540,20 +680,19 @@ function showInfo(message, title = '알림') {
 // ============================
 // 초기화
 // ============================
-document.addEventListener('DOMContentLoaded', function() {
-    // Alert 시스템 초기화
-    window.alertSystem = new AlertSystem();
-    
-    console.log('🎨 Alert 시스템이 로드되었습니다!');
-});
+function initAlertSystem() {
+    if (!window.alertSystem) {
+        window.alertSystem = new AlertSystem();
+        console.log('🎨 Alert 시스템이 로드되었습니다!');
+    }
+}
 
-// 즉시 초기화 (DOMContentLoaded 이전에도 작동)
+// 즉시 초기화
+document.addEventListener('DOMContentLoaded', initAlertSystem);
+
+// 이미 DOM이 로드된 경우 즉시 초기화
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        if (!window.alertSystem) {
-            window.alertSystem = new AlertSystem();
-        }
-    });
+    document.addEventListener('DOMContentLoaded', initAlertSystem);
 } else {
-    window.alertSystem = new AlertSystem();
+    initAlertSystem();
 }
