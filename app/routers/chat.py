@@ -118,34 +118,26 @@ async def websocket_endpoint(
         #     "timestamp": datetime.now().isoformat()
         # })
         
-        # 채널 가입 시간 이후의 메시지 히스토리 전송
-        if channel_membership.joined_at:
-            # print(f"📚 멤버 ({user_context['user_name']})에게 가입 시간 이후 메시지 히스토리 전송")
-            try:
-                # 채널 가입 시간을 ISO 형식으로 변환
-                join_timestamp = channel_membership.joined_at.isoformat()
-                
-                # DynamoDB에서 가입 시간 이후 최근 메시지 50개 조회
-                messages = await dynamodb_manager.get_messages_after_join(channel.id, join_timestamp, limit=50)
-                
-                if messages:
-                    # 메시지 히스토리 전송
-                    await manager.send_personal_message(websocket, {
-                        "type": "message_history",
-                        "messages": messages,
-                        "timestamp": get_current_datetime().isoformat()
-                    })
-                    # print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지 (가입 시간: {join_timestamp})")
-                else:
-                    # print("📭 가입 시간 이후 메시지 히스토리가 없습니다.")
-                    pass
-                    
-            except Exception as e:
-                # print(f"❌ 메시지 히스토리 조회 실패: {e}")
-                # 히스토리 조회 실패해도 실시간 채팅은 계속 진행
+        # 채널의 최신 메시지 50개 히스토리 전송
+        try:
+            # DynamoDB에서 최신 메시지 50개 조회
+            messages = await dynamodb_manager.get_latest_messages(channel.id, limit=50)
+            
+            if messages:
+                # 메시지 히스토리 전송
+                await manager.send_personal_message(websocket, {
+                    "type": "message_history",
+                    "messages": messages,
+                    "timestamp": get_current_datetime().isoformat()
+                })
+                # print(f"✅ 메시지 히스토리 전송 완료: {len(messages)}개 메시지")
+            else:
+                # print("📭 채널에 메시지가 없습니다.")
                 pass
-        else:
-            # print(f"⚠️ 채널 가입 시간 정보가 없어 메시지 히스토리 전송을 건너뜁니다.")
+                
+        except Exception as e:
+            # print(f"❌ 메시지 히스토리 조회 실패: {e}")
+            # 히스토리 조회 실패해도 실시간 채팅은 계속 진행
             pass
         
         # 메시지 수신 루프 (시그널 처리를 위한 개선)

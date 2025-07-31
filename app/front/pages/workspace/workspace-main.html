@@ -424,6 +424,14 @@
                         renderMessages();
                         updateChannelContent();
                         setupScrollHandler(); // 스크롤 핸들러 설정
+                        
+                        // 메시지 히스토리 로드 후 스크롤을 맨 아래로 이동
+                        setTimeout(() => {
+                            const messagesContainer = document.querySelector('.chat-messages-container');
+                            if (messagesContainer) {
+                                scrollToBottom(messagesContainer, 'auto');
+                            }
+                        }, 100);
                     }
                     break;
                     

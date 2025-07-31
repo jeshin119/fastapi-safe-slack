@@ -211,6 +211,31 @@ class DynamoDBManager:
             # print(f"메시지 조회 오류: {e}")
             return []
 
+    async def get_latest_messages(self, channel_id: int, limit: int = 50) -> List[Dict]:
+        """채널의 최신 메시지 조회 (시간순 정렬)"""
+        self._initialize()
+        
+        try:
+            # Query를 사용하여 특정 채널의 메시지만 조회
+            query_kwargs = {
+                'KeyConditionExpression': boto3.dynamodb.conditions.Key('channel_id').eq(str(channel_id)),
+                'Limit': limit,
+                'ScanIndexForward': False  # 최신 메시지부터 (역순)
+            }
+            
+            response = self.table.query(**query_kwargs)
+            messages = response.get('Items', [])
+            
+            # 시간순으로 정렬 (오래된 순)
+            messages.sort(key=lambda x: x['timestamp'])
+            
+            # print(f"채널 {channel_id}에서 최신 {len(messages)}개 메시지 조회 완료")
+            return messages[:limit]
+            
+        except Exception as e:
+            # print(f"최신 메시지 조회 오류: {e}")
+            return []
+
     async def get_messages_after_join(self, channel_id: int, join_timestamp: str, limit: int = 50) -> List[Dict]:
         """채널 가입 시간 이후의 메시지 조회"""
         self._initialize()
