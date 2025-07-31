@@ -161,7 +161,7 @@
 
 
     <script src="../../js/config.js"></script>
-    <script src="../../js/showAlert-system.js"></script>
+    <script src="../../js/alert-system.js"></script>
 
     <script>
         // ============================
@@ -375,7 +375,7 @@ async function loadUserInfo() {
         console.error('❌ 사용자 정보 로드 실패:', error);
         
         if (!IS_DEV_MODE && (error.message.includes('401') || error.message.includes('403'))) {
-            showshowAlert('로그인이 필요합니다.');
+            showAlert('로그인이 필요합니다.');
             window.location.href = '/login.html';
         }
     }
@@ -409,7 +409,7 @@ async function loadUserWorkspaces() {
         userWorkspaces = [];
         renderWorkspaceList();
         
-        showshowAlert('워크스페이스 목록을 불러오는데 실패했습니다. 새로고침을 시도해주세요.');
+        showAlert('워크스페이스 목록을 불러오는데 실패했습니다. 새로고침을 시도해주세요.');
     }
 }
 
@@ -579,7 +579,7 @@ async function enterWorkspace() {
 
     } catch (error) {
         console.error('❌ 워크스페이스 입장 실패:', error);
-        showshowAlert('워크스페이스 입장에 실패했습니다: ' + error.message);
+        showAlert('워크스페이스 입장에 실패했습니다: ' + error.message);
         
         enterBtn.disabled = false;
         updateEnterButton();
@@ -594,7 +594,7 @@ async function createWorkspace(event = null) {
     const description = document.getElementById('workspace-description').value.trim();
     
     if (!name) {
-        showshowAlert('워크스페이스 이름을 입력해주세요.');
+        showAlert('워크스페이스 이름을 입력해주세요.');
         return;
     }
 
@@ -620,7 +620,7 @@ async function createWorkspace(event = null) {
         const successMessage = data.message || `"${data.workspace_name || name}" 워크스페이스가 생성되었습니다!`;
         const startDate = data.start_date ? `\n시작일: ${data.start_date}` : '';
         
-        showshowAlert(`🎉 ${successMessage}${startDate}\n관리자로 설정되었습니다.`);
+        showAlert(`🎉 ${successMessage}${startDate}\n관리자로 설정되었습니다.`);
         
         await loadUserWorkspaces();
         switchTab('my-workspaces');
@@ -628,7 +628,7 @@ async function createWorkspace(event = null) {
 
     } catch (error) {
         console.error('워크스페이스 생성 실패:', error);
-        showshowAlert(`생성 실패: ${error.message}`);
+        showAlert(`생성 실패: ${error.message}`);
     } finally {
         createBtn.disabled = false;
         btnText.textContent = '워크스페이스 만들기';
@@ -655,12 +655,12 @@ async function joinWorkspace(event = null) {
     const roleName = document.getElementById('role-name').value.trim();
     
     if (!inviteCode) {
-        showshowAlert('초대 코드를 입력해주세요.');
+        showAlert('초대 코드를 입력해주세요.');
         return;
     }
     
     if (!roleName) {
-        showshowAlert('역할을 선택해주세요.');
+        showAlert('역할을 선택해주세요.');
         return;
     }
 
@@ -681,7 +681,7 @@ async function joinWorkspace(event = null) {
             })
         });
 
-        showshowAlert('🎉 워크스페이스 가입 요청이 전송되었습니다!\n관리자의 승인을 기다리세요.');
+        showAlert('🎉 워크스페이스 가입 요청이 전송되었습니다!\n관리자의 승인을 기다리세요.');
         
         await loadUserWorkspaces();
         switchTab('my-workspaces');
@@ -689,7 +689,7 @@ async function joinWorkspace(event = null) {
 
     } catch (error) {
         console.error('워크스페이스 참여 실패:', error);
-        showshowAlert(`참여 실패: ${error.message}`);
+        showAlert(`참여 실패: ${error.message}`);
     } finally {
         joinBtn.disabled = false;
         btnText.textContent = '워크스페이스 참여';
@@ -776,5 +776,5 @@ console.log('🔧 개발자 도구에서 debugWorkspace 객체를 사용하여 �
 console.log('예: debugWorkspace.fillTestData(), debugWorkspace.testAPI(), debugWorkspace.testJWT()');
     </script>
        
-<script src="../../js/showAlert-system.js"></script>
+<script src="../../js/alert-system.js"></script>
 </body></html>

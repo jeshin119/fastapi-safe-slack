@@ -87,7 +87,7 @@
     </div>
 
     <script src="../../js/config.js"></script>
-    <script src="../../js/showAlert-system.js"></script>
+    <script src="../../js/alert-system.js"></script>
     <script>
         // ============================
         // 전역 변수 및 설정
@@ -307,7 +307,7 @@
                 
             } catch (error) {
                 console.error('파일 로딩 실패:', error);
-                showshowAlert('파일 목록을 불러오는데 실패했습니다: ' + error.message, 'error');
+                showAlert('파일 목록을 불러오는데 실패했습니다: ' + error.message, 'error');
                 
                 // 에러 시 빈 목록으로 표시
                 currentFiles = [];
@@ -446,7 +446,7 @@
         }
 
         // 알림 메시지 표시
-        function showshowAlert(message, type = 'success') {
+        function showAlert(message, type = 'success') {
             const showAlertContainer = document.getElementById('showAlert-container');
             const showAlertId = 'showAlert-' + Date.now();
             
@@ -515,7 +515,7 @@
                 for (const file of selectedFiles) {
                     // 파일 크기 체크 (50MB)
                     if (file.size > 50 * 1024 * 1024) {
-                        showshowAlert(`"${file.name}" 파일이 50MB를 초과합니다.`, 'error');
+                        showAlert(`"${file.name}" 파일이 50MB를 초과합니다.`, 'error');
                         continue;
                     }
 
@@ -552,7 +552,7 @@
 
                     } catch (error) {
                         console.error(`파일 "${file.name}" 업로드 실패:`, error);
-                        showshowAlert(`"${file.name}" 업로드에 실패했습니다: ${error.message}`, 'error');
+                        showAlert(`"${file.name}" 업로드에 실패했습니다: ${error.message}`, 'error');
                     }
                 }
 
@@ -567,13 +567,13 @@
                 }, 2000);
 
                 if (completedFiles > 0) {
-                    showshowAlert(`${completedFiles}개 파일이 성공적으로 업로드되었습니다!`);
+                    showAlert(`${completedFiles}개 파일이 성공적으로 업로드되었습니다!`);
                 }
 
             } catch (error) {
                 console.error('파일 업로드 오류:', error);
                 progressText.textContent = '❌ 업로드 중 오류가 발생했습니다.';
-                showshowAlert('파일 업로드에 실패했습니다: ' + error.message, 'error');
+                showAlert('파일 업로드에 실패했습니다: ' + error.message, 'error');
                 
                 setTimeout(() => {
                     uploadProgress.style.display = 'none';
@@ -634,7 +634,7 @@
             try {
                 if (IS_DEV_MODE) {
                     // 개발 모드에서는 다운로드 시뮬레이션
-                    showshowAlert(`"${filename}" 다운로드를 시작합니다.`);
+                    showAlert(`"${filename}" 다운로드를 시작합니다.`);
                     return;
                 }
 
@@ -667,11 +667,11 @@
                 document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
 
-                showshowAlert(`"${filename}" 다운로드가 완료되었습니다.`);
+                showAlert(`"${filename}" 다운로드가 완료되었습니다.`);
 
             } catch (error) {
                 console.error('다운로드 오류:', error);
-                showshowAlert('파일 다운로드에 실패했습니다: ' + error.message, 'error');
+                showAlert('파일 다운로드에 실패했습니다: ' + error.message, 'error');
             }
         }
 
@@ -681,7 +681,7 @@
             
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(shareText).then(() => {
-                    showshowAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
+                    showAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
                 }).catch(() => {
                     fallbackCopyText(shareText, filename);
                 });
@@ -698,7 +698,7 @@
             textArea.select();
             document.execCommand('copy');
             document.body.removeChild(textArea);
-            showshowAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
+            showAlert(`"${filename}" 파일 정보가 클립보드에 복사되었습니다!`);
         }
 
         // 파일 삭제
@@ -716,12 +716,12 @@
                     method: 'DELETE'
                 });
 
-                showshowAlert(`"${file.filename}" 파일이 삭제되었습니다.`);
+                showAlert(`"${file.filename}" 파일이 삭제되었습니다.`);
                 loadFiles(); // 파일 목록 새로고침
 
             } catch (error) {
                 console.error('파일 삭제 오류:', error);
-                showshowAlert('파일 삭제에 실패했습니다: ' + error.message, 'error');
+                showAlert('파일 삭제에 실패했습니다: ' + error.message, 'error');
             }
         }
 
@@ -739,7 +739,7 @@
             if (!IS_DEV_MODE) {
                 const token = localStorage.getItem('access_token');
                 if (!token) {
-                    showshowAlert('로그인이 필요합니다.');
+                    showAlert('로그인이 필요합니다.');
                     window.location.href = '/login.html';
                     return;
                 }
