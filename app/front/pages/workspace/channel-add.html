@@ -127,6 +127,7 @@
     </div>
 
     <script src="../../js/config.js"></script>
+    <script src="../../js/showAlert-system.js"></script>
     <script>
         // ============================
         // API 설정 및 전역 변수
@@ -227,7 +228,7 @@
                 }
                 
                 if (result.success) {
-                    alert(result.message);
+                    showshowAlert(result.message);
                     // 성공시 워크스페이스 메인으로 이동 + 새 채널 정보 전달
                     if (selectedType === 'create' && result.channelData) {
                         // 새 채널 정보를 localStorage에 임시 저장
@@ -238,12 +239,12 @@
                         window.location.href = 'workspace-main.html';
                     }, 1500);
                 } else {
-                    alert(`오류: ${result.error}`);
+                    showshowAlert(`오류: ${result.error}`);
                 }
                 
             } catch (error) {
                 console.error('액션 실행 실패:', error);
-                alert('작업 중 오류가 발생했습니다. 다시 시도해주세요.');
+                showshowAlert('작업 중 오류가 발생했습니다. 다시 시도해주세요.');
             } finally {
                 // 로딩 상태 원복
                 actionBtn.disabled = false;
@@ -362,8 +363,8 @@
         // ============================
         // 기타 함수들
         // ============================
-        function goBack() {
-            if (confirm('채널 추가를 취소하고 돌아가시겠습니까?')) {
+        async function goBack() {
+            if (await showConfirm('채널 추가를 취소하고 돌아가시겠습니까?')) {
                 window.location.href = 'workspace-main.html';
             }
         }

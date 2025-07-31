@@ -193,6 +193,7 @@
     </div>
 
     <script src="../../js/config.js"></script>
+    <script src="../../js/showAlert-system.js"></script>
     <script>
         // 서버 연결 설정
         // API_BASE_URL은 config.js에서 자동으로 설정됨
@@ -267,7 +268,7 @@
             localStorage.removeItem('access_token');
             localStorage.removeItem('current_workspace_name');
             localStorage.removeItem('is_workspace_admin');
-            alert('인증이 만료되었습니다. 다시 로그인해주세요.');
+            showAlert('인증이 만료되었습니다. 다시 로그인해주세요.');
             window.location.href = '/login.html';
         }
     
@@ -507,7 +508,7 @@
                     
                 case 'error':
                     console.error('❌ WebSocket 에러:', data.message);
-                    alert('채팅 오류: ' + data.message);
+                    showAlert('채팅 오류: ' + data.message);
                     break;
                     
                 default:
@@ -550,7 +551,7 @@
         function getUserInfoFromToken() {
             const token = localStorage.getItem('jwt_token') || localStorage.getItem('access_token');
             if (!token) {
-                alert('로그인이 필요합니다.');
+                showAlert('로그인이 필요합니다.');
                 window.location.href = '/login.html';
                 return null;
             }
@@ -635,7 +636,7 @@
     
             } catch (error) {
                 console.error('워크스페이스 초기화 실패:', error);
-                alert('워크스페이스 로딩에 실패했습니다. 워크스페이스 선택 페이지로 돌아갑니다.');
+                showAlert('워크스페이스 로딩에 실패했습니다. 워크스페이스 선택 페이지로 돌아갑니다.');
                 window.location.href = '/workspace-select.html';
             } finally {
                 document.getElementById('loading-overlay').style.display = 'none';
@@ -645,7 +646,7 @@
         // 관리자 페이지 이동
         function goToAdminPage() {
             if (!globalData.user?.is_workspace_admin) {
-                alert('관리자 권한이 필요합니다.');
+                showAlert('관리자 권한이 필요합니다.');
                 return;
             }
             
@@ -656,7 +657,7 @@
         function goToChannelManage() {
             const workspaceName = globalData.workspace?.name;
             if (!workspaceName) {
-                alert('워크스페이스 정보가 없습니다.');
+                showAlert('워크스페이스 정보가 없습니다.');
                 return;
             }
 
@@ -741,7 +742,7 @@
         renderChannelList();
         
         // 사용자에게 알림
-        alert('채널 목록을 불러오는데 실패했습니다: ' + error.message);
+        showAlert('채널 목록을 불러오는데 실패했습니다: ' + error.message);
     }
 }
         
@@ -860,7 +861,7 @@
             const channelName = localStorage.getItem("current_channel_name");
 
             if (!workspaceName || !channelName) {
-                alert("워크스페이스 또는 채널 정보가 없습니다.");
+                showAlert("워크스페이스 또는 채널 정보가 없습니다.");
                 return;
             }
 
@@ -885,16 +886,16 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    alert(data.message || "채널에서 나갔습니다.");
+                    showAlert(data.message || "채널에서 나갔습니다.");
                     // 현재 채널에서 나간 후 처리: 리다이렉트하거나 채널 목록 새로고침
                     localStorage.removeItem("current_channel_name"); // 현재 채널 초기화
                     location.reload(); // 또는 다른 페이지로 이동
                 } else {
-                    alert(`❌ ${data.detail || "채널 나가기 실패"}`);
+                    showAlert(`❌ ${data.detail || "채널 나가기 실패"}`);
                 }
             } catch (error) {
                 console.error("채널 나가기 중 오류:", error);
-                alert("채널 나가기 중 오류가 발생했습니다.");
+                showAlert("채널 나가기 중 오류가 발생했습니다.");
             }
         }
     
@@ -1224,7 +1225,7 @@
             
             if (!content || !currentChannelName || !websocket || websocket.readyState !== WebSocket.OPEN) {
                 if (!websocket || websocket.readyState !== WebSocket.OPEN) {
-                    alert('채팅 서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.');
+                    showAlert('채팅 서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.');
                 }
                 return;
             }
@@ -1255,7 +1256,7 @@
                 
             } catch (error) {
                 console.error('메시지 전송 오류:', error);
-                alert('메시지 전송에 실패했습니다.');
+                showAlert('메시지 전송에 실패했습니다.');
             }
         }
     
@@ -1347,7 +1348,7 @@
                 console.log(`✅ 파일 다운로드 완료: ${filename}`);
             } catch (error) {
                 console.error('파일 다운로드 오류:', error);
-                alert('파일 다운로드에 실패했습니다: ' + error.message);
+                showAlert('파일 다운로드에 실패했습니다: ' + error.message);
             }
         }
 
@@ -1382,7 +1383,7 @@
                 console.log(`✅ 파일 삭제 완료: ${filename}`);
             } catch (error) {
                 console.error('파일 삭제 오류:', error);
-                alert('파일 삭제에 실패했습니다: ' + error.message);
+                showAlert('파일 삭제에 실패했습니다: ' + error.message);
             }
         }
     
@@ -1507,7 +1508,7 @@
                 
             } catch (error) {
                 console.error('파일 업로드 실패:', error);
-                alert(`파일 업로드에 실패했습니다: ${error.message}`);
+                showAlert(`파일 업로드에 실패했습니다: ${error.message}`);
             }
         }
 
@@ -1614,7 +1615,7 @@
             const members = globalData.teamMembers || [];
             
             if (members.length === 0) {
-                alert('멘션할 수 있는 팀원이 없습니다.');
+                showAlert('멘션할 수 있는 팀원이 없습니다.');
                 return;
             }
     
@@ -1633,7 +1634,7 @@
         }
     
         function voiceMessage() {
-            alert('음성 메시지 기능은 개발 중입니다.');
+            showAlert('음성 메시지 기능은 개발 중입니다.');
         }
     
         function closeNewChannelModal() {
@@ -1646,7 +1647,7 @@
                 // Ctrl+K: 빠른 채널 검색
                 if (e.ctrlKey && e.key === 'k') {
                     e.preventDefault();
-                    alert('빠른 채널 검색 기능은 개발 중입니다.');
+                    showAlert('빠른 채널 검색 기능은 개발 중입니다.');
                 }
                 
                 // Ctrl+/: 단축키 도움말
@@ -1658,7 +1659,7 @@
         }
     
         function showKeyboardShortcuts() {
-            alert(`
+            showAlert(`
     ⌨️ 키보드 단축키
     
     💬 메시지

@@ -91,6 +91,7 @@
     </div>
 
     <script src="../../js/config.js"></script>
+    <script src="../../js/showAlert-system.js"></script>
     <script>
         // ============================
         // 전역 변수
@@ -194,7 +195,7 @@
                 
             } catch (error) {
                 console.error('메시지 전송 실패:', error);
-                alert('메시지 전송에 실패했습니다.');
+                showAlert('메시지 전송에 실패했습니다.');
             } finally {
                 const sendBtn = document.getElementById('send-btn');
                 sendBtn.disabled = false;
