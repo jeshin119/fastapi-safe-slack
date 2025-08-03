@@ -146,6 +146,13 @@
             font-size: 14px;
             line-height: 1.5;
         }
+        /* 빈 상태 전용 컨테이너 */
+        .empty-container {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+        }
 
         /* 애니메이션 */
         @keyframes fadeOut {
@@ -533,6 +540,13 @@
     gap: 20px;
 }
 
+.members-grid:has(.empty-state) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+}
+
 .member-card {
     background: white;
     border: 2px solid #e5e7eb;
@@ -697,30 +711,10 @@
     transform: translateY(-1px);
 }
 
-/* 빈 상태 */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #64748b;
-}
 
-.empty-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-}
 
-.empty-title {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #374151;
-}
 
-.empty-description {
-    font-size: 14px;
-    line-height: 1.5;
-}
+
 
 /* 모달 */
 .modal-overlay {
