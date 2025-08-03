@@ -187,39 +187,39 @@
         let approvalMember = null;
 
         // 워크스페이스 정보 로드
-        async function loadWorkspaceInfo() {
-            try {
-                const token = localStorage.getItem('access_token');
-                const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+        // async function loadWorkspaceInfo() {
+        //     try {
+        //         const token = localStorage.getItem('access_token');
+        //         const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
+        //             headers: { 'Authorization': `Bearer ${token}` }
+        //         });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
+        //         if (!response.ok) {
+        //             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        //         }
                 
-                const workspaces = await response.json();
+        //         const workspaces = await response.json();
                 
-                if (!workspaces || workspaces.length === 0) {
-                    throw new Error('워크스페이스가 없습니다.');
-                }
+        //         if (!workspaces || workspaces.length === 0) {
+        //             throw new Error('워크스페이스가 없습니다.');
+        //         }
                 
-                const workspace = workspaces[0];
-                currentWorkspace = workspace.name;
+        //         const workspace = workspaces[0];
+        //         currentWorkspace = workspace.name;
                 
-                // UI 업데이트
-                document.getElementById('workspace-name').textContent = workspace.name;
-                document.getElementById('workspace-meta').textContent = `${workspace.member_count || 0}명의 멤버`;
+        //         // UI 업데이트
+        //         document.getElementById('workspace-name').textContent = workspace.name;
+        //         document.getElementById('workspace-meta').textContent = `${workspace.member_count || 0}명의 멤버`;
                 
-                return workspace.name;
+        //         return workspace.name;
                 
-            } catch (error) {
-                console.error('워크스페이스 정보 로드 실패:', error);
-                document.getElementById('workspace-name').textContent = '연결 실패';
-                document.getElementById('workspace-meta').textContent = '워크스페이스 정보를 불러올 수 없습니다';
-                return null;
-            }
-        }
+        //     } catch (error) {
+        //         console.error('워크스페이스 정보 로드 실패:', error);
+        //         document.getElementById('workspace-name').textContent = '연결 실패';
+        //         document.getElementById('workspace-meta').textContent = '워크스페이스 정보를 불러올 수 없습니다';
+        //         return null;
+        //     }
+        // }
 
         // 채널 목록 로드
         async function loadChannels() {
@@ -988,12 +988,14 @@
         // 초기화
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('채널 멤버 관리 페이지 초기화 시작...');
+            const workspaceName = localStorage.getItem("current_workspace_name");
+            currentWorkspace = workspaceName;
+            document.getElementById('workspace-name').textContent = workspaceName || "워크스페이스 없음";
+            document.getElementById('workspace-meta').textContent = "워크스페이스 정보";
             
             setupSearch();
             setupModalClose();
             
-            // 워크스페이스 정보 로드 후 채널 목록 로드
-            const workspaceName = await loadWorkspaceInfo();
             if (workspaceName) {
                 await loadChannels();
             }
