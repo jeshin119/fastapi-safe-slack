@@ -83,17 +83,16 @@
             </div>
 
             <!-- 승인 대기 탭 -->
+            
             <div class="tab-content active" id="pending-content">
                 <div class="content-header">
-        
-                    
-                    
                 </div>
-
+            
                 <div class="members-grid" id="pending-list">
-                    <div class="loading-state">
-                        <div class="loading-spinner-large"></div>
-                        <div>승인 대기 멤버를 불러오고 있습니다...</div>
+                    <div class="empty-state">  
+                        <div class="empty-icon">⏳</div>  
+                        <div class="empty-title">승인 대기 중인 멤버가 없습니다</div>  
+                        <div class="empty-description">새로운 가입 요청이 있으면 여기에 표시됩니다.</div>  
                     </div>
                 </div>
             </div>
@@ -356,6 +355,7 @@
             const pendingList = document.getElementById('pending-list');
             
             if (members.length === 0) {
+                pendingList.className = 'members-grid empty-container';
                 pendingList.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">⏳</div>
@@ -366,6 +366,7 @@
                 return;
             }
             
+            pendingList.className = 'members-grid';
             pendingList.innerHTML = '';
             
             members.forEach(member => {
