@@ -223,8 +223,7 @@
     position: relative;
     z-index: 10;
     backdrop-filter: blur(10px);
-    max-height: 90vh;
-    overflow-y: auto;
+    min-height: 400px; 
 }
 
 /* 헤더 */
@@ -825,7 +824,7 @@
     .admin-container {
         margin: 10px;
         padding: 30px 25px;
-        max-height: 95vh;
+        
     }
 
     .welcome-text {
