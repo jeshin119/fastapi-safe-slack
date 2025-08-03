@@ -23,21 +23,23 @@
         <div class="channels-section">
             <div class="section-header">
                 <div class="section-title">채널</div>
-                <button class="refresh-btn" onclick="refreshChannels()" title="채널 새로고침">🔄</button>
+                <div style="display: flex; gap: 0;">
+                    <button class="refresh-btn" onclick="refreshChannels()" title="채널 새로고침">🔄</button>
+                    <button class="refresh-btn" onclick="goToChannelAdd()" title="채널 추가" style="margin-left: -2px;">➕</button>
+                </div>
             </div>
             
             <!-- 채널 목록에 스크롤 컨테이너 추가 -->
             <div class="channel-list-container">
                 <ul class="channel-list" id="channel-list">
+                     <div class="add-channel-button">
+               
+            </div>
                     <!-- 채널들이 여기에 동적으로 추가됩니다 -->
                 </ul>
             </div>
             
-            <div class="add-channel-button">
-                <button class="add-channel-btn" onclick="goToChannelAdd()">
-                    ➕ 채널 추가
-                </button>
-            </div>
+    
         </div>
 
         <div class="user-section">
