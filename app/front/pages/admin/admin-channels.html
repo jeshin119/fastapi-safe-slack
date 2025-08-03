@@ -210,42 +210,6 @@
         `;
     }
 
-    // 🔧 개선된 워크스페이스 정보 로드 함수 - config.js 사용
-    async function loadWorkspaceInfo() {
-        try {
-            const token = localStorage.getItem('access_token');
-            
-            // 로딩 상태 표시
-            showWorkspaceLoading();
-            
-            // config.js에서 설정된 API_BASE_URL 사용
-            const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const workspaces = await response.json();
-            
-            if (!workspaces || workspaces.length === 0) {
-                throw new Error('워크스페이스가 없습니다.');
-            }
-            
-            const workspace = workspaces[0]; // 첫 번째 워크스페이스 사용
-            
-            // 🆕 동적으로 UI 업데이트
-            updateWorkspaceUI(workspace);
-            
-            return workspace.name;
-            
-        } catch (error) {
-            console.error('워크스페이스 정보 로드 실패:', error);
-            showWorkspaceError();
-            return "기본 워크스페이스"; // 에러시 기본값
-        }
-    }
 
     // API 설정 - config.js에서 API_BASE_URL 사용
     // API_BASE_URL은 config.js에서 자동으로 설정됨
@@ -254,10 +218,15 @@
 
     // 🔧 개선된 초기화 - 순서 중요!
     document.addEventListener('DOMContentLoaded', async function() {
-        // 워크스페이스 정보부터 로드
-        await loadWorkspaceInfo();
+        // localStorage에서 워크스페이스 가져오기
+        const workspaceName = localStorage.getItem("current_workspace_name");
         
-        // 그 다음 채널 로드
+        // UI 업데이트
+        document.querySelector('.workspace-name').textContent = workspaceName || "워크스페이스 없음";
+        document.querySelector('.workspace-meta').textContent = "워크스페이스 정보";
+
+        
+        // 채널 로드
         loadChannels();
         
         setupSearch();
@@ -266,8 +235,7 @@
         // 채널 목록 로드
         async function loadChannels() {
     try {
-        const workspaceName = await loadWorkspaceInfo();
-        
+        const workspaceName = localStorage.getItem("current_workspace_name");
         const token = localStorage.getItem('access_token');
         const response = await fetch(`${API_BASE_URL}/channels/list`, {
             method: 'POST',  // 🆕 POST로 변경
