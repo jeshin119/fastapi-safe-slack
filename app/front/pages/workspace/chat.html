@@ -411,9 +411,9 @@
                         setTimeout(() => {
                             const messagesContainer = document.getElementById('chat-messages');
                             if (messagesContainer) {
-                                scrollToBottom(messagesContainer, 'auto');
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
                             }
-                        }, 100);
+                        }, 200);
                     }
                     break;
                     
@@ -489,7 +489,18 @@
             }
         }
     
-        // 연결 상태 업데이트
+        // 이 함수를 추가해주세요
+        function scrollToBottom(container, behavior = 'smooth') {
+            if (!container) return;
+            
+            setTimeout(() => {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: behavior
+                });
+            }, 50);
+        }
+                // 연결 상태 업데이트
         function updateConnectionStatus(status) {
             // 연결 상태 표시 요소가 있다면 업데이트
             const statusElement = document.getElementById('connection-status');
@@ -870,6 +881,12 @@
                     </div>
                 `;
                 return;
+
+                setTimeout(() => {
+                    const container = document.getElementById('chat-messages');
+                    const parentHeight = container.parentElement.parentElement.offsetHeight;
+                    container.parentElement.style.height = `${parentHeight - 200}px`; // 200px는 여백
+                }, 50);
             }
             
             messagesContainer.innerHTML = messages.map(message => {
@@ -895,8 +912,11 @@
                 `;
             }).join('');
             
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+            // 지연 시간 추가로 DOM 렌더링 완료 후 스크롤
+            setTimeout(() => {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }, 100);
+                    }
 
         // 스크롤 이벤트 처리 (개선됨)
         let scrollHandlerInitialized = false;
