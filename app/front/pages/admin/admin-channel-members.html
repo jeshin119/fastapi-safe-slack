@@ -9,6 +9,64 @@
     <link rel="stylesheet" href="/static/css/common.css">
     <link rel="stylesheet" href="/static/css/admin-channel-members.css">
     
+    <style>
+        /* ===== 깔끔한 채널 정보 섹션 스타일 ===== */
+
+        .channel-name-highlight {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .visibility-badge {
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .visibility-badge.public {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .visibility-badge.private {
+            background: linear-gradient(135deg, #64748b, #475569);
+        }
+
+        .channel-info-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 8px 0;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .channel-info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .channel-info-text {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+                width: 100%;
+            }
+
+            .channel-info-label {
+                min-width: auto;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- 배경 장식 -->
@@ -26,23 +84,14 @@
         </div>
 
         <!-- 워크스페이스 정보 -->
-        <div class="workspace-info">
-            <div class="workspace-icon">🚀</div>
+        <div class="workspace-info" id="channel-main-info">
+            <div class="workspace-icon" id="channel-main-icon">📢</div>
             <div class="workspace-details">
-                <div class="workspace-name" id="workspace-name">로딩 중...</div>
-                <div class="workspace-meta" id="workspace-meta">워크스페이스 정보를 불러오고 있습니다...</div>
+                <div class="workspace-name" id="channel-main-name">채널을 선택하세요</div>
+                <div class="workspace-meta" id="channel-main-meta">관리할 채널을 선택해주세요</div>
             </div>
         </div>
 
-        <!-- 채널 선택 섹션 -->
-        <div class="stats-section">
-            <div class="section-title">🏷️ 채널 선택</div>
-            <div class="form-group">
-                <select class="form-input" id="channel-select" onchange="loadChannelData()">
-                    <option value="">관리할 채널을 선택하세요...</option>
-                </select>
-            </div>
-        </div>
 
         <!-- 통계 섹션 -->
         <div class="stats-section" id="stats-section" style="display: none;">
@@ -68,11 +117,7 @@
                     <div class="stat-label">활성 멤버</div>
                     <div class="stat-change neutral">로딩 중</div>
                 </div>
-
-                
-
-                
-            
+            </div>
         </div>
 
         <!-- 탭 섹션 -->
@@ -105,12 +150,7 @@
             <div class="tab-content" id="active-content">
                 <div class="content-header">
                     <input type="text" class="search-input" placeholder="이름, 이메일로 검색..." id="active-search">
-                    <select class="filter-select" id="active-filter">
-                        <option value="all">모든 멤버</option>
-                        <option value="admin">관리자</option>
-                        <option value="member">일반 멤버</option>
-                    </select>
-                    
+                
                 </div>
 
                 <div class="members-grid" id="active-members-list">
@@ -177,6 +217,7 @@
         </div>
     </div>
 
+    <script src="../../js/config.js"></script>
     <script>
         // 전역 변수
         // API_BASE_URL은 config.js에서 자동으로 설정됨
@@ -185,47 +226,67 @@
         let currentAction = null;
         let targetMember = null;
         let approvalMember = null;
+        let latestPendingCount = 0;
 
         // 워크스페이스 정보 로드
-        // async function loadWorkspaceInfo() {
-        //     try {
-        //         const token = localStorage.getItem('access_token');
-        //         const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
-        //             headers: { 'Authorization': `Bearer ${token}` }
-        //         });
+        async function loadWorkspaceInfo() {
+            try {
+                const token = localStorage.getItem('access_token');
+                const response = await fetch(`${API_BASE_URL}/workspaces/workspaces_list`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 
-        //         if (!response.ok) {
-        //             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        //         }
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
-        //         const workspaces = await response.json();
+                const workspaces = await response.json();
                 
-        //         if (!workspaces || workspaces.length === 0) {
-        //             throw new Error('워크스페이스가 없습니다.');
-        //         }
+                if (!workspaces || workspaces.length === 0) {
+                    throw new Error('워크스페이스가 없습니다.');
+                }
                 
-        //         const workspace = workspaces[0];
-        //         currentWorkspace = workspace.name;
+                const workspace = workspaces[0];
+                currentWorkspace = workspace.name;
                 
-        //         // UI 업데이트
-        //         document.getElementById('workspace-name').textContent = workspace.name;
-        //         document.getElementById('workspace-meta').textContent = `${workspace.member_count || 0}명의 멤버`;
+                // 워크스페이스 정보는 내부적으로만 저장하고, UI는 채널 정보로 업데이트하지 않음
+                return workspace.name;
                 
-        //         return workspace.name;
-                
-        //     } catch (error) {
-        //         console.error('워크스페이스 정보 로드 실패:', error);
-        //         document.getElementById('workspace-name').textContent = '연결 실패';
-        //         document.getElementById('workspace-meta').textContent = '워크스페이스 정보를 불러올 수 없습니다';
-        //         return null;
-        //     }
-        // }
+            } catch (error) {
+                console.error('워크스페이스 정보 로드 실패:', error);
+                // 에러 시에도 채널 선택 안내 메시지 유지
+                updateChannelMainInfo(null);
+                return null;
+            }
+        }
+        function updateChannelMainInfo(channel) {
+            const nameEl = document.getElementById('channel-main-name');
+            const metaEl = document.getElementById('channel-main-meta');
+            const iconEl = document.getElementById('channel-main-icon');
 
-        // 채널 목록 로드
+            if (channel) {
+                nameEl.textContent = channel.name;
+                
+                if (channel.isPublic) {
+                    metaEl.textContent = '🌍 공개 채널';
+                    iconEl.textContent = '🌍';
+                } else {
+                    metaEl.textContent = '🔒 비공개 채널';
+                    iconEl.textContent = '🔒';
+                }
+            } else {
+                nameEl.textContent = '채널을 선택하세요';
+                metaEl.textContent = '관리할 채널을 선택해주세요';
+                iconEl.textContent = '📢';
+            }
+        }
+
+
+        // 선택된 채널 데이터 로드
         async function loadChannels() {
             try {
                 if (!currentWorkspace) return;
-                
+
                 const token = localStorage.getItem('access_token');
                 const response = await fetch(`${API_BASE_URL}/channels/list`, {
                     method: 'POST',
@@ -233,59 +294,42 @@
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        workspace_name: currentWorkspace
-                    })
+                    body: JSON.stringify({ workspace_name: currentWorkspace })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
 
                 const channels = await response.json();
-                
-                const channelSelect = document.getElementById('channel-select');
-                channelSelect.innerHTML = '<option value="">관리할 채널을 선택하세요...</option>';
-                
+
                 if (Array.isArray(channels) && channels.length > 0) {
-                    channels.forEach(channel => {
-                        const option = document.createElement('option');
-                        option.value = channel.name;
-                        option.textContent = `${channel.is_public ? '🌍' : '🔒'} ${channel.name}`;
-                        option.setAttribute('data-channel-id', channel.channel_id);
-                        option.setAttribute('data-is-public', channel.is_public);
-                        channelSelect.appendChild(option);
-                    });
+                    const storedChannelName = localStorage.getItem('current_channel_name');
+                    let matchedChannel = null;
+
+                    // 저장된 채널명과 일치하는 채널 찾기
+                    if (storedChannelName) {
+                        matchedChannel = channels.find(c => c.name === storedChannelName);
+                    }
+
+                    // 없으면 첫 번째 채널 fallback
+                    const channel = matchedChannel || channels[0];
+
+                    currentChannel = {
+                        name: channel.name,
+                        id: channel.channel_id,
+                        isPublic: channel.is_public
+                    };
+
+                    updateChannelInfoDisplay(); // 새로운 채널 정보 표시
+                    showChannelSections();
+                    await Promise.all([
+                        loadChannelMembers(),
+                        loadChannelRequests()
+                    ]);
                 }
-                
+
             } catch (error) {
                 console.error('채널 목록 로드 실패:', error);
-                const channelSelect = document.getElementById('channel-select');
-                channelSelect.innerHTML = '<option value="">채널 목록을 불러올 수 없습니다</option>';
             }
-        }
-
-        // 선택된 채널 데이터 로드
-        async function loadChannelData() {
-            const channelSelect = document.getElementById('channel-select');
-            const selectedOption = channelSelect.options[channelSelect.selectedIndex];
-            
-            if (!selectedOption.value) {
-                hideChannelSections();
-                return;
-            }
-            
-            currentChannel = {
-                name: selectedOption.value,
-                id: selectedOption.getAttribute('data-channel-id'),
-                isPublic: selectedOption.getAttribute('data-is-public') === 'true'
-            };
-            
-            showChannelSections();
-            await Promise.all([
-                loadChannelMembers(),
-                loadChannelRequests()
-            ]);
         }
 
         // 채널 섹션 표시
@@ -379,7 +423,7 @@
                         <div class="empty-description">아직 이 채널에 가입한 멤버가 없습니다.</div>
                     </div>
                 `;
-                updateChannelStats(0, 0);  // 멤버 수: 0, 대기 수: 0
+                updateChannelStats(0, latestPendingCount);
                 return;
             }
 
@@ -390,14 +434,14 @@
                 container.appendChild(memberCard);
             });
 
-            updateChannelStats(members.length, latestPendingCount);  // 멤버 수 업데이트, 대기 수는 이 함수 내에서 알 수 없음
+            updateChannelStats(members.length, latestPendingCount);
         }
 
         // 채널 입장 요청 목록 업데이트
         function updateChannelRequestsList(requests) {
             const container = document.getElementById('pending-list');
 
-            latestPendingCount = requests.length; // ✅ 전역 변수에 저장
+            latestPendingCount = requests.length;
             
             if (requests.length === 0) {
                 container.innerHTML = `
@@ -407,6 +451,7 @@
                         <div class="empty-description">현재 이 채널에 대한 입장 요청이 없습니다.</div>
                     </div>
                 `;
+                updateChannelStats(document.querySelectorAll('#active-members-list .member-card').length, 0);
                 return;
             }
             
@@ -491,7 +536,6 @@
                             <span class="meta-value">${member.is_admin ? '🔑 관리자' : '👤 일반 멤버'}</span>
                         </div>
                     </div>
-    
                 `;
             }
 
@@ -502,19 +546,10 @@
         function updateChannelStats(memberCount, pendingCount) {
             const statNumbers = document.querySelectorAll('.stat-number');
             const statChanges = document.querySelectorAll('.stat-change');
-
-            console.log('statNumbers 길이:', statNumbers.length);
-            console.log('statNumbers[1]:', statNumbers[1]); 
-            if (statNumbers[1]) {
-            console.log('pendingCount 업데이트 전:', statNumbers[1].textContent);
-            statNumbers[1].textContent = pendingCount;
-            console.log('pendingCount 업데이트 후:', statNumbers[1].textContent);
-        }
             
             if (statNumbers[0]) statNumbers[0].textContent = memberCount;
             if (statNumbers[1]) statNumbers[1].textContent = pendingCount;
             if (statNumbers[2]) statNumbers[2].textContent = memberCount;
-            
             
             if (statChanges[0]) {
                 statChanges[0].textContent = `총 ${memberCount}명`;
@@ -528,7 +563,6 @@
                 statChanges[2].textContent = '활성 상태';
                 statChanges[2].className = 'stat-change positive';
             }
-        
             
             // 탭 배지 업데이트
             const pendingTab = document.getElementById('pending-tab');
@@ -566,6 +600,12 @@
             document.getElementById('approval-modal').style.display = 'flex';
         }
 
+        // 개선된 채널 정보 출력 함수
+        function updateChannelInfoDisplay() {
+    // 메인 채널 정보만 업데이트
+    updateChannelMainInfo(currentChannel);
+}
+
         // 승인 확인
         async function confirmApproval() {
             if (!approvalMember || !currentWorkspace) return;
@@ -588,7 +628,7 @@
                 });
                 
                 if (result.success) {
-                    showAlert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
+                    alert(`✅ ${approvalMember.name}님의 "${approvalMember.channel}" 채널 입장이 승인되었습니다!`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${approvalMember.id}"]`);
@@ -608,11 +648,11 @@
                     
                     closeApprovalModal();
                 } else {
-                    showAlert(`❌ 승인 실패: ${result.error}`);
+                    alert(`❌ 승인 실패: ${result.error}`);
                 }
             } catch (error) {
                 console.error('승인 처리 오류:', error);
-                showAlert('❌ 승인 처리 중 오류가 발생했습니다.');
+                alert('❌ 승인 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = '승인하기';
@@ -719,7 +759,7 @@
 
                 if (result.success) {
                     const actionText = currentAction === 'reject' ? '거부' : '추방';
-                    showAlert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
+                    alert(`✅ ${targetMember.name}님이 ${actionText}되었습니다.`);
                     
                     // 카드 제거 애니메이션
                     const memberCard = document.querySelector(`[data-member-id="${targetMember.id}"]`);
@@ -744,10 +784,10 @@
                     
                     closeModal();
                 } else {
-                    showAlert(`❌ 오류: ${result.error}`);
+                    alert(`❌ 오류: ${result.error}`);
                 }
             } catch (error) {
-                showAlert('❌ 처리 중 오류가 발생했습니다.');
+                alert('❌ 처리 중 오류가 발생했습니다.');
             } finally {
                 confirmBtn.disabled = false;
                 confirmText.textContent = currentAction === 'reject' ? '거부하기' : '추방하기';
@@ -816,8 +856,6 @@
         function setupSearch() {
             const pendingSearch = document.getElementById('pending-search');
             const activeSearch = document.getElementById('active-search');
-            const activeFilter = document.getElementById('active-filter');
-            
             
             if (pendingSearch) {
                 pendingSearch.addEventListener('input', () => filterMembers('pending'));
@@ -826,9 +864,6 @@
             if (activeSearch) {
                 activeSearch.addEventListener('input', () => filterMembers('active'));
             }
-            if (activeFilter) {
-                activeFilter.addEventListener('change', () => filterMembersByRole());
-    }
         }
 
         function filterMembers(type) {
@@ -846,99 +881,6 @@
                     card.style.display = 'none';
                 }
             });
-            filterMembersByRole();
-        }
-        function filterMembersByRole() {
-            const activeFilter = document.getElementById('active-filter');
-            const filterValue = activeFilter.value;
-            const memberCards = document.querySelectorAll('#active-members-list .member-card');
-            
-            memberCards.forEach(card => {
-                // 현재 검색어로 숨겨진 카드는 건드리지 않음
-                if (card.style.display === 'none') return;
-                
-                const statusBadge = card.querySelector('.status-badge');
-                const isAdmin = statusBadge && statusBadge.textContent.includes('관리자');
-                
-                let shouldShow = true;
-                
-                switch (filterValue) {
-                    case 'admin':
-                        shouldShow = isAdmin;
-                        break;
-                    case 'member':
-                        shouldShow = !isAdmin;
-                        break;
-                    case 'all':
-                    default:
-                        shouldShow = true;
-                        break;
-                }
-                
-                if (shouldShow) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-        function applyAllFilters() {
-            const activeSearch = document.getElementById('active-search');
-            const activeFilter = document.getElementById('active-filter');
-            const searchTerm = activeSearch.value.toLowerCase();
-            const filterValue = activeFilter.value;
-            const memberCards = document.querySelectorAll('#active-members-list .member-card');
-            
-            memberCards.forEach(card => {
-                const name = card.querySelector('.member-name').textContent.toLowerCase();
-                const email = card.querySelector('.member-email').textContent.toLowerCase();
-                const statusBadge = card.querySelector('.status-badge');
-                const isAdmin = statusBadge && statusBadge.textContent.includes('관리자');
-                
-                // 검색어 조건
-                const matchesSearch = name.includes(searchTerm) || email.includes(searchTerm);
-                
-                // 역할 조건
-                let matchesRole = true;
-                switch (filterValue) {
-                    case 'admin':
-                        matchesRole = isAdmin;
-                        break;
-                    case 'member':
-                        matchesRole = !isAdmin;
-                        break;
-                    case 'all':
-                    default:
-                        matchesRole = true;
-                        break;
-                }
-                
-                // 둘 다 만족해야 표시
-                if (matchesSearch && matchesRole) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-        }
-
-        // 개선된 setupSearch 함수 (통합 필터링 사용)
-        function setupSearch() {
-            const pendingSearch = document.getElementById('pending-search');
-            const activeSearch = document.getElementById('active-search');
-            const activeFilter = document.getElementById('active-filter');
-            
-            if (pendingSearch) {
-                pendingSearch.addEventListener('input', () => filterMembers('pending'));
-            }
-            
-            if (activeSearch) {
-                activeSearch.addEventListener('input', () => applyAllFilters());
-            }
-            
-            if (activeFilter) {
-                activeFilter.addEventListener('change', () => applyAllFilters());
-            }
         }
 
         // 내보내기 (멤버 강퇴 기능으로 변경)
@@ -946,7 +888,7 @@
             const inputId = prompt("강퇴할 사용자 ID를 입력하세요:");
             const userId = parseInt(inputId);
             if (isNaN(userId)) {
-                showAlert("숫자 ID를 입력해주세요.");
+                alert("숫자 ID를 입력해주세요.");
                 return;
             }
 
@@ -988,28 +930,16 @@
         // 초기화
         document.addEventListener('DOMContentLoaded', async function() {
             console.log('채널 멤버 관리 페이지 초기화 시작...');
-            const workspaceName = localStorage.getItem("current_workspace_name");
-            currentWorkspace = workspaceName;
-            document.getElementById('workspace-name').textContent = workspaceName || "워크스페이스 없음";
-            document.getElementById('workspace-meta').textContent = "워크스페이스 정보";
             
             setupSearch();
             setupModalClose();
             
+            // 워크스페이스 정보 로드 후 채널 목록 로드
+            const workspaceName = await loadWorkspaceInfo();
             if (workspaceName) {
                 await loadChannels();
             }
         });
-
-        document.head.appendChild(style);
     </script>
-    
-    <!-- API 설정 -->
-    <script src="../../js/config.js"></script>
-    <script src="../../js/alert-system.js"></script> 
-
-    <script>
-        // API_BASE_URL은 config.js에서 자동으로 설정됨
-    </script>
-<script src="../../js/alert-system.js"></script>
-</body></html>
+</body>
+</html>
